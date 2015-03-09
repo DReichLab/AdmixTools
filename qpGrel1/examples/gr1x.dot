@@ -1,0 +1,19 @@
+digraph G { 
+size = "7.5,10" ;
+           O  [ label = "Out" ] ; 
+           A  [ label = "A" ] ; 
+           C  [ label = "C" ] ; 
+           B  [ label = "B" ] ; 
+           X  [ label = "X" ] ; 
+R -> Q [   ] ; 
+R -> O [   ] ; 
+Q -> CC [   ] ; 
+Q -> AB [   ] ; 
+CC -> C [   ] ; 
+AB -> A [   ] ; 
+AB -> BB [   ] ; 
+BB -> B [   ] ; 
+XX -> X [   ] ; 
+BB -> XX [ style=dotted,  label = "70%" ] ; 
+CC -> XX [ style=dotted,  label = "30%" ] ; 
+} 

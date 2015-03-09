@@ -1,0 +1,118 @@
+parameter file: par:sim1:gr1x:2
+### THE INPUT PARAMETERS
+##PARAMETER NAME: VALUE
+DIR: ../data
+S1: sim1
+indivname: ../data/sim1.ind
+snpname: ../data/sim1.snp
+genotypename: ../data/sim1.geno
+outpop: Out
+blgsize: 0.005
+forcezmode: YES
+lsqmode: NO
+diag: .0001
+bigiter: 6
+hires: YES
+## qpGraph version: 3000 
+outpop:  Out
+seed: -1276872103
+*** warning.  genetic distances are in cM not Morgans
+           SNP:10002   1      100.010000       100010000 C T
+
+packed geno read OK
+
+graph: gr1x
+
+
+  0 Out
+  1 A
+  2 B
+  3 C
+  4 X
+root label: :::C::A::B:Out
+population:   0                  Out   50
+population:   1                    A   50
+population:   2                    B   50
+population:   3                    C   50
+population:   4                    X   50
+before setwt numsnps: 50000  outpop: Out
+setwt numsnps: 48472
+number of blocks for moving block jackknife: 987
+snps: 48472  indivs: 250
+lambdascale:     0.473
+fst:
+        O    A    B    C    X 
+  O     0   93   93   94   80
+  A    93    0   49   72   50
+  B    93   49    0   73   43
+  C    94   72   73    0   24
+  X    80   50   43   24    0
+
+f2:
+        O    A    B    C    X 
+  O     0  101  103  104   88
+  A   101    0   46   69   47
+  B   103   46    0   70   41
+  C   104   69   70    0   22
+  X    88   47   41   22    0
+
+ff3:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0  101   79   68   71
+  B     0   79  103   68   75
+  C     0   68   68  104   85
+  X     0   71   75   85   88
+
+ff3sig*10:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0   14   12   11   10
+  B     0   12   15   11   11
+  C     0   11   11   15   12
+  X     0   10   11   12   12
+
+starting analysis
+    0.300     0.700 
+
+
+ score:        0.216  dof: 1 nominal p-val     0.642311 constraint:     0.000000
+ff3fit:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0  102   79   68   71
+  B     0   79  103   68   75
+  C     0   68   68  104   85
+  X     0   71   75   85   88
+
+ff3diff:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0    0    0    0    0
+  B     0    0    0    0    0
+  C     0    0    0    0    0
+  X     0    0    0    0    0
+
+                             :X XX BB CC     0.301     0.699 
+
+        q         o        cc        ab         c         a        bb         b         x 
+   0.0682    0.0000    0.0239    0.0110    0.0117    0.0223    0.0109    0.0125    0.0063 
+
+
+                      fst:       fitted        estim         diff     std. err   Z score 
+      Out           A f2:     0.101528     0.101337    -0.000191     0.001380    -0.138 
+      Out           B f2:     0.102623     0.102894     0.000271     0.001461     0.186 
+      Out           C f2:     0.103761     0.103780     0.000019     0.001470     0.013 
+      Out           X f2:     0.088086     0.088152     0.000066     0.001161     0.057 
+         A          B f2:     0.045718     0.045754     0.000037     0.000669     0.055 
+         A          C f2:     0.068953     0.069056     0.000103     0.000868     0.118 
+         A          X f2:     0.046636     0.046674     0.000038     0.000603     0.063 
+         B          C f2:     0.070048     0.070019    -0.000030     0.000936    -0.032 
+         B          X f2:     0.041161     0.041172     0.000011     0.000597     0.018 
+         C          X f2:     0.022109     0.022114     0.000005     0.000308     0.015 
+
+
+outliers:
+
+graphdotname:  sim1:gr1x:2.dot
+## end of run

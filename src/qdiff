@@ -1,0 +1,176 @@
+11d10
+< #include <globals.h>  
+28c27
+< #define WVERSION   "450" 
+---
+> #define WVERSION   "510" 
+36c35,38
+< // very bad bug in getdsc fixed.  Bug found by Choongwon Jeong (Chicago)
+---
+> // f4mode = YES (no normalization) 
+> // printsd
+> // nochrom added
+> // BAD bug fix (sign of dstat)
+43a46
+> int verbose = NO ;
+46c49
+< //int fstdetails = NO ;
+---
+> int fstdetails = NO ;
+47a51
+> int printsd = NO ;
+57c61
+< //int plotmode = NO ;
+---
+> int plotmode = NO ;
+64a69
+> int fancynorm = YES ;
+73a79,80
+> int zchrom = -1 ;
+> int f4mode = NO ;
+97c104
+< //int outnum = -1 ;
+---
+> int outnum = -1 ;
+173c180
+<   double *pmean, *pnum, rscore[3], dstat[3], hscore[3], rrr[3], ww[3] ;
+---
+>   double *pmean, *pnum, rscore[3], dstat[3], hscore[3], rrr[3], ww[3], serr[3] ;
+205d211
+<   int numprint = 0 ;
+209c215
+<   printf("## qpDstat version: %s\n", WVERSION) ;
+---
+>   printf("## qdrat version: %s\n", WVERSION) ;
+235a242
+> 	  if (cupt -> chrom == zchrom) cupt -> ignore = YES ;
+331c338
+<   numsnps = rmsnps(snpmarkers, numsnps, NULL) ;  //  rid ignorable snps
+---
+>   numsnps = rmsnps(snpmarkers, numsnps) ;  //  rid ignorable snps
+357c364
+< //printf("nrows, ncols: %d %d\n", nrows, ncols) ;
+---
+>   printf("nrows, ncols: %d %d\n", nrows, ncols) ;
+427a435,436
+>         vvd(serr, dstat, rscore, 3) ;
+> 
+452,471d460
+< 
+<         ++numprint ;
+<         if (numprint==1) { 
+<           printf("%9s" , "") ;
+<           if (bankermode) { 
+<            for (i=0; i<4; i++)  {
+<            t = popx[i] ;
+<            printf("%1s", "") ;        
+<           }
+<           printf ("  ") ;
+<           }
+<           for (i=0; i<4; i++)  {
+<            printf("%10s ", "") ;        
+<           if (i==1) printf("%3s", "   ") ;
+<           }
+< 
+<          printf(" %10s", "D stat") ;
+<          printf(" %9s", "Z" ) ;
+<          printnl() ;
+<         }
+475c464
+<          printf("%9s" , "result: ") ;
+---
+>          printf("drat: ") ;
+487d475
+<           if (i==1) printf("%3s", " : ") ;
+490c478,484
+<          printf(" %10.4f", dstat[k]);
+---
+>          if (f4mode == NO) printf(" %10.4f", dstat[k]);
+>          if (f4mode == YES) printf(" %12.6f", dstat[k]);
+> 
+>          if (printsd) {
+>            printf(" %12.6f", serr[k]);
+>          }
+> 
+509d502
+< /**
+514d506
+< */
+534a527
+>         serr[0] = dstat[0]/rscore[0] ;
+541,562c534
+< 
+<         ++numprint ;
+<         if (numprint==1) { 
+<           printf("%9s" , "") ;
+<           if (bankermode) { 
+<            for (i=0; i<4; i++)  {
+<            t = popx[i] ;
+<            printf("%1s", "") ;        
+<           }
+<           printf ("  ") ;
+<           }
+<           for (i=0; i<4; i++)  {
+<            printf("%10s ", "") ;        
+<            if (i==1) printf("%3s", "   ") ;
+<           }
+< 
+<          printf(" %10s", "D stat") ;
+<          printf(" %9s", "Z" ) ;
+<          printnl() ;
+<         }
+<          
+<          printf("%9s", "result: ") ;
+---
+>          printf("drat: ") ;
+567d538
+<            if (i==1) printf("%3s", " : ") ;
+570c541,546
+<          printf(" %10.4f", dstat[k]);
+---
+>          if (f4mode == NO) printf(" %10.4f", dstat[k]);
+>          if (f4mode == YES) printf(" %12.6f", dstat[k]);
+> 
+>          if (printsd) {
+>            printf(" %12.6f", serr[k]);
+>          }
+571a548
+> 
+590c567
+<   printf("## end of qpDstat run\n") ;
+---
+>   printf("## end of run\n") ;
+649a627,628
+>    getint(ph, "printsd:", &printsd) ;
+>    getint(ph, "nochrom:", &zchrom) ;
+666a646,647
+>    getint(ph, "f4mode:", &f4mode) ;
+> 
+900c881
+<    int sgn ; 
+---
+>    double sgn ;  
+902a884
+>    sgn = 1.0 ;
+904,906c886,889
+<    sgn =  1 ;
+<    if (a>b) sgn = -sgn  ;
+<    if (c>d) sgn = -sgn  ;
+---
+>    if (a>b) sgn *= -1.0 ;
+>    if (c>d) sgn *= -1.0 ;
+> 
+>    fflush(stdout) ;
+938d920
+<      if (y1<0.0) continue ;
+946,948d927
+<      if (y1<0.0) continue ;
+<      if (y2<0.0) continue ;
+< 
+951,952c930,932
+<      ztop[s] += (ybaba - yabba)* ((double) sgn) ;
+<      zbot[s] += ybaba + yabba ; 
+---
+>      ztop[s] += (ybaba - yabba)*sgn ; 
+>      if (f4mode == NO)  zbot[s] += ybaba + yabba ; 
+>      if (f4mode == YES)  zbot[s] += 1.0 ;

@@ -1,0 +1,11 @@
+#!/usr/local/bin/perl  -w 
+
+($DD) = @ARGV ;
+
+@F = glob "*.c *.h" ;
+foreach $f (@F) {  
+ if (-e "$DD/$f")  {
+  system "diff -q $f  $DD/$f" ;
+ }
+}
+

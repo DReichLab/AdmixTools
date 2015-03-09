@@ -1,0 +1,392 @@
+        -:    0:Source:convertf.c
+        -:    0:Graph:convertf.gcno
+        -:    0:Data:convertf.gcda
+        -:    0:Runs:1
+        -:    0:Programs:1
+        -:    1:#include <stdio.h>
+        -:    2:#include <string.h>
+        -:    3:#include <unistd.h>
+        -:    4:#include <math.h>
+        -:    5:#include <sys/types.h>
+        -:    6:#include <sys/stat.h>
+        -:    7:#include <fcntl.h>
+        -:    8:
+        -:    9:#include <nicklib.h>
+        -:   10:#include <getpars.h>
+        -:   11:
+        -:   12:#include "admutils.h"
+        -:   13:#include "mcio.h"  
+        -:   14:#include "mcmcpars.h"  
+        -:   15:
+        -:   16:#define WVERSION   "2401" 
+        -:   17:/** 
+        -:   18: reformats files.             
+        -:   19: pedfile junk (6, 7 cols, ACGT added)
+        -:   20: packped (.bed) added  input and output 
+        -:   21: pedfile can now be in random order
+        -:   22: tersemode supported 
+        -:   23: ped -> ancestrymap outputs alleles
+        -:   24: various fixups for ped files in computing variance, reference alleles 
+        -:   25: alleles can (say) be A X if second allele unknown
+        -:   26: allele flipped for bed format
+        -:   27: huge ascii file trapped now
+        -:   28: fastdup added
+        -:   29: r2thresh added
+        -:   30: killr2 added to convertf (default is NO)  
+        -:   31: bug in processing C0 SNPS in ped files fixed
+        -:   32:
+        -:   33: outputall added  (all indivs, snps output)
+        -:   34: genolistname added (list of packed ancestrymap files one per line)
+        -:   35: support for enhanced eigenstrat format and genolist can also be enhanced eigenstrat
+        -:   36: Chromosome # 1-89 now supported.  Improved treatment of funny chromosomes. 
+        -:   37: MT -> 90 
+        -:   38: XY -> 91
+        -:   39:
+        -:   40: Various bugfixes and checks for files size  
+        -:   41: inpack2 no longer needs big memory 
+        -:   42: hash table lookup for snpindex
+        -:   43: check size more carefully
+        -:   44: update to mcio.c  (snprawindex)
+        -:   45: maxmissfrac added
+        -:   46:*/
+        -:   47:
+        -:   48:
+        -:   49:#define MAXFL  50   
+        -:   50:#define MAXSTR  512
+        -:   51:
+        -:   52:char *trashdir = "/var/tmp" ;
+        -:   53:int verbose = NO ;
+        -:   54:int qtmode = NO ;
+        -:   55:Indiv **indivmarkers;
+        -:   56:SNP **snpmarkers ;
+        -:   57:int numsnps, numindivs ; 
+        -:   58:
+        -:   59:char  *genotypename = NULL ;
+        -:   60:char  *genotypelist = NULL ;
+        -:   61:
+        -:   62:char  *snpname = NULL ;
+        -:   63:char *indoutfilename = NULL ;
+        -:   64:char *snpoutfilename = NULL ;
+        -:   65:char  *genooutfilename = NULL ;
+        -:   66:char  *indivname = NULL ;
+        -:   67:char *badsnpname = NULL ;
+        -:   68:
+        -:   69:double r2thresh = -1.0 ;  
+        -:   70:double r2genlim = 0.01 ; // Morgans 
+        -:   71:double r2physlim = 5.0e6 ;     
+        -:   72:double maxmissfrac = 1000.0 ; // no thresh
+        -:   73:int killr2 = NO ;  
+        -:   74:
+        -:   75:int packout = -1 ;
+        -:   76:int tersem  = YES ;
+        -:   77:extern enum outputmodetype outputmode  ;
+        -:   78:extern int checksizemode ;
+        -:   79:char *omode = "packedancestrymap" ;
+        -:   80:extern int packmode ;
+        -:   81:int ogmode = NO ;
+        -:   82:int fastdup = NO ;
+        -:   83:int fastdupnum = 0  ;
+        -:   84:
+        -:   85:int xchrom = -1 ;
+        -:   86:int lopos = -999999999 ; 
+        -:   87:int hipos = 999999999 ;
+        -:   88:int minchrom = 1 ; 
+        -:   89:int maxchrom = 97 ;
+        -:   90:
+        -:   91:
+        -:   92:char  unknowngender = 'U' ;
+        -:   93:
+        -:   94:void setomode(enum outputmodetype *outmode, char *omode)  ;
+        -:   95:void readcommands(int argc, char **argv) ;
+        -:   96:void outfiles(char *snpname, char *indname, char *gname, SNP **snpm, 
+        -:   97:  Indiv **indiv, int numsnps, int numind, int packem, int ogmode) ;
+        -:   98:
+        -:   99:
+        -:  100:int main(int argc, char **argv)
+        1:  101:{
+        -:  102:
+        -:  103:  int **snppos ;
+        -:  104:  int *snpindx ;
+        -:  105:  char **snpnamelist, **indnamelist ;
+        -:  106:  char **eglist ;
+        -:  107:  int  lsnplist, lindlist, numeg ;
+        -:  108:  int i,j; 
+        -:  109:  SNP *cupt, *cupt1, *cupt2, *cupt3 ;
+        -:  110:  Indiv *indx ;
+        -:  111:  double gpos1,gpos2,cpos1,cpos2,gd, cd, gd100 ;
+        -:  112:  double rthresh, zt ;
+        -:  113:  int mpflag, ret, numvalidind, nvalid, numvalidsnps ;
+        -:  114:
+        -:  115:  int ch1, ch2 ;
+        -:  116:  int fmnum , lmnum ;
+        -:  117:  int num, n1, n2 ;
+        1:  118:  int nkill = 0 ;
+        -:  119:  int t, k ;
+        -:  120:
+        1:  121:  int nindiv = 0, e, f, lag=1  ;
+        -:  122:  double xc[9], xd[4], xc2[9] ;
+        1:  123:  double ychi, zscore, zthresh = 20.0 ;
+        -:  124:  double y1, y2 ; 
+        1:  125:  int nignore, numrisks = 1 ;
+        -:  126:
+        -:  127:  char **genolist ;
+        -:  128:  int numgenolist ;
+        -:  129:  int maxmiss ; 
+        -:  130:
+        1:  131:  malexhet = YES ;    // convertf default is don't change the data
+        1:  132:  tersem = YES ;     // no snp counts
+        -:  133:
+        1:  134:  readcommands(argc, argv) ;
+        1:  134-block  0
+        -:  135:
+        1:  136:  setomode(&outputmode, omode) ;
+        1:  137:  packmode = YES ;
+        1:  138:  settersemode(tersem) ;
+        -:  139:
+        1:  140:  numsnps = 
+        -:  141:    getsnps(snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks) ;
+        -:  142:
+        -:  143:
+   909623:  144:  for (i=0; i<numsnps; i++)  {  
+   909622:  144-block  0
+   909623:  144-block  1
+   909622:  145:   if (xchrom == -1) break ;  
+   909622:  145-block  0
+   909622:  146:   cupt = snpmarkers[i] ; 
+   909622:  147:   if (cupt -> chrom != xchrom) cupt -> ignore = YES ; 
+   909622:  147-block  0
+   838070:  147-block  1
+   909622:  148:   if (cupt -> ignore) continue ; 
+   909622:  148-block  0
+    71552:  149:   t = nnint(cupt -> physpos) ; 
+    71552:  149-block  0
+    71552:  150:   if ( (t< lopos) || (t >hipos)) cupt -> ignore = YES ;
+    71552:  150-block  0
+    68912:  150-block  1
+        -:  151:  }
+        -:  152:
+        1:  153:  nignore = 0 ;
+   909623:  154:  for (i=0; i<numsnps; i++)  {  
+        1:  154-block  0
+   909622:  154-block  1
+   909623:  154-block  2
+   909622:  155:   cupt = snpmarkers[i] ; 
+   909622:  156:   if (cupt -> chrom > maxchrom) cupt -> ignore = YES ;  
+   909622:  156-block  0
+    $$$$$:  156-block  1
+   909622:  157:   if (cupt -> chrom < minchrom) cupt -> ignore = YES ;  
+   909622:  157-block  0
+      115:  157-block  1
+   909622:  158:   if (cupt -> ignore) ++nignore ;
+   909622:  158-block  0
+   906982:  158-block  1
+        -:  159:  }
+        -:  160:
+        1:  161:  if (numsnps == nignore) fatalx("no valid snps\n") ;
+        1:  161-block  0
+    $$$$$:  161-block  1
+        -:  162:
+        -:  163:/**
+        -:  164:  cupt = snpmarkers[0] ;
+        -:  165:  printf("zz2: %d %d %d %20s: %d\n", numsnps, nignore, cupt -> chrom, cupt -> ID, cupt -> ignore) ;
+        -:  166:*/
+        -:  167:
+        1:  168:  numindivs = getindivs(indivname, &indivmarkers) ;
+        1:  168-block  0
+        -:  169:
+        1:  170:  if (genotypelist!= NULL) {  
+    #####:  171:    getgenos_list(genotypelist, snpmarkers, indivmarkers, 
+    $$$$$:  171-block  0
+        -:  172:     numsnps, numindivs, nignore) ;
+        -:  173:  }
+        -:  174:
+        -:  175:  else {
+        1:  176:   setgenotypename(&genotypename, indivname) ;
+        1:  176-block  0
+        1:  177:   getgenos(genotypename, snpmarkers, indivmarkers, 
+        -:  178:     numsnps, numindivs, nignore) ;
+        -:  179:  }
+        -:  180:
+        1:  181:  if (outputall) {
+        1:  181-block  0
+    #####:  182:   outfiles(snpoutfilename, indoutfilename, genooutfilename, 
+    $$$$$:  182-block  0
+        -:  183:    snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode) ;
+        -:  184:
+    #####:  185:   printf("##end of convertf run (outputall mode)\n") ;
+    #####:  186:   return 0 ;
+        -:  187:  }
+        -:  188:
+        1:  189:  if (killr2) {
+        1:  189-block  0
+    #####:  190:   nkill = killhir2(snpmarkers, numsnps, numindivs, r2physlim, r2genlim, r2thresh) ;
+    $$$$$:  190-block  0
+    #####:  191:   if (nkill>0) printf("killhir2.  number of snps killed: %d\n", nkill) ;
+    $$$$$:  191-block  0
+        -:  192:  }
+        -:  193:
+        1:  194:  setstatus(indivmarkers, numindivs, "Case") ;
+        1:  194-block  0
+        -:  195:
+        1:  196:  numvalidind = 0 ;
+      492:  197:  for (i=0; i<numindivs; ++i)  { 
+      491:  197-block  0
+      492:  197-block  1
+      491:  198:   indx = indivmarkers[i] ;
+      491:  199:   if (indx -> ignore) continue ; 
+      491:  199-block  0
+      395:  200:   if (numvalidgtind(snpmarkers, numsnps, i) ==0) { 
+      395:  200-block  0
+    #####:  201:    indx -> ignore = YES ; 
+    #####:  202:    printf("no data for individual: %s\n", indx -> ID) ;
+    $$$$$:  202-block  0
+        -:  203:   }
+      395:  204:   if (indx -> ignore == NO) ++numvalidind ;
+      395:  204-block  0
+      395:  204-block  1
+        -:  205:  }
+        -:  206:
+        1:  207:  maxmiss  = (int) (maxmissfrac * (double) numvalidind) ;
+        1:  208:  printf("numvalidind:  %5d  maxmiss: %5d\n", numvalidind, maxmiss)  ;
+        1:  208-block  0
+        -:  209:
+        1:  210:  for (k=0; k<numsnps; ++k) {  
+    $$$$$:  210-block  0
+        1:  210-block  1
+        1:  211:   if (maxmiss>numvalidind) break ;
+        1:  211-block  0
+    #####:  212:   cupt = snpmarkers[k] ;
+    #####:  213:   t = numvalidind - numvalidgtypes(cupt) ;
+    $$$$$:  213-block  0
+        -:  214:// printf("zz %20s %4d %4d\n", cupt -> ID, t, numvalidind-t) ;
+    #####:  215:   if (maxmiss <= t) { 
+    #####:  216:    cupt -> ignore = YES ;
+    $$$$$:  216-block  0
+        -:  217:   }
+        -:  218:  }
+        -:  219:
+        1:  220:  if (fastdup)  {  
+        1:  220-block  0
+    #####:  221:   if (fastdupnum > 0) setfastdupnum(fastdupnum) ;
+    $$$$$:  221-block  0
+    $$$$$:  221-block  1
+    #####:  222:   fastdupcheck(snpmarkers, indivmarkers, numsnps, numindivs) ;  
+    $$$$$:  222-block  0
+        -:  223:  }
+        -:  224:
+        1:  225:  if (decim>0) {  
+        1:  225-block  0
+    #####:  226:   snpdecimate(snpmarkers, numsnps, decim, dmindis, dmaxdis) ;
+    $$$$$:  226-block  0
+        -:  227:  }
+        -:  228:
+        1:  229:  outfiles(snpoutfilename, indoutfilename, genooutfilename, 
+        1:  229-block  0
+        -:  230:   snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode) ;
+        -:  231:
+        1:  232:  printf("##end of convertf run\n") ;
+        1:  233:  return 0 ;
+        1:  233-block  0
+        -:  234:}
+        -:  235:void readcommands(int argc, char **argv) 
+        -:  236:
+        1:  237:{
+        1:  238:  int i,haploid=0;
+        1:  239:  char *parname = NULL ;
+        -:  240:  phandle *ph ;
+        -:  241:  char str[5000]  ;
+        -:  242:  char *tempname ;
+        -:  243:  int n ;
+        -:  244:
+        2:  245:  while ((i = getopt (argc, argv, "p:vV")) != -1) {
+        1:  245-block  0
+        2:  245-block  1
+        -:  246:
+        1:  247:    switch (i)
+        1:  247-block  0
+        -:  248:      {
+        -:  249:
+        -:  250:      case 'p':
+        1:  251:	parname = strdup(optarg) ;
+        1:  251-block  0
+        1:  252:	break;
+        -:  253:
+        -:  254:      case 'v':
+    #####:  255:	printf("version: %s\n", WVERSION) ; 
+    $$$$$:  255-block  0
+    #####:  256:	break; 
+        -:  257:
+        -:  258:      case 'V':
+    #####:  259:	verbose = YES ;
+    #####:  260:	break; 
+    $$$$$:  260-block  0
+        -:  261:
+        -:  262:      case '?':
+    #####:  263:	printf ("Usage: bad params.... \n") ;
+    $$$$$:  263-block  0
+    #####:  264:	fatalx("bad params\n") ;
+        -:  265:      }
+        -:  266:  }
+        -:  267:
+        -:  268:         
+        1:  269:   pcheck(parname,'p') ;
+        1:  269-block  0
+        1:  270:   printf("parameter file: %s\n", parname) ;
+        1:  271:   ph = openpars(parname) ;
+        1:  272:   dostrsub(ph) ;
+        -:  273:
+        -:  274:/**
+        -:  275:DIR2:  /fg/nfiles/admixdata/ms2
+        -:  276:SSSS:  DIR2/outfiles 
+        -:  277:genotypename: DIR2/autos_ccshad_fakes
+        -:  278:eglistname:    DIR2/eurlist  
+        -:  279:output:        eurout
+        -:  280:*/
+        1:  281:   getstring(ph, "genotypename:", &genotypename) ;
+        1:  282:   getstring(ph, "genotypelist:", &genotypelist) ;
+        1:  283:   getstring(ph, "snpname:", &snpname) ;
+        1:  284:   getstring(ph, "indivname:", &indivname) ;
+        1:  285:   getstring(ph, "badsnpname:", &badsnpname) ;
+        1:  286:   getstring(ph, "indoutfilename:", &indoutfilename) ;
+        1:  287:   getstring(ph, "indivoutname:", &indoutfilename) ; /* changed 11/02/06 */
+        1:  288:   getstring(ph, "snpoutfilename:", &snpoutfilename) ;
+        1:  289:   getstring(ph, "snpoutname:", &snpoutfilename) ; /* changed 11/02/06 */
+        1:  290:   getstring(ph, "genooutfilename:", &genooutfilename) ; 
+        1:  291:   getstring(ph, "genotypeoutname:", &genooutfilename) ; /* changed 11/02/06 */
+        1:  292:   getstring(ph, "outputformat:", &omode) ;
+        1:  293:   getstring(ph, "outputmode:", &omode) ;
+        1:  294:   getint(ph, "checksizemode:", &checksizemode) ;
+        -:  295:
+        1:  296:   getint(ph, "outputgroup:", &ogmode) ;
+        1:  297:   getint(ph, "malexhet:", &malexhet) ;
+        1:  298:   getint(ph, "nomalexhet:", &malexhet) ; /* changed 11/02/06 */
+        1:  299:   getint(ph, "tersemode:", &tersem) ;
+        1:  300:   getint(ph, "familynames:", &familynames) ;
+        1:  301:   getint(ph, "packout:", &packout) ; /* now obsolete 11/02/06 */
+        1:  302:   getint(ph, "decimate:", &decim) ; 
+        1:  303:   getint(ph, "dmindis:", &dmindis) ; 
+        1:  304:   getint(ph, "dmaxdis:", &dmaxdis) ; 
+        1:  305:   getint(ph, "fastdup:", &fastdup) ;
+        1:  306:   getint(ph, "fastdupnum:", &fastdupnum) ;
+        1:  307:   getint(ph, "killr2:",  &killr2) ;
+        1:  308:   getint(ph, "hashcheck:", &hashcheck) ;
+        1:  309:   getint(ph, "outputall:", &outputall) ;
+        1:  310:   getint(ph, "sevencolumnped:", &sevencolumnped) ;
+        -:  311:
+        1:  312:   getdbl(ph, "r2thresh:", &r2thresh) ;
+        1:  313:   getdbl(ph, "r2genlim:", &r2genlim) ;
+        1:  314:   getdbl(ph, "r2physlim:", &r2physlim) ;
+        -:  315:
+        1:  316:   getint(ph, "chrom:", &xchrom) ;
+        1:  317:   getint(ph, "lopos:", &lopos) ;
+        1:  318:   getint(ph, "hipos:", &hipos) ;
+        -:  319:
+        1:  320:   getint(ph, "minchrom:", &minchrom) ;
+        1:  321:   getint(ph, "maxchrom:", &maxchrom) ;
+        1:  322:   getdbl(ph, "maxmissfrac:", &maxmissfrac) ;
+        -:  323:   
+        -:  324:
+        1:  325:   writepars(ph) ;
+        1:  326:   closepars(ph) ;
+        -:  327:
+        1:  328:}

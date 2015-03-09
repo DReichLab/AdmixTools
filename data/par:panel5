@@ -1,0 +1,12 @@
+D1:           . 
+D2:           tttdir  
+S1:           panel5         
+S2:           panel5         
+indivname:    D1/panel5.ind
+snpname:      D1/panel5.snp 
+genotypename: D1/panel5.geno
+indivoutname:     D2/S2.ind   
+snpoutname:       D2/S2.snp
+genotypeoutname:  D2/S2.geno
+outputall:        YES  
+##outputformat:     eigenstrat       

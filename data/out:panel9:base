@@ -1,0 +1,13 @@
+parameter file: par:x:base
+D1: .
+S1: panel9
+indivname: ./panel9.ind
+snpname: ./panel9.snp
+genotypename: ./panel9.geno
+genotypename:  ./panel9.geno
+packed geno read OK
+
+
+numindivs: 881 valid: 836 numsnps: 14988 nignore: 0
+ancestrymap output
+##end of run

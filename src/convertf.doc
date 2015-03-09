@@ -1,0 +1,13 @@
+New parameters: Executable in ~np29/bin/convertf  
+
+flipsnpname:   flipfile ## file is snpname 1 / line for which genotypes will be flipped (on autosomes 2 -> 0, 0 -> 2) 
+flipreference:  NO  ## default YES.  User may want to change reference allele.  
+## this is confusing, if the original genotype file is correct, then if you flip genotypes you do want to flip 
+##reference, but it maybe incorrect due to upstream processing problems.  
+##Note that the default is YES;  
+phasedmode:     YES   ## default NO 
+
+##File is phased file.  
+## phasedmode, flipreference are only relevant is flipsnpname is set, otherwise are ignored. 
+
+

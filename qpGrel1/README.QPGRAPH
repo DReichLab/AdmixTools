@@ -1,0 +1,58 @@
+*** program needs NAG C library.  After installation src/Makefile will need modifying
+
+
+qpGraph -p parfile -g graph [-o outgraph] [-d dotfile] 
+
+See examples/runit for some simple examples and sample output
+
+Sample parameter file
+DIR:   ../data
+S1:              sim1           
+indivname:       DIR/S1.ind  
+snpname:         DIR/S1.snp       
+genotypename:    DIR/S1.geno  
+outpop:         Out     
+blgsize:        0.05
+## block size in Morgans for Jackknife
+forcezmode:     YES
+## see below 
+lsqmode:       YES
+diag:          .0001
+bigiter:         6
+hires:         YES
+
+
+-p parfile specifies input data (any Reich lab format) 
+
+outpop:   zzz
+f-stats normalized by heterozygosity in population zzz 
+outpop:  NULL  has special meaning : no normalization 
+blgsize: block size for Jackknife (Morgans)
+forcezmode:  If drift lengths are negative, force to zero and continue (recommended)
+lsqmode:   Default is NO;  Estimate of error covariance is used.  Unstable for large problems 
+ and instead we fit f_3 stats with "base" population first label (see graph spec)
+diag:   small fudge factor to add on diagonal of f3.  Improves stability
+bigiter: Max number of Iterations 
+
+-g graph  
+See examples/gr1x 
+Note comments can be included in file. 
+
+[-o outgraph]  This can be hand edited and input again.  Note format is different. 
+qpGraph will accept either style.  
+
+[-d dotfile]  Graph output in "dot format";  dot -Tps < dotfile > dotfile.ps gives postscript
+"dot" must be installed 
+
+===================================================================================================
+Utility program: qpreroot
+If the input graph is not connected or has loops qpGraph will die unpleasantly.  
+Best way to see what is happening: 
+
+qpreroot -g graph -d dotfile  
+## This also makes postscript
+
+We also can change the root node 
+qpreroot -g graph -o outgraph -r node 
+
+

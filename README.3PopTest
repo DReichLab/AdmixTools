@@ -1,0 +1,55 @@
+DOCUMENTATION OF 3-Population Test (qp3Pop):
+
+The 3-population test, is a formal test of admixture and can provide clear evidence of 
+admixture, even if the gene ﬂow events occurred hundreds of generations ago. If we want to test if C has ancestry from populations related to A and B then we can perform the test f3(C; A, B). 
+If C is unadmixed, then f3 (C ; A, B) has non-negative mean. If f3 (C ; A, B) has negative mean, in contrast, this implies that C is admixed with popu- 
+lations close to A and B (check the significance of the f3 mean and Z-score). 
+
+qp3Pop requires that the input data is available in EIGENSTRAT format.  To convert to the appropriate format, one can use CONVERTF program. See README.CONVERTF for documentation of programs for converting file formats.
+
+Executable and source code:
+------------------------------------------------------------------------------
+ 
+For information about installing the program, see README.ADMIXTOOLS. After installing the programs, the executable for 3 pop test (qp3Pop) should be located in the bin directory.
+
+To run qp3Pop, type the following on a linux machine. 
+$DIR/bin/qp3Pop -p parfile >logfile
+
+$DIR: Path to the bin directory.
+logfile: Name of the logfile. The logfile contains the output of the run. 
+parfile: Name of parameter file
+
+DESCRIPTION OF EACH PARAMETER in parfile:
+
+genotypename:   input genotype file (in eigenstrat format)
+snpname:   input snp file      (in eigenstrat format)
+indivname:   input indiv file    (in eigenstrat format)
+popfilename:  list_qp3test (contains 3 populations on each line <Source1 (A)> <Source2 (B)> < Target (C)>
+
+DESCRIPTION OF OUTPUT FILE:
+The program will write all the output to stdout. The output file prints the parfile entered by the user, the number of populations included in the popfilename (nplist), the number of blocks for block jackknife, the number of snps included in the run and the results.
+
+The results have the following format - 
+result:   Source1  Source2   Target f_3  std.err Z SNPs  
+
+The result for each set of 3 population is shown on a separate line.
+
+See example shown in-
+examples/qp3Pop.log
+
+
+-------------------------------------------------------------------------------
+Follow on:  qpBound  
+ Computes lower and upper bounds for mixing coeff (source 1) as in "Ancient admixture in human history" 
+parfile as above EXCEPT 
+popfilename should contain lines with triple of populations f_3 and Z.    
+and 
+outpop:  outgroup_pop which MUST be present.  
+
+See examples shown in-
+examples/qpBound.log
+
+
+------------------------------------------------------------------------------
+Questions?
+email Arti Tandon, atandon@broadinstitute.org 
