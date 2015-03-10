@@ -22,6 +22,7 @@ We have placed source code for all C executables in the src/ directory,
 for users who wish to modify and recompile our programs.  For example, to
 recompile the programs, type
 "cd src"
+"make clobber"
 "make install"      
 
 Important: We do not support Mac installations. 
