@@ -226,6 +226,7 @@ int main(int argc, char **argv)
   malexhet = YES ;    // convertf default is don't change the data
   tersem = YES ;     // no snp counts
 
+  printf("## convertf version: %s\n", WVERSION) ;
   readcommands(argc, argv) ;
 
   if (fastdup) randommode = YES ;

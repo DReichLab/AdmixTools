@@ -212,7 +212,7 @@ int main(int argc, char **argv)
   num = readpopx(popfilename, plists, 3) ;
   nplist = num ;
   printf("nplist: %d\n", nplist) ;
-  if (nplist == 0) return ;
+  if (nplist == 0) return 0;
 
 
   ZALLOC(eglist, nplist*3, char *)  ;  

@@ -217,7 +217,7 @@ int main(int argc, char **argv)
   num = readpopx(popfilename, plists, 8) ;
   nplist = num ;
   printf("nplist: %d\n", nplist) ;
-  if (nplist == 0) return ;
+  if (nplist == 0) return 0;
 
 
   ZALLOC(eglist, nplist*8, char *)  ;  

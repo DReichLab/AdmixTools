@@ -166,6 +166,7 @@ int main(int argc, char **argv)
   tersem = YES ;     // no snp counts
 
   readcommands(argc, argv) ;
+  printf("## convertfz version: %s\n", WVERSION) ;
 
   setomode(&outputmode, omode) ;
   packmode = YES ;

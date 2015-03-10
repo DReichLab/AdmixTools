@@ -18,7 +18,7 @@
 #include "egsubs.h"  
 #include "ldsubs.h"  
 
-#define WVERSION   "1001" 
+#define WVERSION   "1002" 
 /** an attempt to 
  1) threshold for LD in parentals 
  2) Use a weighted Z-score
@@ -921,7 +921,7 @@ double cntit1(double *xc, SNP *cupt, Indiv **indm, int numindivs, int t)
   int k, g ;
 
   vzero(xc, 3) ;
-  if (cupt -> ignore) return ;
+  if (cupt -> ignore) return 0;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;
@@ -940,8 +940,8 @@ double cntit2(double *xc, SNP *cupt, SNP *cupt2, Indiv **indm, int numindivs, in
   int k, e, f ;
 
   vzero(xc, 9) ;
-  if (cupt -> ignore) return ;
-  if (cupt2 -> ignore) return ;
+  if (cupt -> ignore) return 0;
+  if (cupt2 -> ignore) return 0;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;
