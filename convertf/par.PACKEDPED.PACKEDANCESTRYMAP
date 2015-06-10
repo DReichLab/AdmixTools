@@ -1,0 +1,8 @@
+genotypename:    example.bed
+snpname:         example.pedsnp # or example.map, either works
+indivname:       example.pedind # or example.ped, either works
+outputformat:    PACKEDANCESTRYMAP
+genotypeoutname: example.packedancestrymapgeno
+snpoutname:      example.snp
+indivoutname:    example.ind
+familynames:     NO

@@ -1,0 +1,337 @@
+This file contains documentation of the programs convertf and mergeit.
+convertf converts between the 5 different file formats we support.  
+mergeit merges two data sets into a third, which has the union of
+  the individuals and the intersection of the SNPs in the first two.
+
+Here "file format" simultaneously refers to the formats of three distinct files:
+  genotype file: contains genotype data for each individual at each SNP
+  snp file:      contains information about each SNP        
+  indiv file:    contains information about each individual 
+
+Below, we document all 5 formats:
+ANCESTRYMAP
+EIGENSTRAT 
+PED 
+PACKEDPED 
+PACKEDANCESTRYMAP 
+and we explain how to use convertf to get from one format to another.
+
+Maximum file size on 32-bit machines:
+EIGENSOFT will recognize a machine as 32-bit if sizeof(long) = 4 bytes
+(as opposed to 8 bytes for 64-bit machines).  For 32-bit machines,
+EIGENSOFT does not allow more than 8 billion genotypes, and will produce
+an error message if used to produce an output file larger than 2GB.
+If running convertf on 32-bit machines on data sets with 2 billion to 8 billion
+genotypes, then PACKEDPED or PACKEDANCESTRYMAP output format should be used.
+
+Maximum file size on 64-machines:
+No explicit limits, but extremely large files may cause problems -- ask your
+systems administrator.
+
+------------------------------------------------------------------------------
+
+LIST OF FORMATS
+
+ANCESTRYMAP format:
+  genotype file: see example.ancestrymapgeno in this directory
+  snp file:      see example.snp
+  indiv file:    see example.ind
+Note that
+The genotype file contains 1 line per valid genotype.  There are 3 columns:
+  1st column is SNP name
+  2nd column is sample ID
+  3rd column is number of reference alleles (0 or 1 or 2)
+Missing genotypes are encoded by the absence of an entry in the genotype file.
+The snp file contains 1 line per SNP.  There are 6 columns (last 2 optional):
+  1st column is SNP name
+  2nd column is chromosome.  X chromosome is encoded as 23.
+    Also, Y is encoded as 24, mtDNA is encoded as 90, and XY is encoded as 91.
+    Note: SNPs with illegal chromosome values, such as 0, will be removed
+  3rd column is genetic position (in Morgans).  If unknown, ok to set to 0.0.
+  4th column is physical position (in bases)
+  Optional 5th and 6th columns are reference and variant alleles.
+    For monomorphic SNPs, the variant allele can be encoded as X (unknown).
+The indiv file contains 1 line per individual.  There are 3 columns:
+  1st column is sample ID.  Length is limited to 39 characters, including
+    the family name if that will be concatenated.
+  2nd column is gender (M or F).  If unknown, ok to set to U for Unknown.
+  3rd column is a label which might refer to Case or Control status, or
+    might be a population group label.  If this entry is set to "Ignore", 
+    then that individual and all genotype data from that individual will be
+    removed from the data set in all convertf output.
+The name "ANCESTRYMAP format" is used for historical reasons only.  This
+  software is completely independent of our 2004 ANCESTRYMAP software.
+  
+EIGENSTRAT format: used by eigenstrat program
+  genotype file: see example.eigenstratgeno
+  snp file:      see example.snp (same as above)
+  indiv file:    see example.ind (same as above)
+Note that
+The genotype file contains 1 line per SNP.  
+  Each line contains 1 character per individual:
+  0 means zero copies of reference allele.
+  1 means one copy of reference allele.
+  2 means two copies of reference allele.
+  9 means missing data.
+The program ind2pheno.perl in this directory will convert from 
+  example.ind to the example.pheno file needed by the EIGENSTRAT software.
+  The syntax is "./ind2pheno.perl example.ind example.pheno".
+
+PED format: 
+  genotype file: see example.ped    *** file name MUST end in .ped ***
+  snp file:      see example.pedsnp *** file name MUST end in .pedsnp ***
+                 convertf also supports .map suffix for this input file name
+  indiv file:    see example.pedind *** file name MUST end in .pedind ***
+                 convertf also supports the full .ped file (example.ped)
+		 for this input file
+Note that
+Mandatory suffix names enable our software to recognize this file format.
+The indiv file contains the first 6 or 7 columns of the genotype file.
+The genotype file is 1 line per individual.  Each line contains 6 or 7 columns 
+  of information about the individual, plus two genotype columns for
+  each SNP in the order the SNPs are specified in the snp file.  
+  Genotype format MUST be either 0ACGT or 01234, where 0 means missing data.
+  The first 6 or 7 columns of the genotype file are:
+    1st column is family ID.  
+    2nd column is sample ID.
+    3rd and 4th column are sample IDs of parents.  
+    5th column is gender (male is 1, female is 2)
+    6th column is case/control status (1 is control, 2 is case) OR
+      quantitative trait value OR population group label.
+    7th column (this column is optional) is always set to 1.  
+    [Note: this release *changed* to output .ped files in 6-column format,
+     not in 7-column format.  Also see sevencolumnped parameter below.]
+  convertf does not support pedigree information, so 1st, 3rd, 4th columns are
+    ignored in convertf input and set to arbitrary values in convertf output.
+  In the two genotype columns for each SNP, missing data is represented by 0.
+The snp file contains 1 line per SNP.  There are 6 columns (last 2 optional):
+  1st column is chromosome.  Use X for X chromosome.
+    Note: SNPs with illegal chromosome values, such as 0, will be removed
+  2nd column is SNP name
+  3rd column is genetic position (in Morgans)
+  4th column is physical position (in bases)
+  Optional 5th and 6th columns are reference and variant alleles.
+    For monomorphic SNPs, the variant allele can be encoded as X.
+The indiv file contains the first 6 or 7 columns of the genotype file.
+The PED format is used by the PLINK package of Shaun Purcell.  
+  See http://pngu.mgh.harvard.edu/~purcell/plink/.
+
+PACKEDPED format: 
+  genotype file: see example.bed    *** file name MUST end in .bed ***
+  snp file:      see example.pedsnp *** file name MUST end in .pedsnp ***
+                 convertf also supports .map or .bim suffix for this input file
+  indiv file:    see example.pedind *** file name MUST end in .pedind ***
+                 convertf also supports a .ped file (example.ped) 
+		 for this input file
+Note that
+Mandatory suffix names enable our software to recognize this file format.
+example.bed is a packed binary file (2 bits per genotype).
+The PACKEDPED format is used by the PLINK package of Shaun Purcell.  
+  See http://pngu.mgh.harvard.edu/~purcell/plink/.
+For input in PACKEDPED format, snp file MUST be in genomewide order.
+For input in PACKEDPED format, genotype file MUST be in SNP-major order
+  (the PLINK default: see PLINK documentation for details.)
+
+PACKEDANCESTRYMAP format
+  genotype file: see example.packedancestrymapgeno
+  snp file:      see example.snp (same as above)
+  indiv file:    see example.ind (same as above)
+Note that 
+example.packedancestrymapgeno is a packed binary file (2 bits per genotype).
+
+----------------------------------------------------------------------------
+
+DOCUMENTATION of convertf program:
+
+The syntax of convertf is "../bin/convertf -p parfile".  We illustrate how 
+parfile works via a toy example: (see example.perl in this directory)
+
+par.ANCESTRYMAP.EIGENSTRAT        converts ANCESTRYMAP to EIGENSTRAT format
+par.EIGENSTRAT.PED                converts EIGENSTRAT to PED format
+par.PED.EIGENSTRAT                converts PED to EIGENSTRAT format
+par.PED.PACKEDPED                 converts PED to PACKEDPED format
+par.PACKEDPED.PACKEDANCESTRYMAP   converts PACKEDPED to PACKEDANCESTRYMAP 
+par.PACKEDANCESTRYMAP.ANCESTRYMAP converts PACKEDANCESTRYMAP to ANCESTRYMAP
+
+Note that the choice of which allele is the reference allele may be arbitrary,
+and thus converting to a new format and back again may change the choice of
+reference allele.
+
+DESCRIPTION OF EACH PARAMETER in parfile for convertf program:
+
+genotypename: input genotype file
+snpname:      input snp file
+indivname:    input indiv file 
+outputformat:    ANCESTRYMAP,  EIGENSTRAT, PED, PACKEDPED or PACKEDANCESTRYMAP
+                 (Default is PACKEDANCESTRYMAP.)
+genooutfilename:   output genotype file
+snpoutfilename:    output snp file
+indoutfilename:    output indiv file
+
+OPTIONAL PARAMETERS:
+
+familynames: only relevant if input format is PED or PACKEDPED. 
+  If set to YES, then family ID will be concatenated to sample ID.
+  This supports different individuals with different family ID but
+  same sample ID.  The default for this parameter is YES.
+noxdata:     if set to YES, all SNPs on X chr are removed from the data set.
+  The default for this parameter is NO.
+nomalexhet:  if set to YES, any het genotypes on X chr for males are changed
+  to missing data.  The default for this parameter is NO.
+badsnpname:  specifies a list of SNPs which should be removed from the data set.
+  Same format as example.snp.
+newsnpname:  additional SNP file with reordered SNPs.  For runs in which the 
+  SNPs should be in a different order in the output.  
+newindivname:  additional individual file with reordered samples.  For runs
+  in which the individuals should be in a different order in the output.
+outputgroup: Only relevant if outputformat is PED or PACKEDPED.
+  This parameter specifies what the 6th column of information about each 
+  individual should be in the output. If outputgroup is set to NO (the default),
+  the 6th column will be set to 1 for each Control and 2 for each Case, as 
+  specified in the input indiv file.  
+  [Individuals specified with some other label, such as a population group 
+  label, will be assumed to be controls and the 6th column will be set to 1.]
+  If outputgroup is set to YES, the 6th column will be set to
+  the exact label specified in the input indiv file.
+  [This functionality preserves population group labels.]
+chrom:       Only output SNPs on this chromosome.
+lopos:       Only output SNPs with physical position >= this value.
+hipos:       Only output SNPs with physical position <= this value.
+sevencolumnped: Only relevant if outputformat is PED or PACKEDPED.
+  If set to YES, then 7-column .ped format will be used,
+  instead of 6-column .ped format which is now the default.
+checksizemode: If set to YES (the default), check that output file size will
+  be less than 2GB.  If set to NO, do not perform this check.
+maxmissfracsnp: Remove any SNP with a fraction of missing data greater than 
+  this.  Default is 1.0.
+maxmissfracind: Remove any indifidual with a fraction of missing data greater 
+  than this.  Default is 1.0. 
+numchrom:  The number of autosomes in the data set.  The X-chromosome is
+  assumed to be numchrom+1 and the Y-chromosome is numchrom+2
+hashcheck:    If set to YES and the input genotype file is in PACKEDANCESTRYMAP
+  format, check the hash stored inside the file to make sure that individual 
+  and SNP files have not changed since the file was made.  If they have, then 
+  exit in error.  The default value for this parameter is YES.  Note: Caution
+  should be exercised in turning off hashcheck, as misapplication,
+  e.g., reordering a SNP file, may silently produce bad data.
+  It is recommended that if a dataset fails the hash check (for instance 
+  because input sample names have been changed, convertf is run with 
+  hachcheck: NO, and the output used for further processing.   The output file 
+  will pass hashcheck.  
+phasedmode:   YES for phased input (default NO)  
+  Note:  mixed phased and unphased data is not supported.  
+  Note:  optional command line parameter -f also turns on phased mode
+xregionname:  Name of file which describes regions of the genome to be
+  excluded from the computation.  Each line of the file should be in the
+  format <chromosome #>   <begin-physical-position>  <end-physical-position>.
+  The excluded region is the closed interval defined by the physical positions.
+  (We recommend excluding the long-range LD regions listed in Table 1 of
+  Price et al. 2008 Am J Hum Genet.)
+hwfilt:  Filter parameter for Hardy-Weinberg filter.  The (real-valued)
+  number of standard deviations beyond which the filter is applied.
+  (If not specified, then no Hardy-Weinberg filter is applied.)
+  Caution: hwfilt should not be used for admixed populations.
+numchrom:  The number of autosomes in the data set.  The X-chromosome is
+  assumed to be numchrom+1 and the Y-chromosome is numchrom+2.
+  The default value for numchrom is 22.
+deletesnpoutname:  optional output file in which all deleted SNPs are listed 
+  along with the reasons for their deletion.  This file can be used 
+  as a badsnp file in subsequent runs.
+polarize:   sample_id  
+  It is expected that sample_id will be a (pseudo)-homozygous reference 
+  sequence such as panTro2 (a chimpanzee reference).  Variant and reference
+  alleles are "flipped" if necessary so that sample_id has a count of 2.  
+  Hets (or missing) genotypes mean the SNP will be set to ignore.  
+pordercheck:  NO   (default YES) 
+  If in packed format the snps are not ordered by (chromosome number, genetic
+  position, physical position) default is to fail hard.  If prodercheck: YES, 
+  convertf will try to fix.  It is strongly recommended that packed files are 
+  NOT made out of order.  For instance make PACKEDANESTRYMAP files using 
+  convertf and this issue will not arise.  
+flipstrandname: fname 
+  fname should consist of a list of SNP IDs (1 perl line).  The alleles for 
+  this SNP will be complemented (moved to other strand).  This can be useful as 
+  preparation for mergeit.  
+zerodistance:  YES   (default NO) 
+  if YES genetic distance will be forced to zero.  
+malexhet: if set to YES, any het genotypes on X chr for males are changed
+  to missing data.  The default for this parameter is NO.
+
+(NEW)
+poplistname:   yourfile
+  yourfile should consist of a list of populations (1/line) where populations 
+  are the labels in the last column of the input .ind file (eigenstrat or 
+  packedped format).  Only the samples with listed labels will be output.
+----------------------------------------------------------------------------
+
+DOCUMENTATION of mergeit program:
+
+The mergeit program merges two data sets into a third, which has the union of
+  the individuals and the intersection of the SNPs in the first two.  If 
+  SNP positions differ between the two data sets, then SNP positions from
+  the first data set will be produced in the merged data.
+
+mergeit accounts for the possibility that the choice of reference and variant
+  alleles may differ between the two data sets (e.g. A/C vs. C/A), and also 
+  accounts for the possibility that the strand may differ between the two
+  data sets (e.g. A/C vs. T/G), and genotype values are flipped (0 to 2, 2 to 0)
+  in one of the two data sets if appropriate.  See documentation of docheck 
+  and strandcheck parameters below.
+
+The syntax of mergeit is "../bin/mergeit -p parfile".
+
+DESCRIPTION OF EACH PARAMETER in parfile for mergeit program:
+
+geno1: first input genotype file
+snp1:  first input snp file
+ind1:  first input indiv file 
+geno2: second input genotype file
+snp2:  second input snp file
+ind2:  second input indiv file 
+genooutfilename:   output genotype file
+snpoutfilename:    output snp file
+indoutfilename:    output indiv file
+
+OPTIONAL PARAMETERS:
+
+outputformat: output file format (default is PACKEDANCESTRYMAP)
+docheck:      If set to YES, then check that reference and variable alleles
+  are the same in both data sets -- if they are different
+  (e.g. A/C vs. C/A), then flip genotype data appropriately.
+  The default for this parameter is YES.
+strandcheck:  If set to YES, then check that the allele strand is the same
+  in both data sets -- if they are different (e.g A/C vs. T/G), then flip 
+  genotype data appropriately.  (Note that if strandcheck is set to YES, then 
+  all A/T and C/G SNPs will be removed because it is impossible to know whether 
+  the allele strand is the same in both data sets.  On the other hand, if 
+  strandcheck is set to NO, then A/T and C/G SNPs will be retained since it is 
+  assumed that both data sets are on the same strand.) 
+  The default for this parameter is YES.
+hashcheck:    If set to YES and the input genotype file is in PACKEDANCESTRYMAP
+  format, check the hash stored inside the file to make sure that individual
+  and SNP files have not changed since the file was made.  If they have, then
+  exit in error.  The default value for this parameter is YES.  
+
+(NEW) 
+malexhet: if set to YES, any het genotypes on X chr for males are changed
+  to missing data.  The default for this parameter is YES.
+(Dangerous bend): The corresponding parameter for convertf has default NO.  
+
+(NEW)
+allowdups:  YES 
+ Default is NO. By default if duplicate individuals are present mergeit will fail hard. 
+if allowdups: YES is set, duplicate individuals in the second data set are ignored. No 
+attempt is made to combine genotypes for the same sample_id in 2 daatasets. 
+
+------------------------------------------------------------------------------
+Questions?
+See http://www.hsph.harvard.edu/faculty/alkes-price/files/eigensoftfaq.htm
+or email Samuela Pollack, spollack@hsph.harvard.edu
+
+SOFTWARE COPYRIGHT NOTICE AGREEMENT
+This software and its documentation are copyright (2010) by Harvard University
+and The Broad Institute. All rights are reserved. This software is supplied
+without any warranty or guaranteed support whatsoever. Neither Harvard
+University nor The Broad Institute can be responsible for its use, misuse, or
+functionality. The software may be freely copied for non-commercial purposes,
+provided this copyright notice is retained.
