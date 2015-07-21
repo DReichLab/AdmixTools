@@ -41,6 +41,10 @@ indivname:   input indiv file    (in eigenstrat format)
 poplistname:  list_qpDstat (contains list of poulations- one population on each line). Program will run the method for all quadrapules.
 popfilename:   list_qpDstat1 (Enter a list of tests you want to perform - 4 populations on each line. <pop1> <pop2> <pop3> <pop4>). Program will run the method for each quadrapule (included on each line). 
 
+See example of the parameter files in qpDstat/parqpDstat, qpDstat/parqpDstat1
+
+The examples of .ind, .snp and .geno files are in "examples" folder.
+
 DESCRIPTION OF OUTPUT FILE:
 The program will write all the output to stdout. The output file prints the parfile entered by the user, number of snps and individuals, jackknife block size, number of blocks for jackknife and the results.
 
@@ -50,9 +54,10 @@ result:   Pop1 (W)  Pop2 (X) : Pop3 (Y)  Pop4 (Z)  D stat         Z
 The result for each quadrppule is shown on a separate line.
 
 See example shown in-
-examples/qpDstat.log, examples/qpDstat1.log
+qpDstat/qpDstat.log, qpDstat/qpDstat1.log
 
 ------------------------------------------------------------------------------
 Questions?
 email Arti Tandon, atandon@broadinstitute.org
 
+Revised by Mengyao Zhao on 2015-07-21
