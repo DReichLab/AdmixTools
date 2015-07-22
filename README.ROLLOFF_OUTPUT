@@ -35,7 +35,7 @@ Details of the file names are published on std out when the program is run.
  
 See example shown in-
 $BIN/expfit.sh parfile
-examples/expfit.log
+rolloff/expfit.log
 
 Important points to consider:
  
@@ -77,5 +77,5 @@ FIX: This suggests that there was an error related to convergence in NLS. Rerun 
 
 ------------------------------------------------------------------------------
 Questions?
-email Arti Tandon, atandon@broadinstitute.org
+email Mengyao Zhao, mengyao_zhao@hms.harvard.edu
 
