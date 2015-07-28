@@ -49,7 +49,7 @@ badsnpname:    badsnp_list. File contains a list of SNPs to be excluded from the
 ransample:   random_number. Program will run rolloff with a random set (n = random_number) of samples from the admixed population.
 
 See example shown in-
-examples and rolloff folders
+data and rolloff folders
 
 The output file contains 
 Genetic distance (cM) :: (Ignore) :: Z scores ::  corr coeff :: $ SNP pairs in bin used to calculate

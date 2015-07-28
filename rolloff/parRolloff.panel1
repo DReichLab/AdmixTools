@@ -1,0 +1,17 @@
+DIR:   ../data
+SSS:  panel1  
+indivname:    DIR/SSS.ind  
+snpname:      DIR/SSS.snp
+genotypename: DIR/SSS.geno
+poplistname:  rolloff.ref
+admixlist:    rolloff.target
+binsize:      .001
+output:       panel1
+maxdis:       0.4
+seed:         77
+runmode:      1
+mincount: 4
+minparentcount:   0
+jackknife: YES
+checkmap: NO
+

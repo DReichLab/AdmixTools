@@ -1,0 +1,84 @@
+parameter file: parqpWave
+### THE INPUT PARAMETERS
+##PARAMETER NAME: VALUE
+DIR: ../data
+S1: qpdata
+indivname: ../data/qpdata.ind
+snpname: ../data/qpdata.snp
+genotypename: ../data/qpdata.geno
+popleft: left1
+popright: right1
+## qpWave version: 201
+
+left pops:
+Corded_Ware_LN
+WHG
+LBK_EN
+Yamnaya
+
+right pops:
+Han
+Eskimo
+Mbuti
+Karitiana
+Ulchi
+  0       Corded_Ware_LN    4
+  1                  WHG    2
+  2               LBK_EN   12
+  3              Yamnaya    9
+  4                  Han   33
+  5               Eskimo   22
+  6                Mbuti   10
+  7            Karitiana   12
+  8                Ulchi   25
+jackknife block size:     0.050
+snps: 354212  indivs: 129
+number of blocks for block jackknife: 710
+dof (jackknife):   606.426
+numsnps used: 351683
+f4info: 
+f4rank: 0 dof:     12 chisq:   460.444 tail:       5.71351953e-91 dofdiff:      0 chisqdiff:     0.000 taildiff:                    1
+
+f4info: 
+f4rank: 1 dof:      6 chisq:    24.489 tail:        0.00042443713 dofdiff:      6 chisqdiff:   435.955 taildiff:       5.16806732e-91
+B:
+          scale     1.000 
+         Eskimo     0.966 
+          Mbuti    -1.099 
+      Karitiana     1.342 
+          Ulchi     0.246 
+A:
+          scale  1211.444 
+            WHG    -0.427 
+         LBK_EN    -1.594 
+        Yamnaya     0.525 
+
+f4info: 
+f4rank: 2 dof:      2 chisq:     0.536 tail:          0.764859692 dofdiff:      4 chisqdiff:    23.953 taildiff:       8.16355044e-05
+B:
+          scale     1.000     1.000 
+         Eskimo     1.021     0.540 
+          Mbuti    -0.990     1.738 
+      Karitiana     1.387     0.830 
+          Ulchi     0.233     0.001 
+A:
+          scale  1202.997  3105.760 
+            WHG    -0.477    -1.556 
+         LBK_EN    -1.581     0.634 
+        Yamnaya     0.522     0.420 
+
+f4info: 
+f4rank: 3 dof:      0 chisq:     0.000 tail:                    1 dofdiff:      2 chisqdiff:     0.536 taildiff:          0.764859692
+B:
+          scale     1.000     1.000     1.000 
+         Eskimo     0.988     0.490     1.642 
+          Mbuti    -0.992     1.730     0.101 
+      Karitiana     1.409     0.875    -1.116 
+          Ulchi     0.231    -0.005     0.218 
+A:
+          scale  1193.784  3109.317 29979.194 
+            WHG    -0.493    -1.570     0.541 
+         LBK_EN    -1.584     0.614     0.338 
+        Yamnaya     0.498     0.398     1.610 
+
+## end of run

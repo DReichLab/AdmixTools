@@ -1,4 +1,4 @@
-DIR:   ../data/
+DIR:   ../examples
 SSS:  allmap  
 indivname:    DIR/SSS.ind  
 snpname:      DIR/SSS.snp

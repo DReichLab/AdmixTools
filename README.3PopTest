@@ -35,7 +35,7 @@ result:   Source1  Source2   Target f_3  std.err Z SNPs
 The result for each set of 3 population is shown on a separate line.
 
 See example shown in-
-examples/qp3Pop.log
+qp3Pop/qp3Pop.log
 
 
 -------------------------------------------------------------------------------
@@ -47,9 +47,12 @@ and
 outpop:  outgroup_pop which MUST be present.  
 
 See examples shown in-
-examples/qpBound.log
+qp3Pop/qpBound.log
 
 
 ------------------------------------------------------------------------------
 Questions?
-email Arti Tandon, atandon@broadinstitute.org 
+email Mengyao Zhao, mengyao_zhao@hms.harvard.edu
+
+revised by Mengyao Zhao on 2015-07-24
+
