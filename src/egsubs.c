@@ -29,7 +29,6 @@ int mkeglist(Indiv **indm, int numindivs, char **eglist)
   int i, k, numeg=0 ;
   for (i=0; i<numindivs; i++) { 
    indx = indm[i] ;
-   if (indx -> ignore) continue ;
     k = indxindex(eglist, numeg,  indx->egroup) ;
     if (k<0)   { 
      eglist[numeg] = strdup(indx->egroup) ;
@@ -38,6 +37,7 @@ int mkeglist(Indiv **indm, int numindivs, char **eglist)
   }
   return numeg ;
 }
+
 int  loadlist_type(char **list, char *listname, int *ztypes, int off)   
 // listname is just a list of names ... 
 {

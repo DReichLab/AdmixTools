@@ -1,1 +1,0 @@
- ../bin/qpGraph -p par:sim1:gr1x:nullout -g gr1x  > gr1x:log:nullout

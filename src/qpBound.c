@@ -25,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "121" 
+#define WVERSION   "120" 
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -213,7 +213,7 @@ int main(int argc, char **argv)
   num = readpopx(popfilename, plists, 3) ;
   nplist = num ;
   printf("nplist: %d\n", nplist) ;
-  if (nplist == 0) return 0;
+  if (nplist == 0) return ;
 
 
   ZALLOC(eglist, nplist*3, char *)  ;  

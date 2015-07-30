@@ -13,7 +13,6 @@ static int pubjack = NO ;
 static void calcndinbreed(int *c1, int *c2, double *pen, double *ped)  ;
 static void calchetinbreed(int *c1, double *pen, double *ped)  ;
 static int inbreed = NO ;
-static int allsnpsmode = NO ;
 
 static double **aacnts = NULL, **bbcnts,  *aafreq, *ttnum, *hest, *htest, *aaxadd ;
 static char **aalist ; 
@@ -55,13 +54,9 @@ void xcopy(int rp[4], int a , int b, int c, int d)
   rp[1] = b ;  
   rp[2] = c ;  
   rp[3] = d ;
-}
 
-void setallsnpsmode(int mode) 
-{
-  allsnpsmode = mode ;
-}
 
+}
 void
 settsc(int tpat[3][4], double tscore[3], int rpat[3][4], double rscore[3]) 
 /// process rscore and return scores in tscore with tscore[0] best
@@ -472,46 +467,8 @@ setfvecs(double *fvecs, double *evecs, int nrows, int numeigs)
    }
    free(w) ;
 }
-void countpopsx(int ***counts, SNP **xsnplist, Indiv **xindlist, int *xindex, int *xtypes, int nrows, int ncols) 
-{
-     int col, i, g1, g2, g, k1 ; 
-     SNP *cupt ;
-     int *rawcol ;
-     int ismale ;
-
-     ZALLOC(rawcol, nrows, int) ;
-     for (col = 0; col < ncols; ++col) {  
-      cupt = xsnplist[col] ;
-      getrawcol(rawcol, cupt, xindex, nrows) ;
-      for (i=0; i<nrows; i++) { 
-       ismale = NO ; 
-       if (xindlist[i] -> gender == 'M') ismale = YES ;
-       g = rawcol[i] ;
-       k1 = xtypes[i] ;
-       if (k1<0) continue ;
-       if (g<0) continue ;
-       if (ismale) { 
-        if (g==1) continue ;
-        g1 = g/2 ;
-        ++counts[col][k1][g1] ;
-        continue ;
-       }  
-       g1 = 0 ; 
-       if (g>0) g1 = 1 ;  
-       g2 = g-g1 ;
-       if (g1<0) fatalx("bug\n") ;
-       if (g2<0) fatalx("bug\n") ;
-       if (g1>1) fatalx("bug\n") ;
-       if (g2>1) fatalx("bug\n") ;
-       ++counts[col][k1][g1] ;
-       ++counts[col][k1][g2] ;
-      }
-     }
-     free(rawcol) ;
-}
-
 void countpops(int ***counts, SNP **xsnplist, int *xindex, int *xtypes, int nrows, int ncols) 
-// countpops is int [ncols][npops][2]  
+// countpops is int [ncols][npops][2]  already zero filled
 {
      int col, i, g1, g2, g, k1 ; 
      SNP *cupt ;
@@ -794,9 +751,6 @@ void f2scz(double *estn,  double *estd, SNP *cupt, Indiv **indm,
    if (p1 < -1.0) return ;
    if (p2 < -1.0) return ;
    if (p3 < -1.0) return ;
-   if (p3 < -1.0) return ;
-   if (hest[type2] < -100) return ;
-   if (hest[type3] < -100) return ;
 
    en = (p2-p3)*(p2-p3) ;
    en += aaxadd[type2] ;
@@ -887,7 +841,6 @@ void f3scz(double *estn,  double *estd, SNP *cupt, Indiv **indm,
    if (p1 < -1.0) return ;
    if (p2 < -1.0) return ;
    if (p3 < -1.0) return ;
-   if (h1 < -100.0) return ;
 
    en = (p1-p2)*(p1-p3) ;
 
@@ -1103,9 +1056,6 @@ void fstcolyy(double *estnmat, double *estdmat, SNP *cupt,
     for (j=i+1; j<numeg; j++) { 
      if (aafreq[i] < -1.0) continue ;
      if (aafreq[j] < -1.0) continue ;
-     if (hest[i] < -100.0) continue ;
-     if (hest[j] < -100.0) continue ;
-     ya = aafreq[i] ;
      ya = aafreq[i] ;
      yb = aafreq[j] ;
      en = (ya-yb)*(ya-yb) ; 
@@ -2583,15 +2533,21 @@ setwt(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int nrows,
  ccc  = initarray_2Dint(nrows, 2, 0) ;
  t = -1 ;
 
+// printf("zzqq %d %d\n", outnum, numeg) ;
  for (i=0; i<numsnps; ++i) {  
   cupt = snpmarkers[i] ; 
   cupt -> weight = 0 ;  
+//  t = strcmp(cupt -> ID, "rs10914979") ;
   if (cupt -> ignore) continue ;
 
   getrawcolx(ccc, cupt, xindex, nrows, indivmarkers)  ;
   iclear2D(&ccx, maxeg, 2, 0) ;
   for (k=0; k<nrows; ++k) { 
    a = xtypes[k] ;
+
+   if (i==-1)  {  
+    printf("zzq %d %d %d  %d\n", i, k, outnum, ccc[k][0]) ;
+   }
 
    if (a<0) continue ; 
    if (a>=maxeg) continue ;
@@ -2621,12 +2577,19 @@ setwt(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int nrows,
   wt = 1.0/(p*(1.0-p)) ;
   if (outnum == -99) wt = 1.0 ;
 
+   if (t==0) {
+    for (k=0; k<nrows; ++k) {
+     printf("ww1: %d %d %d ", k, xtypes[k], xindex[k]) ;
+     printimat(ccc[k], 1, 2) ;
+    }
+   }
   for (k=0; k<numeg ; ++k)  {  
    a0 = ccx[k][0] ;
    a1 = ccx[k][1] ;
    aa = a0+a1 ; 
+   if (t==0) printf("zzyy %d %d %d\n", k, a0, a1) ;
    
-   if ((allsnpsmode == NO) && (aa<2)) { 
+   if (aa<2) { 
      wt = 0 ;
      break ;
    }
@@ -2916,9 +2879,7 @@ int f3yyx(double *estmat,  SNP *cupt,
 
     for (a=0; a<numeg ; a++) {
      if (aafreq[a] < -1.0) { 
-       if (allsnpsmode == NO) {
-        kret = -1 ; break ;
-       }
+       kret = -1 ; break ;
      }
      for (b=0; b<numeg ; b++) {
       for (c=0 ; c<numeg ; c++) {
@@ -2938,19 +2899,6 @@ int f3yyx(double *estmat,  SNP *cupt,
 
    p3 = aafreq[c] ;   
    h3 = hest[c] ;            
-
-   if ((p1 < -1) || (p2 < -1) || (p3 < -1)) { 
-    if (allsnpsmode == NO) { 
-     kret = -1 ;  
-   }
-    if (allsnpsmode  == YES) { 
-      bump3(estmat, a, b, c, numeg, -300) ;
-      bump3(estmat, a, c, b, numeg, -300) ;
-      continue ;
-    }
-   }
-   if (kret < 0) break ;
-   
 
    en = (p1-p2)*(p1-p3) ;  
    en += ax1 ;   
@@ -3487,7 +3435,7 @@ double doinbreed(double *inb, double *inbest, double *inbsig, SNP **xsnplist, in
     free2D(&btop, nblocks);
     free2D(&bbot, nblocks);
 
-    return 1 ;
+    return ;
 
 }
 
@@ -3569,6 +3517,12 @@ loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg)
    double *cc, *dd ;
    double x0, x1, x2, h1, s, yt ;
 
+/**
+static double **aacnts = NULL, **bbcnts, , *aafreq, *ttnum, *hest, *htest, *aaxadd ;
+static char **aalist ; 
+static int  aanum ;
+*/
+
    if (aanum != numeg) destroyaa() ;
 
    aanum = numeg ; 
@@ -3636,9 +3590,9 @@ loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg)
      dd[0] = 2*cc[0] + cc[1] ;
      dd[1] = 2*cc[2] + cc[1] ;
      s = ttnum[a] = asum(cc, 3)  ;
-     hest[a] = aafreq[a] = -999.0 ;
-     if (s<0.5) continue ;
+     aafreq[a] = -999.0 ;
      if (inbreed) {
+      if (s<1.5) continue ;
       x0 = cc[0] ; x1=cc[1] ; x2=cc[2] ;
       aafreq[a]  = (x1 + 2*x2) / (2*s) ;
 /**
@@ -3647,7 +3601,6 @@ loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg)
   ex += x1/(4*s*s) ;
   ex += y1/(4*t*t) ;
 */
-      if (s<1.5) continue ;
       h1 = x0*x2 + (x0+x2)*x1/2 + x1*(x1-1)/4 ; 
       h1 /= (double) s*(s-1) ;
       hest[a] = h1 ;
@@ -3655,6 +3608,7 @@ loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg)
       aaxadd[a] = x1/(4*s*s) ;
     }
     else { 
+      if (s<0.5) continue ;
       x0 =  dd[0] ;
       x1 =  dd[1] ;
       yt = x0 + x1 ;

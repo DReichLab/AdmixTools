@@ -1,1 +1,0 @@
- ../bin/qpGraph -p par:sim1:gr1x:2 -g gr1x -o sim1:gr1x:2.ggg -d sim1:gr1x:2.dot > gr1x:2:log 

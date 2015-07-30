@@ -25,23 +25,14 @@
 */
 
 
-#define WVERSION   "662" 
+#define WVERSION   "400" 
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
 // print number of samples / pop
 // popfilename added 
 // bbestmode  
-// No abc 
-// f4mode = YES (no normalization) 
-// printsd
-// nochrom added
-// BAD bug fix (sign of dstat)
-// repeated pops trapped in popfilename quads
-// id2pops added
-// nzdata;  require 10 blocks with abba/baba counts
-// xmode ;  call countpopsx which deals with gender on X
-// syntactic sugar (strip :) in popfilename  
+// abc 
 
 #define MAXFL  50   
 #define MAXSTR  512
@@ -49,11 +40,10 @@
 
 char *parname = NULL ;
 char *trashdir = "/var/tmp" ;
+int qtmode = NO ;
 int colcalc = YES ;
-// int fstdetails = NO ;
-int qtmode = NO  ;
+//int fstdetails = NO ;
 int hires = NO ;
-int printsd = NO ;
 
 Indiv **indivmarkers;
 SNP **snpmarkers ;
@@ -63,6 +53,7 @@ int markerscore = NO ;
 int seed = 0 ;
 int chisqmode = NO ;  // approx p-value better to use F-stat
 int missingmode = NO ;
+//int plotmode = NO ;
 int dotpopsmode = YES ;
 int noxdata = YES ;  /* default as pop structure dubious if Males and females */
 int pcorrmode = NO ;
@@ -79,12 +70,7 @@ int forceclade = NO ;
 int bbestmode = YES ;
 int numbanker = 0 ;   
 int xchrom = -1 ;
-int zchrom = -1 ;
-int f4mode = NO ;
-int xmode = NO ;
-int printssize = YES ;
-int locount = -1, hicount = 9999999 ;
-// if bankermode  bankers MUST be in quartet ;  at least one type 1 in quartet
+// if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
 
 int jackweight = YES ; 
 double jackquart = -1.0 ;
@@ -107,6 +93,7 @@ char *popfilename = NULL ;
 char *outliername = NULL ;
 char *outpop = NULL ; 
 // list of outliers
+//int outnum = -1 ;
 int fullmode = NO; 
 int inbreed  = NO ; 
 double lambdascale ;  
@@ -116,7 +103,6 @@ int dotree = NO ;
 
 char *outputname = NULL ;
 char *weightname = NULL ;
-char *id2pops = NULL ;
 FILE *ofile ;
 
 void readcommands(int argc, char **argv) ;
@@ -129,13 +115,11 @@ void setf2(double **f2,  int ***countcols, int ncols, int numeg) ;
 void getabc(double *dzscx, double *dzsc, double **abx, double **bax,  int ncols, 
 int a, int b, int c,  int numeg, int *bcols, int nblocks) ;
 void getdsc(double *dzscx, double *dzsc, double **abx, double **bax,  int ncols, 
-int a, int b, int c, int d, int numeg, int *bcols, int nblocks, int *sz) ;
+int a, int b, int c, int d, int numeg, int *bcols, int nblocks) ;
 void gettreelen(double *tlenz, double *tlen, double **f2, double **abx, double **bax, int ncols, 
 int *ttt,  int numeg, int *bcols, int nblocks) ;
 void regesttree(double *ans, double *xn, double xd) ;
 void ckdups(char **list, int n) ;
-void printbadql(char ***qlist, int tt, char **eglist, int numeg) ;
-
 
 int main(int argc, char **argv)
 {
@@ -185,8 +169,7 @@ int main(int argc, char **argv)
   double **zdata, *z1, *z2 ;
   int maxtag = -1 ;
   double **zz ; 
-  double *pmean, *pnum, rscore[3], dstat[3], hscore[3], rrr[3], ww[3], serr[3] ;
-  int ssize[3][3], *sz ;
+  double *pmean, *pnum, rscore[3], dstat[3], hscore[3], rrr[3], ww[3] ;
   int tpat[3][4] , rpat[3][4], *rrtmp, *rp ;
   int  *rawcol ; ;
   int a, b, c, d, col  ;
@@ -218,6 +201,7 @@ int main(int argc, char **argv)
 
   double tlenz[5], tlen[5] ;
   int lenz[5] ;  
+  int numprint = 0 ;
 
 
   readcommands(argc, argv) ;
@@ -240,9 +224,6 @@ int main(int argc, char **argv)
     getsnps(snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks) ;
 
   numindivs = getindivs(indivname, &indivmarkers) ;
-  if (id2pops != NULL) { 
-   setid2pops(id2pops, indivmarkers, numindivs) ;
-  }
   setindm(indivmarkers) ;
 
   k = getgenos(genotypename, snpmarkers, indivmarkers, 
@@ -250,8 +231,7 @@ int main(int argc, char **argv)
 
   for (i=0; i<numsnps; i++)  {  
 	  cupt = snpmarkers[i] ;
-	  if (cupt -> chrom >= 23) cupt -> ignore = YES ;
-	  if (cupt -> chrom == zchrom) cupt -> ignore = YES ;
+	  if (cupt -> chrom == 23) cupt -> ignore = YES ;
   }
 
    ZALLOC(eglist, numindivs, char *) ; 
@@ -276,10 +256,9 @@ int main(int argc, char **argv)
     for (k=0; k<4; ++k) {  
      ZALLOC(qlist[k], nqlist, char *) ;
     }
-    nqlist = getnamesstripcolon(&qlist, nqlist, 4, popfilename, locount, hicount) ;
+    nqlist = getnames(&qlist, nqlist, 4, popfilename) ;
     numeg = 0 ;
     printf("number of quadruples %d\n", nqlist) ;
-    fflush(stdout) ;
     for (k=0; k<4; ++k) { 
      for (j=0; j<nqlist; ++j) { 
       sx = qlist[k][j] ;
@@ -367,25 +346,20 @@ int main(int argc, char **argv)
 
   ncols = loadsnpx(xsnplist, snpmarkers, numsnps, indivmarkers) ;
 
+
   printf("snps: %d  indivs: %d\n", ncols, nrows) ;
   setblocks(blstart, blsize, &xnblocks, xsnplist, ncols, blgsize)  ;
 // loads tagnumber
   printf("number of blocks for jackknife: %d\n", xnblocks) ;
   nblocks = xnblocks ;
 
-  printf("nrows, ncols: %d %d\n", nrows, ncols) ;
+//printf("nrows, ncols: %d %d\n", nrows, ncols) ;
   ZALLOC(counts, ncols, int **) ;          
   for (k=0; k<ncols; ++k) { 
    counts[k] = initarray_2Dint( numeg, 2, 0) ;
   }
 
-
-  if (xmode && (xchrom == 23)) { 
-   countpopsx(counts, xsnplist, xindlist, xindex, xtypes, nrows, ncols) ;
-  }
-  else {
-   countpops(counts, xsnplist, xindex, xtypes, nrows, ncols) ;
-  }
+  countpops(counts, xsnplist, xindex, xtypes, nrows, ncols) ;
 
   if (verbose) {
    for (k=0; k<MIN(ncols,100); ++k) { 
@@ -442,18 +416,13 @@ int main(int argc, char **argv)
 
         
         getdsc(&rscore[0], &dstat[0], abx, bax, ncols, 
-          a,  b, c, d, numeg, bcols, nblocks, ssize[0]) ;
+          a,  b, c, d, numeg, bcols, nblocks) ;
 
         getdsc(&rscore[1], &dstat[1], abx, bax, ncols, 
-          a,  c, b, d, numeg, bcols, nblocks, ssize[1]) ;
+          a,  c, b, d, numeg, bcols, nblocks) ;
 
         getdsc(&rscore[2], &dstat[2], abx, bax, ncols, 
-          a,  d, b, c, numeg, bcols, nblocks, ssize[2]) ;
-
-        for (k=0; k<3; ++k) {
-         serr[k] = 1.0 ;
-         if (rscore[k] !=  0) serr[k] = dstat[k]/rscore[k] ;
-        }
+          a,  d, b, c, numeg, bcols, nblocks) ;
 
         xcopy(rpat[0], a ,b, c, d) ;  
         xcopy(rpat[1], a ,c, b, d) ;  
@@ -475,15 +444,34 @@ int main(int argc, char **argv)
           cc, dd, aa, numeg, bcols, nblocks) ;
          getabc(&astat[3], &ascore[3], abx, bax, ncols, 
           cc, dd, bb, numeg, bcols, nblocks) ;
-
+/** 13 - 23, 14 -24, 31 - 41, 32 - 42  */
         }
 
         vclip(rscore, rscore, -100.0, 100.0, 3) ;
+
+        ++numprint ;
+        if (numprint==1) { 
+          printf("%9s" , "") ;
+          if (bankermode) { 
+           for (i=0; i<4; i++)  {
+           t = popx[i] ;
+           printf("%1s", "") ;        
+          }
+          printf ("  ") ;
+          }
+          for (i=0; i<4; i++)  {
+           printf("%10s ", "") ;        
+          if (i==1) printf("%3s", "   ") ;
+          }
+
+         printf(" %10s", "D stat") ;
+         printf(" %9s", "Z" ) ;
+         printnl() ;
+        }
          
         for (k=0; k<3 ;  ++k) {
          copyiarr(rpat[k], popx, 4) ;
-         printf("result: ") ;
-         sz = ssize[k] ; 
+         printf("%9s" , "result: ") ;
          
          if (bankermode) { 
           for (i=0; i<4; i++)  {
@@ -495,15 +483,10 @@ int main(int argc, char **argv)
          for (i=0; i<4; i++)  {
           t = popx[i] ;
           printf("%10s ", eglist[t]) ;
+          if (i==1) printf("%3s", " : ") ;
          }
 
-         if (f4mode == NO) printf(" %10.4f", dstat[k]);
-         if (f4mode == YES) printf(" %12.6f", dstat[k]);
-
-         if (printsd) {   
-           printf(" %12.6f", serr[k]);
-         }
-
+         printf(" %10.4f", dstat[k]);
          printf(" %9.3f", rscore[k]) ;
          if (dotree) {  
           gettreelen(tlenz, tlen, f2, abx, bax, ncols, rpat[k], 
@@ -519,17 +502,15 @@ int main(int argc, char **argv)
           }
          }
          if (bbest[k] == 1) {
-          printf("%6s", " best ") ;
-         }
-         else {
-          printf("%6s", " - ") ;
-         }
-         if (printssize) {
-          printf("%6d ", sz[0]) ;
-          printf("%6d ", sz[1]) ;
-          printf("%6d ", sz[2]) ;
+          printf(" best") ;
          }
          printnl() ;
+/**
+         if (bbest[k] == 1) {
+          printf("abc:   ") ; printmat(ascore, 1, 4) ; 
+          printf("abcz:  ") ; printmat(astat, 1, 4) ; 
+         }
+*/
         }
 
        }
@@ -546,43 +527,47 @@ int main(int argc, char **argv)
    c = indxindex(eglist, numeg, qlist[2][tt]) ;
    d = indxindex(eglist, numeg, qlist[3][tt]) ;
 
-   if ((a==b) || (a==c) || (a==d) || (b==c) || (b==d) || (c==d)) { 
-    printbadql(qlist, tt, eglist, numeg) ;
-    continue ;
-   }
-
 
         getdsc(&rscore[0], &dstat[0], abx, bax, ncols, 
-          a,  b, c, d, numeg, bcols, nblocks, ssize[0]) ;
+          a,  b, c, d, numeg, bcols, nblocks) ;
 
-        serr[0] = 1.0 ;
-        if (rscore[0] > 0) serr[0] = dstat[0]/rscore[0] ;
         xcopy(rpat[0], a ,b, c, d) ;  
-
 
         vclip(rscore, rscore, -100.0, 100.0, 3) ;
          
          k = 0 ; 
-         sz = ssize[k] ;
-
-//       printf("zz1 %d ", ncols) ;  printimat(sz, 1, 3) ;
-
          copyiarr(rpat[k], popx, 4) ;
-         printf("result: ") ;
+
+        ++numprint ;
+        if (numprint==1) { 
+          printf("%9s" , "") ;
+          if (bankermode) { 
+           for (i=0; i<4; i++)  {
+           t = popx[i] ;
+           printf("%1s", "") ;        
+          }
+          printf ("  ") ;
+          }
+          for (i=0; i<4; i++)  {
+           printf("%10s ", "") ;        
+           if (i==1) printf("%3s", "   ") ;
+          }
+
+         printf(" %10s", "D stat") ;
+         printf(" %9s", "Z" ) ;
+         printnl() ;
+        }
+         
+         printf("%9s", "result: ") ;
          
          for (i=0; i<4; i++)  {
           t = popx[i] ;
           printf("%10s ", eglist[t]) ;
+           if (i==1) printf("%3s", " : ") ;
          }
 
-         if (f4mode == NO) printf(" %10.4f", dstat[k]);
-         if (f4mode == YES) printf(" %12.6f", dstat[k]);
-
-         if (printsd) {
-           printf(" %12.6f", serr[k]);
-         }
+         printf(" %10.4f", dstat[k]);
          printf(" %9.3f", rscore[k]) ;
-
          if (dotree) {  
           gettreelen(tlenz, tlen, f2, abx, bax, ncols, rpat[k], 
             numeg, bcols, nblocks) ;
@@ -596,36 +581,13 @@ int main(int argc, char **argv)
            printf("% 1d",lenz[i]) ;
           }
          }
-
-         if (printssize) {
-          printf("%6d ", sz[0]) ;
-          printf("%6d ", sz[1]) ;
-          printf("%6d ", sz[2]) ;
-         }
          printnl() ;
 
     }
 
 
-  printf("## end of run\n") ;
+  printf("## end of qpDstat run\n") ;
   return 0 ;
-}
-
-void printbadql(char ***qlist, int tt, char **eglist, int numeg) 
-{
-   int a, b, c, d ;
-
-   a = indxindex(eglist, numeg, qlist[0][tt]) ;
-   b = indxindex(eglist, numeg, qlist[1][tt]) ;
-   c = indxindex(eglist, numeg, qlist[2][tt]) ;
-   d = indxindex(eglist, numeg, qlist[3][tt]) ;
-
-   printf("***warning: repeated population: ") ;
-   printf("%s ", eglist[a]) ;
-   printf("%s :  ", eglist[b]) ;
-   printf("%s ", eglist[c]) ;
-   printf("%s ", eglist[d]) ;
-   printnl() ;
 }
 
 void readcommands(int argc, char **argv) 
@@ -637,18 +599,10 @@ void readcommands(int argc, char **argv)
   char *tempname ;
   int n ;
 
-  while ((i = getopt (argc, argv, "l:h:p:vV")) != -1) {
+  while ((i = getopt (argc, argv, "p:vV")) != -1) {
 
     switch (i)
       {
-
-      case 'l':
-	locount = atoi(optarg) ;
-	break;
-
-      case 'h':
-	hicount = atoi(optarg) ;
-	break;
 
       case 'p':
 	parname = strdup(optarg) ;
@@ -689,19 +643,13 @@ void readcommands(int argc, char **argv)
    getstring(ph, "outputname:", &outputname) ;
    getstring(ph, "badsnpname:", &badsnpname) ;
    getstring(ph, "msjackname:", &msjackname) ;
-   getstring(ph, "id2pops:", &id2pops) ;
    getint(ph, "msjackweight:", &msjackweight) ;
    getdbl(ph, "blgsize:", &blgsize) ;
    getint(ph, "dotree:", &dotree) ;
-   getint(ph, "printsd:", &printsd) ;
-   getint(ph, "nochrom:", &zchrom) ;
-   getint(ph, "locount:", &locount) ;
-   getint(ph, "hicount:", &hicount) ;
 
    getint(ph, "noxdata:", &noxdata) ; 
    getint(ph, "colcalc:", &colcalc) ; 
    getint(ph, "inbreed:", &inbreed) ; 
-   getint(ph, "printssize:", &printssize) ; 
 
    getint(ph, "nostatslim:", &nostatslim) ; 
    getint(ph, "popsizelimit:", &popsizelimit) ; 
@@ -715,9 +663,6 @@ void readcommands(int argc, char **argv)
    getdbl(ph, "jackquart:", &jackquart) ; 
    getint(ph, "jackweight:", &jackweight) ;
    getint(ph, "chrom:", &xchrom) ;
-   getint(ph, "xmode:", &xmode) ;
-   getint(ph, "f4mode:", &f4mode) ;
-
 
    printf("### THE INPUT PARAMETERS\n");
    printf("##PARAMETER NAME: VALUE\n");
@@ -945,33 +890,19 @@ int a, int b, int c,  int numeg, int *bcols, int nblocks)
 
 void
 getdsc(double *dzscx, double *dzsc, double **abx, double **bax,  int ncols, 
-int a, int b, int c, int d, int numeg, int *bcols, int nblocks, int *sz)  
+int a, int b, int c, int d, int numeg, int *bcols, int nblocks) 
 {
    double *ztop, *zbot, *znum, *jmean, *jwt ;
    int k, s, h1, h2 ; 
-   double y, y1, y2, yabba, ybaba, yt, yb, ytop, ybot ;
+   double y1, y2, yabba, ybaba, yt, yb, ytop, ybot ;
    double ymean, est, sig ;
-   double sgn ;  
-   int ntot, nbaba, nabba, nzdata=0  ;
-   int *nzd ;
-// nzdata is # blocks with  nonzero abba or baba counts 
-   double zbaba, zabba ;
 
    *dzscx = *dzsc = 0.0 ;
-   sgn = 1.0 ;
-   ntot = nbaba = nabba = 0 ;
-   zbaba = zabba = 0 ;
-   if (sz != NULL) ivzero(sz, 3) ;
-
-   if (a>b) sgn *= -1.0 ;
-   if (c>d) sgn *= -1.0 ;
 
    fflush(stdout) ;
 
-   ZALLOC(nzd, nblocks, int) ;
    ZALLOC(ztop, nblocks, double) ;
    ZALLOC(zbot, nblocks, double) ;
-
    ZALLOC(znum, nblocks, double) ;
    ZALLOC(jmean, nblocks, double) ;
    ZALLOC(jwt, nblocks, double) ;
@@ -1000,7 +931,6 @@ int a, int b, int c, int d, int numeg, int *bcols, int nblocks, int *sz)
      y1 = abx[h1][k] ;
      y2 = abx[h2][k] ;
 
-     if (y1<0.0) continue ;
      if (y2<0.0) continue ;
 
      ybaba = y1*y2 ;
@@ -1008,42 +938,12 @@ int a, int b, int c, int d, int numeg, int *bcols, int nblocks, int *sz)
      y1 = bax[h1][k] ;
      y2 = bax[h2][k] ;
 
-     if (y1<0.0) continue ;
-     if (y2<0.0) continue ;
-
      ybaba += y1*y2 ;
 
-     zbaba += ybaba ;
-     zabba += yabba ;
-
-     ztop[s] += (ybaba - yabba)*sgn ; 
-     if (f4mode == NO)  zbot[s] += ybaba + yabba ; 
-     if (f4mode == YES)  zbot[s] += 1.0 ;
-
+     ztop[s] += ybaba - yabba ; 
+     zbot[s] += ybaba + yabba ; 
      znum[s] += 1.0 ;
-     ++ntot ;
 
-     y1 = fabs(yabba+ybaba) ;
-     if (y1>0.0) nzd[s] = 1 ; 
-/**
-     if ((y1>0.0)) {
-       printf("zznzd %d %d %9.3f %9.3f %9.3f %9.3f %d %d\n", k, s, ybaba, yabba, ztop[s], zbot[s]) ; 
-     }
-*/
-   }
-   nzdata = intsum(nzd, nblocks) ;
-// number of blocks with any data at all 
-   free(nzd) ;
-   if (verbose) printf("nzdata:  %d\n", nzdata) ; 
-   if (nzdata<5) { 
-    free(ztop) ;
-    free(zbot) ;
-    free(znum) ;
-    free(jmean) ;
-    free(jwt) ;
-    *dzscx = 0 ; // Z score
-    *dzsc = 0  ;
-    return ;
    }
    ytop = asum(ztop, nblocks) ;
    ybot = asum(zbot, nblocks) ;
@@ -1055,15 +955,6 @@ int a, int b, int c, int d, int numeg, int *bcols, int nblocks, int *sz)
     jmean[s] = yt/yb ;
     jwt[s] = znum[s] ;
    }
-// printf("## zzmean: %d %12.6f\n", nblocks, ymean) ; 
-/**
-   for (s=0; s<nblocks; ++s) { 
-    y1 = ztop[s] ; 
-    y2 = zbot[s] ; 
-    printf("zzbug: %d %9.6f %9.6f %9.6f\n", s, y1, y2, y1/(y2+1.0e-20)) ; 
-   }
-*/
-// abort() ;
    weightjack(&est, &sig, ymean, jmean, jwt, nblocks) ;
    *dzscx = est/(sig+1.0e-20) ; // Z score
    *dzsc = est ;
@@ -1073,21 +964,6 @@ int a, int b, int c, int d, int numeg, int *bcols, int nblocks, int *sz)
    free(znum) ;
    free(jmean) ;
    free(jwt) ;
- 
-   if (sz == NULL) return ;
-   
-   if (sgn<0) { 
-    yt = zbaba ;
-    zbaba = zabba ;
-    zabba = yt ; 
-   }
-   sz[0] =nnint(zbaba)  ;
-   sz[1] =nnint(zabba)  ;
-   sz[2] = ntot ;
-
-
-//   printf("zz %12.6f ",  est) ;  
-//   printimat(sz, 1, 3) ;
 }
 
 void

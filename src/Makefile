@@ -8,10 +8,11 @@ PERLDIR=$(HOMEL)/perlsrc
 
 NLIB=$(HOMEL)/admixlib/nicklib.a
 IDIR=$(HOMEL)/admixinclude
+#IDIR1=$(HOMEL)/nicksrc
 VPATH=.:nicksrc
 DEBUG_OPTIONS= -g -pg
 
-CFLAGS= -c -g -p -I$(IDIR) -Wimplicit
+CFLAGS= -c -g -p -I$(IDIR) -Wimplicit -static
 
 OBJ=strsubs.o sortit.o vsubs.o statsubs.o linsubs.o getpars.o xsearch.o gauss.o	gds.o
 TWTAB=\"$(HOMEL)/admixtables/twtable\"
@@ -37,13 +38,6 @@ M4O=rolloff.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o
  
 M5=qpBound  
 M5O=qpBound.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o
- 
-M6=qpAdm  
-M6O=qpAdm.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o  f4rank.o  eigsubs.o eigx.o
- 
-M7=qpWave  
-M7O=qpWave.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o  f4rank.o  eigsubs.o eigx.o
-## was qp4wave2
  
 X1=convertf  
 X1O=convertf.o  mcio.o  admutils.o  egsubs.o h2d.o  exclude.o
@@ -84,30 +78,27 @@ $(M4): nicklib	$(M4O)
 $(M5): nicklib	$(M5O)
 	gcc -I$(IDIR) $(DEBUG_OPTIONS) -lm  -o $(M5) $(M5O) $(NLIB)
 
-$(M6): nicklib	$(M6O)
-	gcc -I$(IDIR) $(DEBUG_OPTIONS) -lm  -o $(M6) $(M6O) $(NLIB) -llapack -lblas
-
-$(M7): nicklib	$(M7O)
-	gcc -I$(IDIR) $(DEBUG_OPTIONS) -lm  -o $(M7) $(M7O) $(NLIB) -llapack -lblas
-
 $(X1): nicklib	$(X1O)
 	gcc -I$(IDIR) $(DEBUG_OPTIONS) -lm  -o $(X1) $(X1O) $(NLIB)
 
 $(X2): nicklib	$(X2O)
 	gcc -I$(IDIR) $(DEBUG_OPTIONS) -lm  -o $(X2) $(X2O) $(NLIB)
 
+#NAGL= -L/opt/nag/libC/lib -lnagc_nag -lm -pthread
 
-PROGS= qp3Pop qpDstat qpF4ratio rolloff convertf dowtjack expfit.sh grabpars qpBound qpAdm qpWave
+PROGS= qp3Pop qpDstat qpF4ratio rolloff convertf dowtjack expfit.sh grabpars qpBound
 PROGS2 = rexpfit.r  wtjack.pl 
+PROGS3 = qpGraph qpreroot
 
-all: nicklib $(PROGS) 
+all: nicklib all3 $(PROGS) 
+all3: $(PROGS3) 
 
 install:	all	tables
 	mkdir -p $(TOP)
 	cp $(PROGS) $(TOP)
 	cp $(PROGS2) $(TOP)
 
-uninstall:
+uninstall:  
 	rm -f $(NLIB) tables
 	rm -f $(TOP)/*
 
@@ -146,7 +137,9 @@ rmdirs:
 	rm -rf $(HOMEL)/admixtables 
 	rm -rf $(HOMEL)/admixinclude 
 
+ISTR= -I$(HOMEL)/admixinclude  -I/opt/nag/libC/include
 NAGL= -L/opt/nag/libC/lib -lnagc_nag -lm -pthread
+CFLAGS= -c -g -p $(ISTR) -Wimplicit-int
 
 M9F=qpGraph 
 M9FO=qpGraph.o nagqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o
@@ -154,9 +147,9 @@ M9FO=qpGraph.o nagqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o r
 M9G=qpreroot 
 M9GO=qpreroot.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o
 
-$(M9F): $(M9FO)
+$(M9F): nicklib $(M9FO)
 	gcc -I$(IDIR) $(NAGL) $(DEBUG_OPTIONS) -lm  -o $(M9F) $(M9FO) $(NLIB)
 
-$(M9G): $(M9GO)
+$(M9G): nicklib $(M9GO)
 	gcc -I$(IDIR)  $(DEBUG_OPTIONS) -lm  -o $(M9G) $(M9GO) $(NLIB)
 

@@ -1,3 +1,6 @@
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>  
@@ -15,3 +18,6 @@ typedef struct {
   double score ; 
 } OUTLINFO ;; 
 
+#ifdef __cplusplus
+}
+#endif

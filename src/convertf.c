@@ -14,9 +14,9 @@
 #include "mcio.h"  
 #include "mcmcpars.h"  
 #include "egsubs.h"  
-#include "exclude.h" 
+ #include "exclude.h" 
 
-#define WVERSION   "4480" 
+#define WVERSION   "3550" 
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -40,7 +40,7 @@
  MT -> 90 
  XY -> 91
 
- Various bugfixes and checks for file size  
+ Various bugfixes and checks for files size  
  inpack2 no longer needs big memory 
  hash table lookup for snpindex
  check size more carefully
@@ -54,7 +54,7 @@
  if flipped we can flip reference allele too if we wish (default YES)
  badpedignore.  Crazy bases flagged as ignore
  remapind (newindivname) added
- flipstrandname moves alleles to opposite strand
+ flipstrandname moves allels to opposite strand
  maxmissing added (counts alleles like smartpca)
  minor bug fixed for plink homozygous files
  polarize added (force homozygotes to 2 if possible)
@@ -65,25 +65,11 @@
  fastdupthresh, fastdupkill added
  remap now allows allele changes when genotypes are killed
 
+ polarize added (homozygotes for ind -> 2) 
  zerodistance added 
 
  mcio now calls toupper on alleles
  bugfix for newsnpname + phasedmode
-
- downsample added (make pseudo homozygotes)
- chimpmode added support for chr2a etc
-
- support for snps out of order in packed format
- (pordercheck: NO) 
- remapcheck NO (useful for moving reference sequence)
-
- mcio.c imported from eig 5.0.1
- randommode, seed added (randomizes fastdup)
- newignore: NO => newsnpname with new snps will have genotypes filled in with unknown (default is don't output) 
- inddupcheck added (compulsory) 
- usesamples added => poplistname = NULL)
- copyalleles (if newsnpname alleles are copied from old file) 
- familypopnames (use egroup for family in .fam output
 */
 
 
@@ -96,9 +82,6 @@ Indiv **indivmarkers, **indm2;
 SNP **snpmarkers ;
 SNP **snpm2 ;
 int zerodistance = NO ; // YES => force gdis 0
-int downsample = NO ;  // make pseudo homozygotes
-int pordercheck = YES ;
-int familypopnames = NO ;
 
 int numsnps, numindivs, numind2 ; 
 int nums2 ;
@@ -118,7 +101,6 @@ char *deletesnpoutname = NULL ;
 char *flipsnpname = NULL ;
 char *flipstrandname = NULL ;
 int flipreference = YES ;
-int remapcheck = YES ;
 
 char *poplistname = NULL ;
 
@@ -132,9 +114,6 @@ int mkdiploid = NO ;
 
 int packout = -1 ;
 int tersem  = YES ;
-int randommode = NO ; 
-int seed = 0 ;
-
 extern enum outputmodetype outputmode  ;
 extern int checksizemode ;
 char *omode = "packedancestrymap" ;
@@ -149,7 +128,6 @@ int polarindex = -1 ;
 
 int phasedmode = NO ;
 int badpedignore = NO ;
-int chimpmode = NO ;
 
 int xchrom = -1 ;
 int lopos = -999999999 ; 
@@ -159,15 +137,10 @@ int maxchrom = 97 ;
 
 int deletedup = YES ; // only one marker at a position
 char *newsnpname = NULL ;  // new map  
-int newignore = YES ; // default ignore snps not in old list
-int polarcheck = NO ;
-int copyalleles = NO ;
 
-char *usesamples = NULL ;
 
 char  unknowngender = 'U' ;
 double nhwfilter = -1 ;
-
 
 void setomode(enum outputmodetype *outmode, char *omode)  ;
 void readcommands(int argc, char **argv) ;
@@ -186,9 +159,6 @@ void flip1(SNP *cupt, int phasedmode, int flipreference) ;
 void fixaa(SNP *cupt1, SNP *cupt2) ;
 void fvalg(SNP *cupt, int val)   ;
 char cxx(char *c1, char *c2)  ;
-void downsamp(SNP *cupt) ;
-int setsamp(Indiv **indivmarkers, int numindivs, char *usesamples) ;
- 
 
 
 int main(int argc, char **argv)
@@ -226,24 +196,7 @@ int main(int argc, char **argv)
   malexhet = YES ;    // convertf default is don't change the data
   tersem = YES ;     // no snp counts
 
-  printf("## convertf version: %s\n", WVERSION) ;
   readcommands(argc, argv) ;
-
-  if (fastdup) randommode = YES ;
-  if ((randommode) && (seed==0)) {
-   seed = seednum() ;
-   printf("seed: %d\n", seed) ;
-  }
-
-  if (randommode) SRAND(seed) ;
-
-  if (chimpmode) {  
-   setchimpmode(YES) ;
-   setchr(YES) ;
-  }
-  if (familypopnames) {  
-   setfamilypopnames(YES) ;
-  }
 
   setomode(&outputmode, omode) ;
   packmode = YES ;
@@ -252,10 +205,9 @@ int main(int argc, char **argv)
   if (r2thresh > 0.0) killr2 = YES ;
   if (badpedignore) setbadpedignore() ;
 
-  setpordercheck(pordercheck) ;
-
   numsnps = 
     getsnps(snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks) ;
+
 
   for (i=0; i<numsnps; i++)  {  
    if (xchrom == -1) break ;  
@@ -274,20 +226,15 @@ int main(int argc, char **argv)
    if (cupt -> ignore) ++nignore ;
   }
 
-/**
-  printf("zzqq %d %d\n", numsnps, nignore) ;
-  return 0 ;
-*/
   if (numsnps == nignore) fatalx("no valid snps\n") ;
 
 
   numindivs = getindivs(indivname, &indivmarkers) ;
   if (polarid != NULL) {
    polarindex = indindex(indivmarkers, numindivs, polarid) ;
-   if (polarindex<0) fatalx("polarid %s not found\n", polarid) ;
+   if (polarindex<0) fatalx("polarid %s not found\n") ;
   }
 
-  inddupcheck(indivmarkers, numindivs) ;
 
   if (genotypelist!= NULL) {  
     getgenos_list(genotypelist, snpmarkers, indivmarkers, 
@@ -301,9 +248,6 @@ int main(int argc, char **argv)
   }
 
   if (newsnpname != NULL) { 
-    numindivs = rmindivs(snpmarkers, numsnps, indivmarkers, numindivs) ;
-// clean up before funky stuff
-   clearsnpord() ;
     nums2 = 
      getsnps(newsnpname, &snpm2, 0.0, NULL, &nignore, numrisks) ;
      remap(snpmarkers, numsnps, snpm2, nums2) ;
@@ -319,7 +263,6 @@ int main(int argc, char **argv)
     if (polarid != NULL) {
      polarindex = indindex(indivmarkers, numindivs, polarid) ;
     }
-   inddupcheck(indivmarkers, numindivs) ;
   }
 
   if (mkdiploid) { 
@@ -363,10 +306,6 @@ int main(int argc, char **argv)
       if (g != 2) cupt -> ignore = YES ; 
     }
   }
-  for (i=0; i<numsnps; i++)  {  
-    cupt = snpmarkers[i] ;
-    if (downsample) downsamp(cupt) ;
-  }
 
   if (outputall) {
    outfiles(snpoutfilename, indoutfilename, genooutfilename, 
@@ -376,12 +315,6 @@ int main(int argc, char **argv)
    return 0 ;
   }
 
-  if (usesamples != NULL) { 
-   poplistname = NULL ;
-   setsamp(indivmarkers, numindivs, usesamples) ;
-
-
-  }
   if (poplistname != NULL) 
   { 
     ZALLOC(eglist, numindivs, char *) ; 
@@ -465,7 +398,6 @@ int main(int argc, char **argv)
   printf("##end of convertf run\n") ;
   return 0 ;
 }
-
 void readcommands(int argc, char **argv) 
 
 {
@@ -528,17 +460,9 @@ output:        eurout
    getstring(ph, "outputformat:", &omode) ;
    getstring(ph, "outputmode:", &omode) ;
    getstring(ph, "polarize:", &polarid) ;
-   getstring(ph, "usesamples:", &usesamples) ;
    getint(ph, "zerodistance:", &zerodistance) ;
    getint(ph, "checksizemode:", &checksizemode) ;
    getint(ph, "badpedignore:", &badpedignore) ;
-   getint(ph, "downsample:", &downsample) ;
-   getint(ph, "chimpmode:", &chimpmode) ;
-   getint(ph, "pordercheck:", &pordercheck) ;
-   getint(ph, "remapcheck:", &remapcheck) ;
-   getint(ph, "seed:", &seed) ;
-   getint(ph, "randommode:", &randommode) ;
-   getint(ph, "familypopnames:", &familypopnames) ;
 
    getint(ph, "numchrom:", &numchrom) ;
    getstring(ph, "xregionname:", &xregionname) ;
@@ -554,8 +478,8 @@ output:        eurout
    getint(ph, "decimate:", &decim) ; 
    getint(ph, "dmindis:", &dmindis) ; 
    getint(ph, "dmaxdis:", &dmaxdis) ; 
-   getint(ph, "flipreference:", &flipreference) ;
    getint(ph, "fastdup:", &fastdup) ;
+   getint(ph, "flipreference:", &flipreference) ;
    getint(ph, "fastdupnum:", &fastdupnum) ;
    getdbl(ph, "fastdupthresh:", &fastdupthresh) ;
    getdbl(ph, "fastdupkill:", &fastdupkill) ;
@@ -564,9 +488,6 @@ output:        eurout
    getint(ph, "outputall:", &outputall) ;
    getint(ph, "sevencolumnped:", &sevencolumnped) ;
    getint(ph, "phasedmode:", &phasedmode) ;
-   getint(ph, "polarcheck:", &polarcheck) ;
-   getint(ph, "copyalleles:", &copyalleles) ;
-// we assume with newsnpname we are (A,B) in S1 and (A, B) or (rev(A), rev(B)) in S2
 
    getdbl(ph, "r2thresh:", &r2thresh) ;
    getdbl(ph, "r2genlim:", &r2genlim) ;
@@ -583,7 +504,6 @@ output:        eurout
    
    getstring(ph, "poplistname:", &poplistname) ;
    getstring(ph, "newsnpname:", &newsnpname) ;
-   getint(ph, "newignore:", &newignore) ;
    getstring(ph, "newindivname:", &newindivname) ;
    getint(ph, "deletedup:", &deletedup) ;
    getint(ph, "mkdiploid:", &mkdiploid) ;
@@ -602,19 +522,11 @@ void remap(SNP **s1, int nums1, SNP **s2, int nums2)
    cupt2 = s2[i] ; 
    k = snpindex(s1, nums1, cupt2 -> ID) ; 
    if (k<0) { 
-    printf("%20s not found\n", cupt2 -> ID) ; 
-    if (newignore) {
-     cupt2 -> ignore = YES ;
-    }
+    printf("%20s not found\n") ; 
+    cupt2 -> ignore = YES ;
     continue ;
    }
    cupt1 = s1[k] ; 
-
-   if (copyalleles) { 
-    cupt2 -> alleles[0] = cupt1 -> alleles[0] ;
-    cupt2 -> alleles[1] = cupt1 -> alleles[1] ;
-   }
-
    fixaa(cupt1, cupt2) ;
    if (cupt1 -> alleles[1] == 'X') {
     cupt1 -> alleles[1] = cxx(cupt1 -> alleles, cupt2 -> alleles) ;
@@ -639,10 +551,8 @@ char cxx(char *c1, char *c2)
 void fixaa(SNP *cupt1, SNP *cupt2) 
 {
  char *c1, *c2 ; 
- int t, ok ;
- char cc1, cc2 ;
+ int t ;
  
- if (remapcheck == NO) return ;
  c1 = cupt1 -> alleles ;
  c2 = cupt2 -> alleles ;
 
@@ -651,23 +561,6 @@ void fixaa(SNP *cupt1, SNP *cupt2)
  if ((c2[1] == 'X') && (c1[0] == c2[0])) c2[1] = c1[1] ;
  if ((c2[1] == 'X') && (c1[1] == c2[0])) c2[1] = c1[0] ;
  if ((c1[0] == c2[0]) && (c1[1] == c2[1])) return ; 
- if (polarcheck) { 
-   ok = YES ; 
-   cc1 = toupper(c1[0]) ;
-   cc2 = toupper(c2[0]) ;
-   if (cc2!=revchar(cc1)) ok = NO ;
-   cc1 = toupper(c1[1]) ;
-   cc2 = toupper(c2[1]) ;
-   if (cc2!=revchar(cc1)) ok = NO ;
-   if (ok==NO) {
-     printf("forcing all genos invalid for %s %c %c     %c %c\n",cupt1 -> ID, c1[0], c1[1], c2[0], c2[1]) ;
-     fvalg(cupt1, 999) ;
-     cupt1 -> ignore = YES;
-     return ;
-   }
-   c1[0] = c2[0] ;
-   c1[1] = c2[1] ;
- }
 
  if ((c1[0] == c2[1]) && (c1[1] == c2[0])) { 
    flip1(cupt1, phasedmode, YES) ; 
@@ -689,33 +582,13 @@ void fixaa(SNP *cupt1, SNP *cupt2)
  }
 }
 
-void downsamp(SNP *cupt) 
-{
- int k, g, t, g2 ;
- static int ncall = 0  ;
-
- ++ncall ;
- if (ncall == 1) {
-   SRAND(77) ;
-   printf("downsample set\n") ;
- }
-
- for (k=0; k<numindivs; ++k) { 
-  g = getgtypes(cupt, k) ;
-  if (g == 1 ) {
-   t = ranmod(2) ;
-   putgtypes(cupt, k, 2*t) ;
-  }
- }
-}
-
 void fvalg(SNP *cupt, int val)  
 {
  int k, g ;
 
  for (k=0; k<numindivs; ++k) { 
   g = getgtypes(cupt, k) ;
-  if (g != val) putgtypes(cupt, k, -1) ;
+  if (g!= val) putgtypes(cupt, k, -1) ;
  }
 }
 
@@ -914,46 +787,4 @@ void flip1(SNP *cupt, int phasedmode, int flipreference)
       if (phasedmode == YES)  flipalleles_phased(cupt) ;
 // just flips genotypes  
       if (flipreference) cswap(&cupt -> alleles[0], &cupt -> alleles[1]) ;
-}
-
-void setsamplist(Indiv **indivmarkers, int numindivs, char **samplist, int nsplit) 
-{
-    int i, j, k ;
-    Indiv *indx ;
-    int t = 0 ;
-    
-    setstatusv(indivmarkers, numindivs, NULL, NO) ; // set affstatus to NO
-
-   for (j=0; j<nsplit; ++j) {
-    k  = indindex(indivmarkers, numindivs, samplist[j]) ; 
-    if (k<0) {
-     printf("*** warning: sample ID: %s not found\n", samplist[j]) ;
-     continue ;
-    }
-    indx = indivmarkers[k] ; 
-    indx -> affstatus = YES ;
-   }
-
-    for (i=0; i<numindivs; ++i)  {     
-     indx = indivmarkers[i] ; 
-     if (indx -> affstatus == NO) indx -> ignore = YES ;
-     if (indx -> ignore == NO) ++t ;
-    }
-
-    if (t==0) fatalx("(setsamplist) no valids\n") ;
-}
-int
-setsamp(Indiv **indivmarkers, int numindivs, char *usesamples) 
-{
-  char *spt[MAXFF] ;
-  int nsplit ;
-
-  nsplit = splitupx(usesamples, spt, MAXFF, ':') ;
-
-  setsamplist(indivmarkers, numindivs, spt, nsplit) ;
-
-  freeup(spt, nsplit) ;
-
-  return nsplit ;
-
 }

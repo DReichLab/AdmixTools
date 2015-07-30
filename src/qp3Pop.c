@@ -25,15 +25,13 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "300" 
+#define WVERSION   "204" 
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
 // main program to do f3 test
 // nochrom: added
 // count of number of non-mono snps added
-// missing pop now just error message
-// inbreed bug in f3 score snps dropped unnecessarily
 
 #define MAXFL  50   
 #define MAXSTR  512
@@ -212,7 +210,7 @@ int main(int argc, char **argv)
   num = readpopx(popfilename, plists, 3) ;
   nplist = num ;
   printf("nplist: %d\n", nplist) ;
-  if (nplist == 0) return 0;
+  if (nplist == 0) return ;
 
 
   ZALLOC(eglist, nplist*3, char *)  ;  
@@ -308,9 +306,7 @@ void dopop3(char **eglist,  SNP **xsnplist, int ncols, int nblocks)
  nsnp = dof3score(&f3score, &f3scoresig, xsnplist, xindex, xtypes, 
   nrows, ncols, numeg, nblocks)  ;
 
-  if (nsnp<0) printf("%9s ", "no data") ;
-  if (nsnp >= 0) printf("%9s ", "result: ") ;
-
+  printf("%9s ", "result: ") ;
   for (t=0; t<numeg ; ++t) { 
    printf("%20s ", eglist[t]) ;
   }
@@ -657,9 +653,6 @@ dof3score(double *f3score, double *f3scoresig, SNP **xsnplist, int *xindex, int 
    FILE *fff ; 
    double xn[3], xmean[3], xh[3] ;
    
-   *f3score = 0 ; 
-   *f3scoresig = -1 ;
-
    if (snpdetailsname != NULL) openit(snpdetailsname, &fff, "w") ;
    
    if (nrows==0) fatalx("badbug\n") ;
@@ -718,7 +711,7 @@ dof3score(double *f3score, double *f3scoresig, SNP **xsnplist, int *xindex, int 
       
    }
 
-   if (totnum <= 1) return -1 ;
+   if (totnum <= 1) fatalx("no data...\n") ;
 /**
    printf("totnum: %d ", totnum) ;
    printmat(wjack, 1, 10) ;

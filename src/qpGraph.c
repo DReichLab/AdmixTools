@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "3101 " 
+#define WVERSION   "3000 " 
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -39,7 +39,6 @@
 // zthresh param
 // isfixed supported
 // outliername added
-// useallsnps added
 
 
 #define MAXFL  50   
@@ -68,7 +67,6 @@ int znval = -1 ;
 int popsizelimit = -1 ;
 int gfromp = NO ;  // genetic distance from physical 
 int hires = NO ;
-int allsnpsmode = NO ;
 
 int forcezmode = NO ;
 double blgsize = 0.05 ;  // block size in Morgans */ double *chitot ;
@@ -163,7 +161,6 @@ double ff4val(double *ff3, int a, int b, int c, int d, int numeg) ;
 void print4(double *ff3, int a, int b, int c, int d, int numeg) ;
 void printf3(char *sss, FILE *fff, double *ww, char **eglist, int n)  ;
 int listsubset(int **x, int n, int k)  ;
-int numqq(a, b, c, d)  ;
 
 int main(int argc, char **argv)
 {
@@ -255,7 +252,6 @@ int main(int argc, char **argv)
   printf("## qpGraph version: %s\n", WVERSION) ;
   if (parname == NULL) return 0 ;
   if (outpop != NULL) printf("outpop:  %s\n", outpop) ;
-  setallsnpsmode(allsnpsmode) ;
 
    if (seed==0) seed = seednum() ;
    SRAND(seed) ;
@@ -603,12 +599,6 @@ int main(int argc, char **argv)
    return 0 ;
   }
   printf("starting analysis\n") ;
-  y = trace(xvvar, nh2) ;
-  y *= 1.0e-5 ;
-  vclear(www, y, nh2) ;
-  adddiag(xvvar, www, nh2) ;
-  adddiag(xvvinv, www, nh2) ;
-
   pdinv(vvinv, xvvar, nh2) ;
   pdinv(xvvinv, xvvinv, nh2) ;
   for (a=1; a<numeg; a++) { 
@@ -1455,7 +1445,6 @@ void readcommands(int argc, char **argv)
    getdbl(ph, "lambdascale:", &lambdascale) ;
    getint(ph, "bigiter:", &bigiter) ;
    getint(ph, "inbreed:", &inbreed) ;
-   getint(ph, "useallsnps:", &allsnpsmode) ;
 
    getint(ph, "noxdata:", &noxdata) ; 
    t = -1 ;
@@ -1574,7 +1563,6 @@ doff3(double *ff3, double *ff3var, SNP **xsnplist, int *xindex, int *xtypes,
        b = x / numeg ;
        c = x % numeg ;
        ytop = dump3(estmat, a, b, c, numeg) ;
-       if (ytop < -100) continue ;
        if (fstdmode == NO) { 
         top[u] += wt*ytop ; 
         bot[u] += 1.0 ;
@@ -1621,6 +1609,33 @@ doff3(double *ff3, double *ff3var, SNP **xsnplist, int *xindex, int *xtypes,
     wjackvest(vest, vvar, nh2, gtop, btop, wjack, nblocks) ;
     vst(vest, vest, scale, nh2) ;
     vst(vvar, vvar, scale*scale, nh2*nh2) ;
+
+/**
+    vzero(w3, numeg*numeg) ;
+    for (u=0; u<nh2 ; u++) { 
+       x = ind2f[u] ; 
+       b = x / numeg ;
+       c = x % numeg ;
+       y1 = vest[u] ;                      
+       bump2(w3, b, c, numeg,y1)  ;
+       if (b<c) bump2(w3, c, b, numeg,y1)  ;
+    }
+    printf("vest:\n") ;
+    printmatz(w3, eglist, numeg) ;
+    copyarr(vvar, w3, nh2*nh2) ;
+
+    choldc(w3, nh2, w2) ;
+    printmat(w2, 1, nh2) ;
+    map4x(vvar, w3, numeg, ind2f) ;
+    for (b=0; b<numeg; ++b)  {  
+     set4(w3, 0, b, 0, b, numeg, 1.0) ;
+    }
+    choldc(w3, ng2, w2) ;
+    printmat(w2, 1, ng2) ;
+
+    printnl() ;
+    printnl() ;
+*/
 
     vst(ff3, ff3, scale, numeg*numeg) ;
     map4x(vvar, ff3var, numeg, ind2f) ;

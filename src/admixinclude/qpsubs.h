@@ -37,12 +37,7 @@ void getrawcol(int *rawcol, SNP *cupt, int *xindex, int nrows) ;
 void getrawcolx(int **ccc, SNP *cupt, int *xindex, int nrows, Indiv **indm) ;
 void getmixstr(int k, char *sss) ;
 void setpopsizes(int *sizes, char **eglist, int numeg) ;
-void putewts(double *ewts)  ;
-void getewts(double *ewts)  ;
-void getezero(int *zpat)  ;
-void getrootlabel(char *sss) ;
 
-void setallsnpsmode(int mode)  ;
 void loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg) ;
 void destroyaa() ;
 
@@ -252,7 +247,6 @@ double doinbreed(double *inb, double *inbest, double *inbsig, SNP **xsnplist, in
 void setinbreed(int val) ;
 void setindm(Indiv **indmx) ;
 void countpops(int ***counts, SNP **xsnplist, int *xindex, int *xtypes, int nrows, int ncols)  ;
-void countpopsx(int ***counts, SNP **xsnplist, Indiv **xindlist, int *xindex, int *xtypes, int nrows, int ncols) ;
 
 #ifdef __cplusplus
 }
