@@ -1,0 +1,26 @@
+vertex            R         0
+vertex            O         0
+vertex            Q         0
+vertex           CC         0
+vertex           AB         0
+vertex            A         0
+vertex            C         0
+vertex           BB         0
+vertex            B         0
+vertex           XX         0
+vertex            X         0
+label            O                  Out    50
+label            A                    A    50
+label            C                    C    50
+label            B                    B    50
+label            X                    X    50
+ledge            q            R            Q     0.0682
+redge            o            R            O     0.0000
+ledge           cc            Q           CC     0.0236
+redge           ab            Q           AB     0.0111
+ledge            c           CC            C     0.0120
+ledge            a           AB            A     0.0221
+redge           bb           AB           BB     0.0121
+ledge            b           BB            B     0.0115
+ledge            x           XX            X     0.0061
+admix           XX          BB         CC      0.2915     0.7085
