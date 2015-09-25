@@ -1,8 +1,0 @@
-#!/usr/local/bin/perl -w
-
-($TAG, $GR) = @ARGV ;
-$GX = "$TAG:$GR" ;
-system "m4 -D \"TAG=$TAG\"  < parsimp.templ > par:$GX" ;
-$cmd =  " ../bin/qpGraph -p par:$GX -g $GR -o $GX.ggg -d $GX.dot > $GR:log" ;
-print "$cmd\n" ;
-system "$cmd" ;

@@ -70,7 +70,7 @@ for (my $i = 0; $i < scalar(@log); $i++)
 }
 push(@start, scalar(@log));
 
-printf JIN "%3s  %12s  %12s\n",   CHR,    SNPs,   Estimated_date;
+printf JIN "%3s  %12s  %12s\n",   #CHR,    SNPs,   Estimated_date;
 for my $chr(1..22)
 {
         for (my $i = $start[$chr]; $i <  $start[$chr+1]; $i++)

@@ -1,9 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
-#ifdef __cplusplus
-extern "C" {
-#endif
 #ifndef _MCIO_
 #define _MCIO_
 
@@ -39,12 +33,14 @@ typedef struct {
   double gpos ; 
   double ppos ; 
   int chrom ;
+  char cchrom[6] ;
   int nn[4] ;
   int ignore ;
   int isrfake ; 
   char alleles[2] ;
   int inputrow ;
   int cuptnum ;
+  int chimpfudge ;
 }  SNPDATA ;
 
 
@@ -71,13 +67,16 @@ void clearind(Indiv **indm, int numind)  ;
 void cleartg(Indiv **indm, int nind)  ;
 
 double mknn(int *nn, int  n0, int n1) ;
+void clearsnpord() ;
 int getsnps(char *snpfname, SNP ***snpmarkpt, double spacing,
  char *badsnpname, int *nignore, int numrisks) ;
 int getsizex(char *fname) ;
 int getindivs(char *indivfname, Indiv ***indmarkpt) ;
 
+void setfamilypopnames(int fpop) ;
 int setstatus(Indiv **indm, int numindivs, char *smatch)  ;
 int setstatusv(Indiv **indm, int numindivs, char *smatch, int val)  ;
+int setstatuslist(Indiv **indm, int numindivs, char **smatchlist, int slen)   ;
 
 long getgenos(char *genoname, SNP **snpmarkers, Indiv **indivmarkers, 
  int numsnps, int numindivs, int nignore)  ;
@@ -93,7 +92,6 @@ int numvalidind(Indiv **indivmarkers, int  numind)   ;
 int numvalidgtind(SNP **snpm, int numsnps, int ind)  ;
 int numvalidgt(Indiv **indivmarkers, SNP *cupt)   ;
 int numvalidgtx(Indiv **indivmarkers, SNP *cupt, int affst)  ;
-int getweights_def(char *fname, SNP **snpm, int numsnps, double default_weight)   ;
 int getweights(char *fname, SNP **snpm, int numsnps)   ;
 void outpack(char *genooutfilename, SNP **snpm, Indiv **indiv, int numsnps, int numind)  ;
 int ispack(char *gname) ;
@@ -124,6 +122,7 @@ int snprawindex(SNPDATA **snpraw, int nreal, char *sname) ;
 int readsnpmapdata(SNPDATA **snpraw, char *fname)  ;
 int checkfake(char *ss)  ;
 void setbadpedignore() ;
+int setsdpos( SNPDATA *sdpt, int pos) ;  
 
 void
 outeigenstrat(char *snpname, char *indname, char *gname, 
@@ -165,6 +164,8 @@ void cntpops(int *count, Indiv **indm, int numindivs, char **eglist, int numeg) 
 void printalleles(SNP  *cupt, FILE *fff) ;
 char *getpackgenos()  ;
 void clearpackgenos()  ;
+void setchr(int mode) ;
+void setchimpmode(int mode) ;
 
 int genoopenit(genofile **gfile, char *geno2name, SNP **snp2m, 
   Indiv **indiv2m, int numsnp2, int numindiv2, int nignore)  ;
@@ -176,13 +177,9 @@ void getped(int num) ;
 
 void logdeletedsnp(char *snpname, char *cmnt, char *deletesnpoutname);
 void sortsnps(SNP **snpa, SNP **snpb, int n) ;
-int setstatuslist(Indiv **indm, int numindivs, char **smatchlist, int slen)  ;
+void setpordercheck (int mode) ;
+void putsnpordered(int mode) ;
+int getsnpordered() ; 
 
 
-#endif
-#ifdef __cplusplus
-}
-#endif
-#ifdef __cplusplus
-}
 #endif

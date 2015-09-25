@@ -277,8 +277,11 @@ int numvalids(Indiv *indx, SNP **snpmarkers, int fc, int lc)
   for (k=fc; k<=lc; ++k) {   
     cupt = snpmarkers[k] ; 
     if (cupt -> isfake) continue ; 
+    if (cupt -> ignore) continue ;
+/**
     gettln(cupt, indx, NULL, NULL, &numstates, &ignore) ; 
     if (ignore) continue ; 
+*/
     if (cupt -> ngtypes == 0) continue ; 
     if (getgtypes(cupt, idnum) >= 0) ++nval ; 
   } 
@@ -372,6 +375,23 @@ int indindex(Indiv **indivmarkers, int numindivs, char *indid)
       if (strcmp(indivmarkers[k] -> ID, indid) == 0) return k ;
      }
      return -1 ;
+}
+void inddupcheck(Indiv **indivmarkers, int numindivs) 
+{
+ // fail hard if duplicate
+     int t, k, n ; 
+     char **ss ;  
+
+     freesnpindex() ;
+     n = numindivs ;
+     ZALLOC(ss, n, char *) ;
+     for (k=0; k< n; k++) {  
+      ss[k] = strdup(indivmarkers[k] -> ID) ;
+     }
+     t = finddup(ss, n) ;
+     if (t>=0) fatalx("duplicate sample: %s\n", ss[t]) ;
+     freeup(ss, n) ;
+     free(ss) ;
 }
 
 int snpindex(SNP **snpmarkers, int numsnps, char *snpid) 
@@ -1035,6 +1055,35 @@ char *getshort(char *ss, int n)
   xxx[n-1] = CNULL ;
   return xxx ;
 }
+
+
+int setid2pops(char *idpopstring, Indiv **indmarkers, int numindivs) 
+// replace pop by ID for certain samples
+{
+#define MAXS 1000 
+  char *spt[MAXS] ;
+  char *sx ;
+  int nsplit, k, t ;
+  Indiv *indx ;
+ 
+  nsplit = splitupx(idpopstring, spt, MAXS, ':') ;
+  for (k=0; k<nsplit; ++k) { 
+   sx = spt[k] ;
+   t = indindex(indmarkers, numindivs, sx) ; 
+   if (t<0) { 
+    printf("(setid2pops): %s not found\n") ;
+    continue ;
+   }
+   indx = indmarkers[t] ;
+   freestring(&indx -> egroup) ;
+   indx -> egroup = strdup(indx -> ID) ;
+  }
+  freeup(spt, nsplit) ;
+  return nsplit ;
+}
+
+
+
 
 
 

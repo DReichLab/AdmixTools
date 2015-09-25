@@ -18,7 +18,7 @@
 #include "egsubs.h"  
 #include "ldsubs.h"  
 
-#define WVERSION   "1000" 
+#define WVERSION   "1002" 
 /** an attempt to 
  1) threshold for LD in parentals 
  2) Use a weighted Z-score
@@ -35,6 +35,7 @@
  xnochrom added
  checkmap added (default) 
  First admixtools release
+ Count of outer + inner loop made
 */
 
 
@@ -176,7 +177,10 @@ int main(int argc, char **argv)
   int nsnp1 = 0, nsnp2 = 0 ;
   int numchrom = 22 ;
   double **jwt ;
+  long snpdo1, snpdo2 ;
+ 
 
+  snpdo1 = snpdo2 = 0 ;
   ofile = stdout; 
   packmode = YES ;
   
@@ -476,6 +480,7 @@ int main(int argc, char **argv)
    if (t==0) printf("processing snp %6d: %20s topheap: %x \n", x, cupt -> ID, topheap()) ;
 */
    fflush(stdout) ;
+   ++snpdo1 ;
    for (x2=x+1; x2<numsnps; ++x2)  { 
     cupt2 = snpmarkers[x2] ;
     if (cupt2 -> ignore) continue ;
@@ -489,6 +494,8 @@ int main(int argc, char **argv)
        t = ranmod(ransample) ;
        if (t != 0) continue ;
       }
+
+      ++snpdo2 ;
 
       if (runmode == 2)  {
        t = calcldscore(cupt, cupt2, &yy) ;
@@ -622,6 +629,7 @@ int main(int argc, char **argv)
     dumpit(s1, ww, corrjbins[k], numbins-5, binsize, s2) ;
    }
 
+  printf("## snps processes (outer + inner loop) %ld %ld\n", snpdo1, snpdo2) ;
   printf("##end of run\n") ;
   return 0 ;
 }
@@ -913,7 +921,7 @@ double cntit1(double *xc, SNP *cupt, Indiv **indm, int numindivs, int t)
   int k, g ;
 
   vzero(xc, 3) ;
-  if (cupt -> ignore) return ;
+  if (cupt -> ignore) return 0;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;
@@ -932,8 +940,8 @@ double cntit2(double *xc, SNP *cupt, SNP *cupt2, Indiv **indm, int numindivs, in
   int k, e, f ;
 
   vzero(xc, 9) ;
-  if (cupt -> ignore) return ;
-  if (cupt2 -> ignore) return ;
+  if (cupt -> ignore) return 0;
+  if (cupt2 -> ignore) return 0;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;

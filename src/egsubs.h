@@ -1,6 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include "admutils.h"  
 
 
@@ -10,6 +7,3 @@ void seteglist(Indiv **indm, int nindiv, char *eglistname)  ;
 void seteglistv(Indiv **indm, int nindiv, char *eglistname, int val) ;
 int loadlist(char **list,  char *listname)  ;
 int  loadlist_type(char **list, char *listname, int *ztypes, int off)   ;
-#ifdef __cplusplus
-}
-#endif

@@ -1,8 +1,6 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
 #include <ctype.h>
 #include <nicklib.h>
+#include <xsearch.h> 
 #define IDSIZE 40
 
 #ifndef ADMUTILS
@@ -33,6 +31,7 @@ typedef struct {
 typedef struct {
   char ID[IDSIZE];
   int chrom;
+  char cchrom[6] ;
   double genpos;
   double physpos;
   double aa_cauc_freq;    /* frequencies in ancestral pop to AA */
@@ -68,6 +67,7 @@ typedef struct {
   void *pcupt ;
   int tagnumber ;
   char alleles[2] ;
+  int chimpfudge ;
 } SNP; 
 
 typedef struct {
@@ -143,6 +143,7 @@ void makedir(char *dirname) ;
 int indxindex(char **namelist, int len, char *strid)  ;
 int indindex(Indiv **indivmarkers, int numindivs, char *indid)  ;
 int snpindex(SNP **snpmarkers, int numsnps, char *snpid) ;
+void inddupcheck(Indiv **indivmarkers, int numindivs) ;
 void freesnpindex() ;
 int ignoresnp(SNP *cupt) ;
 double entrop(double *a, int n)  ;
@@ -151,6 +152,7 @@ void testnan(double *a, int n) ;
 void hap2dip(SNP *cupt) ; 
 void flipalleles(SNP *cupt) ;
 void flipalleles_phased(SNP *cupt) ;
+int setid2pops(char *idpopstring, Indiv **indmarkers, int numindivs)  ;
 int   getgtypes(SNP *cupt, int k) ;
 void  putgtypes(SNP *cupt, int k, int val) ;
 int   getep(SNP *cupt, int k) ;
@@ -196,6 +198,3 @@ char *getshort(char *ss, int n) ;
 // max number models
 
 #define CNULL '\0' 
-#ifdef __cplusplus
-}
-#endif

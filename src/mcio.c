@@ -39,10 +39,10 @@ static int dofreeped = YES ;
 int tempnum = 0 ;
 int tempfake = 0 ;
 
-static int *pedcols = NULL ;    //!< pedcols[i] == j if and only if  snpm[j] is ith SNP in input file
-static int numpedcols = 0 ;     //!< current size of array pedcols
-static int *pedcolsa[3] ;       //!< Copies of pedcols for various data sets (used by mergeit)
-static int numpedcolsa[3] ;     //!< Number of elements of pedcolsa in use
+static int *snpord = NULL ;    //!< snpord[i] == j if and only if  snpm[j] is ith SNP in input file
+static int numsnpord = 0 ;     //!< current size of array snpord
+static int *snporda[3] ;       //!< Copies of snpord for various data sets (used by mergeit)
+static int numsnporda[3] ;     //!< Number of elements of snporda in use
 
 static int badpedignore = NO ;    //!< flag - ignore bad allele symbols in PED file 
 
@@ -52,6 +52,14 @@ int checksizemode = YES ;
 int pedignore = YES ;
 enum outputmodetype outputmode = PACKEDANCESTRYMAP ;
 static double maxgpos[MAXCH] ;
+static int chrmode = NO ;
+static int chimpmode = NO ;
+static int pordercheck = YES ;
+static int snpordered ;
+// fails if packed and out of order 
+static int familypopnames = NO ;
+// in .fam output use popnames (egroup) 
+
 
 SNPDATA  *tsdpt ;
 
@@ -70,6 +78,43 @@ static int setskipit(char *sx) ;  // ignore lines in snp, map files
 int calcishash(SNP **snpm, Indiv **indiv, int numsnps, int numind, int *pihash, int *pshash) ;  
 
 /* ---------------------------------------------------------------------------------------------------- */
+
+void setfamilypopnames(int fpop) 
+{
+
+ familypopnames = fpop ;
+
+}
+
+
+void clearsnpord() 
+{
+
+  free(snpord) ;
+  snpord = NULL ;
+  numsnpord = 0 ;
+
+}
+void snpsortit(int **spos, int *indx, int n)  
+{        
+  long *lkode ; 
+  int i, base[3] ;
+
+  base[0] = 1; 
+  base[1] = 10^8 ; 
+  base[2] = 10^9 ; 
+
+  ZALLOC(lkode, n, long) ;
+  for (i=0; i<n; i++) { 
+   lkode[i] = lkodeitbb(spos[i], 3, base) ;
+  }
+
+  lsortit(lkode, indx, n) ;
+
+  free(lkode) ;
+  return ;
+
+}
 int getsnps(char *snpfname, SNP ***snpmarkpt, double spacing,
   char *badsnpname, int *numignore, int numrisks)   {
   // returns number of SNPS
@@ -80,9 +125,10 @@ int getsnps(char *snpfname, SNP ***snpmarkpt, double spacing,
   static SNP **snpmarkers ;
   SNP *cupt ;
   int **snppos ;
-  int nreal, nfake, numsnps = 0, i, t ;
+  int nreal, nfake, numsnps = 0, i, t, j ;
   int *snpindx ;
   double xspace ;
+  int failx = 0 ;
 
   if (snpfname == NULL) fatalx("(getsnps) null snpname") ;
   xspace = spacing ;
@@ -90,18 +136,19 @@ int getsnps(char *snpfname, SNP ***snpmarkpt, double spacing,
   if (nreal <= 0) fatalx("no snps found: snpfname: %s\n", snpfname) ;
   ZALLOC(snpraw, nreal, SNPDATA *) ;
 
-  if (pedcols == NULL) {
-    ZALLOC(pedcols, nreal, int) ;  
-    ivclear(pedcols, -1, nreal) ;
-    numpedcols = nreal ;
+  if (snpord == NULL) {
+    ZALLOC(snpord, nreal, int) ;  
+    ivclear(snpord, -1, nreal) ;
+    numsnpord = nreal ;
   }
   for (i=0; i<nreal ; i++) { 
     ZALLOC(snpraw[i], 1, SNPDATA) ;
+    cclear(snpraw[i] -> cchrom, CNULL, 7) ;
     snpraw[i] -> inputrow = -1 ;
     snpraw[i] -> alleles[0] = '1' ;
     snpraw[i] -> alleles[1] = '2' ;
   }
-  readsnpdata(snpraw, snpfname) ;
+  nreal = readsnpdata(snpraw, snpfname) ;
   dobadsnps(snpraw, nreal, badsnpname) ;
 
   ZALLOC(snppos, nreal, int *) ;
@@ -112,14 +159,39 @@ int getsnps(char *snpfname, SNP ***snpmarkpt, double spacing,
   for (i=0; i<nreal ; i++) {
     sdpt = snpraw[i] ;
     snppos[i][0] = sdpt -> chrom ;   
-    //  if (sdpt->ignore) snppos[i][0] = 99 ;
+    if ((sdpt->ignore) && (plinkinputmode)) snppos[i][0] = 99 ;
     t = snppos[i][1] = nnint((sdpt -> gpos)*GDISMUL) ;       
     snppos[i][2] = nnint(sdpt -> ppos) ;      
     // sdpt -> gpos = ((double) t)/ GDISMUL ;
   }
 
+/**
+  for (i=nreal-10; i<nreal; i++) { 
+   printf("zzyy: %d ", i) ; printimat(snppos[i], 1, 3) ;
+  }
+*/
+
   ZALLOC(snpindx, nreal, int) ;
+//snpsortit(snppos, snpindx, nreal) ;
   ipsortit(snppos, snpindx, nreal, 3) ;
+
+  snpordered = YES;
+
+  for (i=0; i<nreal; ++i) { 
+   j = snpindx[i] ;  
+   sdpt = snpraw[j] ; 
+
+ //printf("zzz %d %d %s ",   i, j, sdpt -> ID) ;
+ //printimat(snppos[j], 1, 3) ;
+
+   if (j != i) {
+    snpordered = NO  ;
+    ++failx ;
+    if (failx < 10) { 
+      printf("snp order check fail; snp list not ordered: %s (processing continues)", snpfname) ; printimat(snppos[i], 1, 3) ;
+    }
+   }
+  }
 
   if ((usecm) && (xspace>0.5)) { 
     printf("*** warning fake spacing given in cM\n") ;
@@ -148,6 +220,15 @@ int getsnps(char *snpfname, SNP ***snpmarkpt, double spacing,
   *snpmarkpt = snpmarkers ;
   numsnps = loadsnps(snpmarkers, snpraw, snpindx, nreal, xspace, numignore) ;
 
+/**
+  for (i=numsnps-10; i<numsnps; i++) { 
+   cupt = snpmarkers[i] ;
+   printf("zzyy3: %d %d %12.0f\n", i, cupt -> chrom, cupt -> physpos) ;
+  }
+*/
+
+     
+
 
   // and free up temporary storage
   for (i=0; i<nreal ; i++) { 
@@ -161,12 +242,12 @@ int getsnps(char *snpfname, SNP ***snpmarkpt, double spacing,
   /* printf("numsnps: %d\n", numsnps) ; */
 
   /* 
-  if (pedcols != NULL) { 
-    printimat(pedcols, 1, MIN(100, numsnps)) ;
+  if (snpord != NULL) { 
+    printimat(snpord, 1, MIN(100, numsnps)) ;
   }
   */
   cupt = snpmarkers[0] ; 
-  if (isnumword(cupt -> ID)) printf("*** warning: first snp is number.  perhaps you are using .map format\n") ;
+  if (isnumword(cupt -> ID)) printf("*** warning: first snp %s is number.  perhaps you are using .map format\n", cupt -> ID) ;
 
   return numsnps ;
 }
@@ -286,11 +367,13 @@ int readsnpdata(SNPDATA **snpraw, char *fname)   {
   int chrom ;
   int nbad = 0 ;
 
+  plinkinputmode = NO ;
   // if this is a PLINK file, call PLINK input routine
   if (ismapfile (fname)) {  
     plinkinputmode = YES ;
     return readsnpmapdata(snpraw, fname)  ;
   }
+  usecm = NO ;
  
   vclear(maxgpos, -9999.0, MAXCH) ; 
   openit(fname, &fff, "r") ;
@@ -309,6 +392,7 @@ int readsnpdata(SNPDATA **snpraw, char *fname)   {
       strcpy(sdpt->ID, spt[0]) ;
 
       sdpt -> chrom = chrom = str2chrom(spt[1]) ; 
+      strncpy(sdpt -> cchrom, spt[1], 6) ;
 
       if ((chrom>=MAXCH)  || (chrom <=0)) {
         if (nbad<10) printf("warning: bad chrom: %s", line) ;
@@ -336,7 +420,7 @@ int readsnpdata(SNPDATA **snpraw, char *fname)   {
       maxgpos[chrom] = MAX(maxgpos[chrom], sdpt -> gpos) ;
       maxg = MAX(maxg, maxgpos[chrom]) ;
 
-      sdpt -> ppos = atof(spt[3]) ;
+      setsdpos(sdpt, atoi(spt[3])) ;
       if (nsplit<8) { 
         ivzero(sdpt->nn,4) ; 
         if (nsplit==6) {  
@@ -361,7 +445,7 @@ int readsnpdata(SNPDATA **snpraw, char *fname)   {
 
   // if all genetic positions are set to zero, set from physical position 
   if (maxg<=0.00001)  {
-    printf("genetic distance set from physical distance\n") ;
+    printf("%s: genetic distance set from physical distance\n", fname) ;
     usecm = NO ;
     for (k=0; k<num ; ++k) {
       snpraw[k] -> gpos = 1.0e-8 * snpraw[k] -> ppos ;
@@ -418,13 +502,16 @@ int readsnpmapdata(SNPDATA **snpraw, char *fname)   {
 
       sx = spt[0] ;
       sdpt -> chrom = chrom = str2chrom(sx) ;
+      strncpy(sdpt -> cchrom, sx, 6) ;
 
       if ((chrom>=MAXCH)  || (chrom <=0)) {
-        if (nbad<10) printf("warning: bad chrom: %s", line) ;
+        if (nbad<10) printf("warning (mapfile): bad chrom: %s", line) ;
         ++nbad ; 
 
         sdpt -> chrom = MIN(chrom, BADCHROM) ;  
         sdpt -> chrom = MAX(chrom, 0) ;  
+        sdpt -> chrom = 99 ;
+        strcpy(sdpt -> cchrom, "99") ;
         sdpt -> ignore = YES ;  
       }
 
@@ -453,11 +540,12 @@ int readsnpmapdata(SNPDATA **snpraw, char *fname)   {
         }
       }
       sdpt -> inputrow = num ;
+//    printf("zz %d %d %s %12.0f\n", num, sdpt -> chrom, sdpt -> ID, sdpt -> ppos) ;
       ++num ;
     }
     freeup(spt, nsplit) ;
     continue ;
-  }  // elihw
+  }  
 
   if (maxg<=0.00001)  {
     printf("genetic distance set from physical distance\n") ;
@@ -473,10 +561,10 @@ int readsnpmapdata(SNPDATA **snpraw, char *fname)   {
     }
   }
 
-  if (pedcols == NULL) {
-    ZALLOC(pedcols, num, int) ;  
-    ivclear(pedcols, -1, num) ;
-    numpedcols = num ;
+  if (snpord == NULL) {
+    ZALLOC(snpord, num, int) ;  
+    ivclear(snpord, -1, num) ;
+    numsnpord = num ;
   }
  
   fclose(fff) ;
@@ -576,25 +664,42 @@ int loadsnps(SNP **snpm, SNPDATA **snpraw,
   double xl, xr, xmid, al, ar, fraw ;
   double y ;
   int nn[2], n0, n1 ;
-  int cnum ;
-  int inputrow ;
+  int cnum, t ;
+  int inputrow, chimpfudge, xchimpfudge ;
+  int ischimp = NO ;
+  char ss[6] ; 
 
   if (spacing <= 0.0) fakedis = 1.0e20 ;
+  strcpy(ss, "??") ;
+
   for (k=0; k< nreal ; k++) {  
 
     indx = snpindx[k] ;
     sdpt = snpraw[indx] ;
 
     chrom = sdpt -> chrom ;
+// defensive programming;  should not be needed:
+    if (sdpt -> cchrom[0] == CNULL) {  
+     sprintf(sdpt -> cchrom, "%d", chrom) ;
+    }
     sname = sdpt -> ID ;
     realdis = sdpt -> gpos ;           
     physpos = sdpt -> ppos ;
     inputrow = sdpt -> inputrow ;
+    if (sdpt -> chimpfudge) ischimp = YES ;
 
-    if (chrom != xc)  {  
+/**
+    if (k>(nreal-10)) { 
+     printf("zzyy2b %d %d %12.0f %d\n", k, chrom, physpos, inputrow) ;
+    }
+*/
+
+    t = strcmp(ss, sdpt -> cchrom) ;
+    if (t != 0) {
       fakedis = nextmesh(realdis, spacing) ;
       xc = chrom ;
       cnum = 0 ;
+      strcpy(ss, sdpt -> cchrom) ;
     }
 
     yf = fakedis ; 
@@ -634,6 +739,7 @@ int loadsnps(SNP **snpm, SNPDATA **snpraw,
       cupt -> markernum = num ;
       cupt -> isfake = YES ;
       cupt -> chrom  = xc ;
+      strncpy(cupt -> cchrom, ss, 6) ;
       fakedis += spacing ;
       ++num ;
       ++nfake ;
@@ -655,10 +761,11 @@ int loadsnps(SNP **snpm, SNPDATA **snpraw,
     }
     cupt -> isrfake = sdpt -> isrfake ; 
     cupt -> chrom  = xc ;
+    strncpy(cupt -> cchrom, ss, 6) ;
     cupt -> tagnumber = inputrow ; // just used for pedfile 
     if (inputrow >=0) {
-      if (inputrow >= numpedcols) fatalx("pedcols overflow\n") ;
-      pedcols[inputrow] = num ;    
+      if (inputrow >= numsnpord) fatalx("snpord overflow\n") ;
+      snpord[inputrow] = num ;    
     }
 
     n0 = sdpt->nn[0] ;
@@ -713,6 +820,7 @@ int loadsnps(SNP **snpm, SNPDATA **snpraw,
   nignore = 0 ;
   for (k=0; k<numsnps; ++k) {
     cupt = snpm[k] ; 
+    if (ischimp && (cupt -> chrom == 2))  cupt -> chimpfudge = YES ;
     if (cupt -> ignore) ++nignore ;
   }
   *numignore = nignore ;
@@ -1055,6 +1163,7 @@ int setstatusv(Indiv **indm, int numindivs, char *smatch, int val)   {
       ++n ; 
       indx->affstatus += val ; 
     } 
+    if (indx -> affstatus >1) fatalx("aff2bug\n") ;
   } 
   return n ; 
 } 
@@ -1124,7 +1233,7 @@ long getgenos(char *genoname, SNP **snpmarkers, Indiv **indivmarkers,
   // Call routine to read PLINK format unpacked genotype file
   if (ispedfile(gname))   {
 
-    if (pedcols == NULL) fatalx("pedcols not allocated (no map file ?)") ;
+    if (snpord == NULL) fatalx("snpord not allocated (no map file ?)") ;
     getpedgenos(genoname, snpmarkers, indivmarkers, numsnps,  numindivs,  nignore)  ;
     freeped()  ;
     return numsnps*numindivs ; 
@@ -1146,8 +1255,8 @@ long getgenos(char *genoname, SNP **snpmarkers, Indiv **indivmarkers,
       cupt = snpmarkers[k] ;
       if (cupt -> ignore) continue ;
       if ((cupt -> isfake) && (!(cupt -> isrfake))) continue ;
-      cupt -> ngtypes = numindivs ; 
       if (cupt -> gtypes == NULL) ZALLOC(cupt -> gtypes, 1, int) ; 
+      cupt -> ngtypes = numindivs ; 
     }
     packmode = YES ;
     return nsnp*numindivs ;
@@ -1170,7 +1279,6 @@ long getgenos(char *genoname, SNP **snpmarkers, Indiv **indivmarkers,
   y = (double) (numindivs * 2) / (8 * (double) sizeof (char)) ;   
   rlen = nnint(ceil(y)) ;
   packlen = rlen*numsnps ;
-//printf("zz %ld %ld %ld\n", rlen, numsnps, packlen) ;
   if (packlen<0) fatalx("yuckk\n") ;
   if (packmode) { 
     ZALLOC(packgenos, packlen, char) ;
@@ -1298,12 +1406,12 @@ long getgenos(char *genoname, SNP **snpmarkers, Indiv **indivmarkers,
 
 /* ---------------------------------------------------------------------------------------------------- */
 void freeped()   {
-  // destructor for pedcols 
-  if (pedcols == NULL) return ; 
+  // destructor for snpord 
+  if (snpord == NULL) return ; 
   if (dofreeped == NO) return ;
-  free(pedcols) ;
-  pedcols = NULL ;
-  numpedcols = 0 ;
+  free(snpord) ;
+  snpord = NULL ;
+  numsnpord = 0 ;
   maxgenolinelength = -1 ;
 }
 
@@ -1345,6 +1453,9 @@ void clearsnp(SNP *cupt)   {
    cupt -> gpnum = 0 ;
    cupt -> pcupt = NULL ;
    cupt -> tagnumber = -1 ;
+   cclear(cupt -> cchrom, CNULL, 7) ;
+   strcpy(cupt -> cchrom, "") ;
+   cupt -> chimpfudge = NO ;
    cclear((unsigned char *) cupt -> alleles, CNULL, 2)  ;
 }
 
@@ -1372,6 +1483,7 @@ int rmindivs(SNP **snpm, int numsnps, Indiv **indivmarkers, int numindivs)   {
     indx -> idnum = n ;
     for (i=0; i<numsnps; i++) {  
      cupt = snpm[i] ;
+     if (cupt -> gtypes == NULL) break ;
      if (cupt -> ignore) continue ;              // copy only genotypes of non-ignored SNPs
      g = getgtypes(cupt, k) ;  
      putgtypes(cupt, n, g) ;
@@ -1564,12 +1676,40 @@ int checkfake(char *ss)   {
 
 }
 
+void mkchrom(char *ss, int chrom, double *ppos, int fudge, int chrmode) 
+{
+ char *sx ; 
+ int big = 200*1000*1000 ;
+
+ sx = ss ; 
+ if (chrmode) { 
+  strcpy(ss, "chr") ;
+  sx += 3 ;
+ }
+ if ((chrom != 2) || (fudge == NO)) { 
+  sprintf(sx, "%d", chrom) ;
+  return ;
+ }
+
+ if (*ppos <=  big) {
+  sprintf(sx, "2a") ; 
+ }
+
+ if (*ppos > big) {
+  sprintf(sx, "2b") ; 
+  *ppos -= big ;
+ }
+
+}
+
+
 /* ---------------------------------------------------------------------------------------------------- */
 void printsnps(char *snpoutfilename, SNP **snpm, int num, Indiv **indm, int printfake, int printvalids)   {
 
-  int i, ppos ;
-  SNP *cupt  ;
-  char ss[MAXSTR] ;
+  int i, chrom ;
+  double ppos ;
+  SNP *cupt ;
+  char ss[10] ;
   FILE *xfile ;
   int numvcase, numvcontrol ;
   char c ;
@@ -1598,13 +1738,17 @@ void printsnps(char *snpoutfilename, SNP **snpm, int num, Indiv **indm, int prin
       if (!printfake && (ignoresnp(cupt))) continue ;
       if (!printfake && (cupt -> isrfake)) continue ;
      }
-     fprintf(xfile, "%20s %3d ", cupt->ID, cupt -> chrom) ;
+
+     ppos = cupt -> physpos ;
+
+     mkchrom(ss, cupt -> chrom, &ppos, cupt -> chimpfudge, chrmode) ;
+     fprintf(xfile, "%20s %5s ", cupt->ID, ss) ;            
 
      if (cupt -> genpos == 0.0) {
-      fprintf(xfile, "%15.0f %15.0f",  cupt -> genpos, cupt -> physpos) ;
+      fprintf(xfile, "%15.0f %15.0f",  cupt -> genpos, ppos) ;
      }
      else {
-      fprintf(xfile, "%15.6f %15.0f",  cupt -> genpos, cupt -> physpos) ;
+      fprintf(xfile, "%15.6f %15.0f",  cupt -> genpos, ppos) ;
      }
 
      if (tersemode) { 
@@ -1843,7 +1987,7 @@ int putweights(char *fname, SNP **snpm, int numsnps)    {
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-int getweights_def(char *fname, SNP **snpm, int numsnps, double default_weight)   {
+int getweights(char *fname, SNP **snpm, int numsnps)   {
   // number of real lines 
   char line[MAXSTR] ;
   char *spt[MAXFF], *sx ;
@@ -1853,7 +1997,7 @@ int getweights_def(char *fname, SNP **snpm, int numsnps, double default_weight) 
 
   FILE *fff ;
   for (k=0; k<numsnps; ++k) { 
-    snpm[k] -> weight = default_weight ;
+    snpm[k] -> weight = 1.0 ;
   }
   openit(fname, &fff, "r") ;
   while (fgets(line, MAXSTR, fff) != NULL)  {
@@ -1881,10 +2025,6 @@ int getweights_def(char *fname, SNP **snpm, int numsnps, double default_weight) 
   fclose(fff) ;
   fflush(stdout) ;
   return num ;
-}
-
-int getweights(char *fname, SNP **snpm, int numsnps)   {
-  return getweights_def(fname, snpm, numsnps, 1.0);
 }
 
 /* ---------------------------------------------------------------------------------------------------- */
@@ -2058,7 +2198,7 @@ int iseigenstrat(char *gname)   {
 int ineigenstrat(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind)   {
   // supports enhanced format fist character X => all missing data for SNP
   FILE *fff ;
-  char *line, c ;
+  char *line = NULL, c ;
   char *spt[2], *sx ;
   int nsplit, rownum=0, k, num ;
   int maxstr, maxff = 2 ; 
@@ -2066,7 +2206,7 @@ int ineigenstrat(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind
   double y  ;
   unsigned char *buff  ;
   char *packit, *pbuff ;
-  int *gtypes, g, g1, g2 ;
+  int  g, g1, g2 ;
   SNP *cupt ; 
   Indiv *indx ;
   int nbad=0 ;
@@ -2078,7 +2218,6 @@ int ineigenstrat(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind
 
   nind = numind ; 
   nsnp = numsnps ;
-  ZALLOC(gtypes, nind, int) ;
 
   // rlen is number of bytes used to store each SNP's genotype data
   y = (double) (nind * 2) / (8 * (double) sizeof (char)) ;  
@@ -2109,7 +2248,7 @@ int ineigenstrat(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind
     if (nsplit>1) fatalx("(ineigenstrat) more than 1 field\n") ;     // white space not expected
 
     if (rownum>=numsnps) fatalx("(ineigenstrat) too many lines in file %d %d\n", rownum, numsnps) ;
-    num = pedcols[rownum] ;
+    num = snpord[rownum] ;
     cupt = snpm[num] ; 
     ++rownum ;
     if (cupt == NULL) continue ;
@@ -2162,6 +2301,8 @@ int ineigenstrat(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind
   }
   if (rownum != numsnps) fatalx("(ineigenstrat) mismatch in numsnps %d and numlines %d\n", numsnps, rownum) ;
   fclose(fff) ;
+  freestring(&line) ;
+
   return nbad ;
 }
 
@@ -2241,6 +2382,25 @@ long bigread(int fdes, char *packg, long numbytes)
  return nr ;
 }
 
+int getsnpordered() 
+{
+ return snpordered ;  
+}
+
+void putsnpordered(int mode) 
+{
+  snpordered = mode ;
+}
+
+void setpordercheck (int mode)  
+{
+  pordercheck = mode ;
+}
+
+void failorder() 
+{
+ fatalx("snps out of order and packed format.  Run convertf with pordercheck: NO\n") ;
+}
 
 /* ---------------------------------------------------------------------------------------------------- */
 void inpack(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind)   {
@@ -2278,12 +2438,13 @@ void inpack(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind)   {
     fatalx("(inpack) bad read") ;
   } 
 
-  // check for file modification
-   sscanf((char *) buff,"GENO %d %d %x %x", &xnind, &xnsnp, &xihash, &xshash) ;
-   if (xnind != nind) fatalx("OOPS number of individuals %d != %d in input files\n", nind, xnind) ;
-   if (xnsnp != nsnp) fatalx("OOPS number of SNPs %d != %d in input file: %s\n", nsnp, xnsnp, gname) ;
+  if (pordercheck && (snpordered == NO)) failorder() ;
 
+  // check for file modification
   if (hashcheck) {
+    sscanf((char *) buff,"GENO %d %d %x %x", &xnind, &xnsnp, &xihash, &xshash) ;
+    if (xnind != nind) fatalx("OOPS number of individuals %d != %d in input files\n", nind, xnind) ;
+    if (xnsnp != nsnp) fatalx("OOPS number of SNPs %d != %d in input file: %s\n", nsnp, xnsnp, gname) ;
     if (xihash != ihash) fatalx("OOPS indiv file has changed since genotype file was created\n") ;
     if (xshash != shash) fatalx("OOPS snp file has changed since genotype file was created\n") ;
   }
@@ -2309,7 +2470,11 @@ void inpack(char *gname, SNP **snpm, Indiv **indiv, int numsnps, int numind)   {
   // now set up pointers into packed data 
   pbuff = packgenos ;
   for (i=0; i<numsnps ; i++)  {  
-    cupt = snpm[i] ;  
+    j = snpord[i] ;
+    if (snpordered == YES) j = i ;
+    if (j<0) fatalx("(inpack) bug\n")  ;
+    if (j>nsnp) fatalx("(inpack) bug\n") ; 
+    cupt = snpm[j] ;  
     if (cupt -> isfake) continue ;
     cupt -> pbuff = pbuff ;
     pbuff += rlen ;
@@ -2488,9 +2653,9 @@ int getpedgenos(char *gname, SNP **snpmarkers, Indiv **indivmarkers, int numsnps
     for (k=colbase ; k < nsplit-1 ; k+=2)  { 
       snpnumber = (k-colbase)/2 ;
 
-      if (snpnumber >= numpedcols) fatalx("pedcols overflow\n") ;
-      snpnum = pedcols[snpnumber] ;
-      if (snpnum<0) fatalx("logic bug (bad pedcols)\n") ;
+      if (snpnumber >= numsnpord) fatalx("snpord overflow\n") ;
+      snpnum = snpord[snpnumber] ;
+      if (snpnum<0) fatalx("logic bug (bad snpord)\n") ;
 
       xvar = gvar[snpnum] ; 
       xref = gref[snpnum] ; 
@@ -2500,7 +2665,7 @@ int getpedgenos(char *gname, SNP **snpmarkers, Indiv **indivmarkers, int numsnps
       n1 = n = pedval(spt[k]) ; 
       n2 = pedval(spt[k+1]) ; 
 
-      if ((n1==5) && (n2==5)) {      // Missing data
+      if ((n1==5) || (n2==5)) {      // Missing data or invalid
         val = -1 ;
         putgtypes(cupt, num, val) ;
         continue ;
@@ -2586,9 +2751,9 @@ void genopedcnt(char *gname, int **gcounts, int nsnp)   {
 
     for (k=colbase ; k < nsplit-1 ; k+=2)  { 
       snpnumber = (k-colbase)/2 ;
-      if (snpnumber >= numpedcols) fatalx("pedcols overflow\n") ;
-      snpnum = pedcols[snpnumber] ;
-      if (snpnum<0) fatalx("logic bug (bad pedcols)\n") ;
+      if (snpnumber >= numsnpord) fatalx("snpord overflow\n") ;
+      snpnum = snpord[snpnumber] ;
+      if (snpnum<0) fatalx("logic bug (bad snpord)\n") ;
       n = pedval(spt[k]) ; 
       //  if ((n<0) || (n>4)) fatalx("(genopedcnt) %s bad geno %s\n", gname, spt[k]) ;
       if ((n<0) || (n>4)) continue ;
@@ -2622,8 +2787,14 @@ void outfiles(char *snpname, char *indname, char *gname, SNP **snpm,
   int sizelimit = 10000000 ;
   int numind ;
 
-  // Squeeze out individuals with ignore flat set
+  // Squeeze out individuals with ignore flag set
   numind = rmindivs(snpm, numsnps, indiv, numindx) ;
+    if (snpname == NULL) {
+     printf("*** warning output snpname NULL\n") ;
+     printf("snpname: %s %d\n", snpname, numsnps) ;
+     printf("indname:  %s %d\n", indname, numind) ;
+     printf("gname: %s\n", gname) ;
+    }
 
   switch (outputmode)  {  
 
@@ -2838,7 +3009,10 @@ void outindped(char *indname, Indiv **indiv, int numind, int ogmode)    {
   for(i = 0; i< numind; i++) {
     indx = indiv[i];
     if (indx->ignore) continue ;            
-    fprintf(ifile, "%6d %12s", i+1, indx->ID) ;
+
+    if (familypopnames != YES) fprintf(ifile, "%6d ", i+1 ) ; 
+    if (familypopnames == YES) fprintf(ifile, "%20s ", indx -> egroup) ;
+    fprintf(ifile, "  %12s",  indx->ID) ;
     fprintf(ifile, " %d %d", 0, 0) ;  // parents 
     c = indx->gender ;
     pgender = 0 ; 
@@ -3194,7 +3368,7 @@ int pedval(char *sx)   {
 /* ---------------------------------------------------------------------------------------------------- */
 int getbedgenos(char *gname, SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, int nignore)   {
  
-  int val, i, k, x ;
+  int val, i, k, x, j ;
   int t, wnum, wplace ;
   int nsnp  ;
   int ngenos = 0 ;
@@ -3214,6 +3388,8 @@ int getbedgenos(char *gname, SNP **snpmarkers, Indiv **indivmarkers, int numsnps
 
   cleargdata(snpmarkers, numsnps, numindivs) ;
   nsnp = numsnps  ;
+
+  if (pordercheck && (snpordered == NO)) failorder() ;
 
   // blen is number of bytes needed to store each SNP's genotype
   y = (double) (numindivs * 2) / (8 * (double) sizeof (char)) ;  
@@ -3245,7 +3421,13 @@ int getbedgenos(char *gname, SNP **snpmarkers, Indiv **indivmarkers, int numsnps
 
   // Read genotype data
   for (i=0; i<nsnp; i++) {  
-    cupt = snpmarkers[i] ;
+    
+    j = snpord[i] ; 
+    if (snpordered == YES) j = i ;
+    if (j<0) fatalx("(readbedgenos) bug\n")  ;
+    if (j>nsnp) fatalx("(readbedgenos) bug\n") ; 
+
+    cupt = snpmarkers[j] ;
     t = read(fdes, buff, blen) ; 
 
     if (t<0) {  
@@ -3726,11 +3908,48 @@ void getgenos_list(char *genotypelist, SNP **snpmarkers, Indiv **indivmarkers,
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-int str2chrom(char *ss)   {
+int setsdpos( SNPDATA *sdpt, int pos)          
+{
+  int t ; 
+  char ss[10], *sx ;
+
+  sdpt -> ppos = pos ;
+  strcpy(ss, sdpt -> cchrom) ;
+  mkupper(ss) ; 
+
+  sdpt -> chimpfudge = chimpmode ;
+
+  sx = strstr(ss, "CHR") ;
+  if (sx != NULL) sx = ss+3 ; 
+  else sx = ss ;
+
+   t = strcmp(sx, "2B") ; 
+   if (t==0) {
+    sdpt -> ppos += 200000000 ;
+    sdpt -> chimpfudge = YES ;
+   }
+   t = strcmp(sx, "2A") ; 
+   if (t==0) {
+    sdpt -> chimpfudge = YES ;
+   }
+  return sdpt -> chimpfudge ;
+}
+
+int str2chrom(char *sss)   {
+  char ss[6] ;
+  if (strlen(sss) > 5) fatalx("bad chrom: %s\n", sss) ;
+  if (strstr(sss, "chr") != NULL) {
+    strcpy(ss, sss+3) ; 
+    setchr(YES) ;
+  }
+  else (strcpy(ss, sss) ) ; 
+  mkupper(ss) ;
   if (strcmp(ss, "X") == 0) return (numchrom+1) ;
   if (strcmp(ss, "Y") == 0) return (numchrom+2) ;
   if (strcmp(ss, "MT") == 0) return MTCHROM ;
   if (strcmp(ss, "XY") == 0) return XYCHROM ;
+  if (strcmp(ss, "2A") == 0) return 2 ;
+  if (strcmp(ss, "2B") == 0) return 2 ;
   if (!isnumword(ss)) return -1 ;
   return atoi(ss) ;
 }
@@ -3968,14 +4187,14 @@ void putped(int num)   {
   int *pp ;  
   int t ;
 
-  pp = pedcolsa[num] ; 
+  pp = snporda[num] ; 
   if (pp != NULL) free(pp) ;
   pp = NULL ;
-  t = numpedcolsa[num] = numpedcols ;
+  t = numsnporda[num] = numsnpord ;
   if (t==0) return ; 
-  ZALLOC(pedcolsa[num], t, int) ;
-  pp = pedcolsa[num] ;
-  copyiarr(pedcols, pp, t) ;
+  ZALLOC(snporda[num], t, int) ;
+  pp = snporda[num] ;
+  copyiarr(snpord, pp, t) ;
 }
 
 /* ---------------------------------------------------------------------------------------------------- */
@@ -3983,14 +4202,14 @@ void getped(int num)   {
   int *pp ;  
   int t ;
   
-  pp = pedcols ;
+  pp = snpord ;
   if (pp != NULL) free(pp) ;
   pp = NULL ;
-  t = numpedcols = numpedcolsa[num]  ;
+  t = numsnpord = numsnporda[num]  ;
   if (t==0) return ; 
-  ZALLOC(pedcols, t, int) ;
-  pp = pedcols ; 
-  copyiarr(pedcolsa[num],  pp, t) ;
+  ZALLOC(snpord, t, int) ;
+  pp = snpord ; 
+  copyiarr(snporda[num],  pp, t) ;
 }
 
 /* ---------------------------------------------------------------------------------------------------- */
@@ -4043,6 +4262,7 @@ void sortsnps(SNP **snpa, SNP **snpb, int n)
 
 }
 
+
 int setstatuslist(Indiv **indm, int numindivs, char **smatchlist, int slen)   
 // return number set 
 { 
@@ -4063,6 +4283,15 @@ int setstatuslist(Indiv **indm, int numindivs, char **smatchlist, int slen)
     ++n ; 
   } 
 }
+
+
+
+
+
+
+
+
+
 
 /* doxygen documentation */
 
@@ -4440,7 +4669,7 @@ int setstatuslist(Indiv **indm, int numindivs, char **smatchlist, int slen)
  */
 
 /*!  \fn void freeped(void)
-     \brief destructor for array pedcols
+     \brief destructor for array snpord
  */
 
 /*!  \fn int readinddata(Indiv **indivmarkers, char *fname)
@@ -4691,13 +4920,13 @@ int setstatuslist(Indiv **indm, int numindivs, char **smatchlist, int slen)
  */
 
 /*! \fn int putped(int num)
-    \brief Store array pedcols in pedcolsa
-    \param num   Index in pedcolsa in which to store copy of array
+    \brief Store array snpord in snporda
+    \param num   Index in snporda in which to store copy of array
  */
 
 /*! \fn void getped(int num)
-    \brief Copy array pedcols from pedcolsa
-    \param num   Index in pedcolsa from which to copy array
+    \brief Copy array snpord from snporda
+    \param num   Index in snporda from which to copy array
  */
 
 /*! \fn int getweights(char *fname, SNP **snpm, int numsnps)
@@ -4709,6 +4938,15 @@ int setstatuslist(Indiv **indm, int numindivs, char **smatchlist, int slen)
  */
 
 
+void setchr(int mode) 
+{
+ chrmode = mode ;
+}
+
+void setchimpmode(int mode) 
+{
+ chimpmode = mode ;
+}
 
 
 

@@ -37,7 +37,7 @@ The program will write all the output to stdout. The output file prints the parf
 number of snps and individuals, jackknife block size, number of blocks for jackknife and the results.
 
 See example shown in-
-qpWave/qpWave.log
+examples/qpWave.log
 
 qpAdm: 
 To run qpAdm, type the following on a linux machine. 
@@ -65,8 +65,5 @@ reasonable.
 
 ------------------------------------------------------------------------------
 Questions?
-email Mengyao Zhao, mengyao_zhao@hms.harvard.edu
-
-revised by Mengyao Zhao on 2015-07-24
-
+email Arti Tandon, atandon@broadinstitute.org
 

@@ -1,6 +1,3 @@
-#ifdef __cplusplus
-extern "C" {
-#endif
 typedef struct {
   int nl ; 
   int nr ; 
@@ -18,13 +15,17 @@ typedef struct {
   double *B ;
   double *mean ; 
   double *resid ; 
+  struct F4INFO *bestparent ;
+  struct F4INFO *bestchild ;
 } F4INFO  ;
 // dofjack is dof from jackknife blocks 
 // dof is dof from approx chisq     
 
 
 void doranktest(double *mean, double *var, int m, int n, int rank, F4INFO *f4pt) ;
+void doranktestfix(double *mean, double *var, int m, int n, int rank, F4INFO *f4pt, int *vfix) ;
 double ranktest(double *mean, double *var, int m, int n, int rank, double *pA, double *pB) ;
+double ranktestfix(double *mean, double *var, int m, int n, int rank, double *pA, double *pB, int *vfix) ;
 double scx(double *W, double *mean, double *x, int d)  ;
 void normab(double *A, double *B, int m, int n, int rank)  ;
 int dofrank(int m, int n, int rank) ;
@@ -32,6 +33,3 @@ void f4info_init(F4INFO *f4pt, int nl, int nr, char **popllist, char **poprlist,
 void printf4info(F4INFO *f4pt)  ;
 
 
-#ifdef __cplusplus
-}
-#endif

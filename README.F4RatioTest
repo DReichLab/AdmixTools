@@ -37,11 +37,9 @@ result:   Pop1 (A)  Pop2 (O) Pop3 (X)  Pop4 (C): Pop1 (A)  Pop2 (O) Pop5 (B)  Po
 The result for each set of 5 populations is shown on a separate line.
 
 See example shown in-
-f4ratio/parqpF4ratio
+examples/F4ratio.log 
 
 ------------------------------------------------------------------------------
-Revised by Mengyao Zhao on 2016-06-25
-
 Questions?
 email Arti Tandon, atandon@broadinstitute.org
 
