@@ -1,0 +1,1 @@
+ ../bin/qpGraph -p par:sim1:gr1triv -g gr1triv -o sim1:gr1triv.ggg -d sim1:gr1triv.dot > gr1triv:log 

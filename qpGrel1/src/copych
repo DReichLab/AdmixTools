@@ -1,0 +1,21 @@
+#!/usr/local/bin/perl  -w 
+
+## copych D1 D2 from D1 to D2.  Like copych $R .
+
+($D1, $D2) = @ARGV ;
+if (!(defined $D2))  {  
+ printf "usage: copych sourcedir destdir\n" ;
+ exit 0 ;
+}
+
+chdir $D2 || die "can't chdir $D2" ;
+@F = glob "*.c *.h" ;
+##$out = join "\n", @F ;
+##print "$out\n" ;
+foreach $f (@F) {  
+ if (-e "$D1/$f")  {
+  system "cp $D1/$f ." ;
+  print "$f copied\n" ;
+ }
+}
+

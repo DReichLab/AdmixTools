@@ -1,0 +1,30 @@
+f:  gauss.c
+f:  gds.c
+f:  getpars.c
+f:  linsubs.c
+f:  sortit.c
+f:  statsubs.c
+f:  strsubs.c
+f:  vsubs.c
+1028,1036d1027
+< void mapit(int *a, int *b, int n, int inval, int outval) 
+< {
+<   int k ;
+< 
+<   copyiarr(b, a, n) ;
+<   for (k=0; k<n; ++k) {  
+<    if (a[k]==inval)  a[k] = outval ;
+<   }
+< }
+f:  xsearch.c
+f:  getpars.h
+f:  linsubs.h
+f:  nicklib.h
+f:  ranmath.h
+f:  sortit.h
+f:  statsubs.h
+f:  strsubs.h
+f:  vsubs.h
+101d100
+< void mapit(int *a, int *b, int n, int inval, int outval) ;
+f:  xsearch.h

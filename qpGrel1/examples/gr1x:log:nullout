@@ -1,0 +1,144 @@
+parameter file: par:sim1:gr1x:nullout
+### THE INPUT PARAMETERS
+##PARAMETER NAME: VALUE
+DIR: ../data
+S1: sim1
+indivname: ../data/sim1.ind
+snpname: ../data/sim1.snp
+genotypename: ../data/sim1.geno
+outpop: NULL
+blgsize: 0.005
+forcezmode: YES
+lsqmode: YES
+diag: .0001
+bigiter: 6
+hires: YES
+## qpGraph version: 3000 
+outpop:  NULL
+seed: -1194228411
+simple lsqmode
+*** warning.  genetic distances are in cM not Morgans
+           SNP:10002   1      100.010000       100010000 C T
+
+packed geno read OK
+
+graph: gr1x
+
+
+  0 Out
+  1 A
+  2 B
+  3 C
+  4 X
+root label: :::C::A::B:Out
+population:   0                  Out   50
+population:   1                    A   50
+population:   2                    B   50
+population:   3                    C   50
+population:   4                    X   50
+before setwt numsnps: 50000  outpop: NULL
+setwt numsnps: 49212
+number of blocks for moving block jackknife: 987
+snps: 49212  indivs: 250
+lambdascale:     3.204
+fst:
+        O    A    B    C    X 
+  O     0   93   93   94   80
+  A    93    0   49   72   50
+  B    93   49    0   72   43
+  C    94   72   72    0   24
+  X    80   50   43   24    0
+
+f2:
+        O    A    B    C    X 
+  O     0  100  100  101   86
+  A   100    0   45   69   47
+  B   100   45    0   69   41
+  C   101   69   69    0   22
+  X    86   47   41   22    0
+
+ff3:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0  100   77   66   69
+  B     0   77  100   66   72
+  C     0   66   66  101   82
+  X     0   69   72   82   86
+
+ff3sig*10:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0    8    7    6    6
+  B     0    7    8    6    6
+  C     0    6    6    7    7
+  X     0    6    6    7    7
+
+starting analysis
+    0.307     0.693 
+
+
+ score:        0.007  dof: 1 nominal p-val     0.934409 constraint:     0.000000
+ff3fit:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0  100   77   66   69
+  B     0   77  100   66   72
+  C     0   66   66  101   82
+  X     0   69   72   82   86
+
+ff3diff:
+        O    A    B    C    X 
+  O     0    0    0    0    0
+  A     0    0    0    0    0
+  B     0    0    0    0    0
+  C     0    0    0    0    0
+  X     0    0    0    0    0
+
+                             :X XX BB CC     0.313     0.687 
+
+        q         o        cc        ab         c         a        bb         b         x 
+   0.0656    0.0000    0.0239    0.0116    0.0111    0.0226    0.0103    0.0123    0.0068 
+
+
+                      fst:       fitted        estim         diff     std. err   Z score 
+      Out           A f2:     0.099749     0.099756     0.000006     0.000773     0.008 
+      Out           B f2:     0.099669     0.099673     0.000003     0.000760     0.004 
+      Out           C f2:     0.100526     0.100529     0.000003     0.000749     0.004 
+      Out           X f2:     0.085819     0.085820     0.000001     0.000662     0.002 
+         A          B f2:     0.045166     0.045184     0.000019     0.000405     0.046 
+         A          C f2:     0.069159     0.069090    -0.000069     0.000588    -0.117 
+         A          X f2:     0.047211     0.047218     0.000007     0.000428     0.016 
+         B          C f2:     0.069078     0.069152     0.000074     0.000600     0.123 
+         B          X f2:     0.040709     0.040717     0.000008     0.000380     0.020 
+         C          X f2:     0.022389     0.022388    -0.000001     0.000237    -0.006 
+
+
+outliers:
+
+vertex            R         0
+vertex            O         0
+vertex            Q         0
+vertex           CC         0
+vertex           AB         0
+vertex            A         0
+vertex            C         0
+vertex           BB         0
+vertex            B         0
+vertex           XX         0
+vertex            X         0
+label            O                  Out    50
+label            A                    A    50
+label            C                    C    50
+label            B                    B    50
+label            X                    X    50
+ledge            q            R            Q     0.0656
+redge            o            R            O     0.0000
+ledge           cc            Q           CC     0.0239
+redge           ab            Q           AB     0.0116
+ledge            c           CC            C     0.0111
+ledge            a           AB            A     0.0226
+redge           bb           AB           BB     0.0103
+ledge            b           BB            B     0.0123
+ledge            x           XX            X     0.0068
+admix           XX          BB         CC      0.3130     0.6870
+## end of run
