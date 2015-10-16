@@ -45,7 +45,7 @@ DESCRIPTION OF OUTPUT FILE:
 The program will write all the output to stdout. The output file prints the parfile entered by the user, number of snps and individuals, jackknife block size, number of blocks for jackknife and the results.
 
 The results have the following format -
-result:   Pop1 (W)  Pop2 (X) : Pop3 (Y)  Pop4 (Z)  D stat         Z
+result:   Pop1 (W)  Pop2 (X) : Pop3 (Y)  Pop4 (Z)  D-stat	Z	BABA	ABBA	#_of_SNPs_that_all_populations_have_data	
 
 The result for each quadrppule is shown on a separate line.
 
@@ -54,5 +54,5 @@ examples/qpDstat.log, examples/qpDstat1.log
 
 ------------------------------------------------------------------------------
 Questions?
-email Arti Tandon, atandon@broadinstitute.org
+email Mengyao Zhao, mengyao_zhao@hms.harvard.edu
 
