@@ -26,6 +26,7 @@ genotypename:   input genotype file (in eigenstrat format)
 snpname:   input snp file      (in eigenstrat format)
 indivname:   input indiv file    (in eigenstrat format)
 popfilename:  list (contains list of 5 poulations- A 0 : X C:: A 0 : B C. Colon separators are not required and are ignored by the program. They have been included to make the input/output more readable). 
+blgsize:	jackknife block size (in centimorgan)
 
 DESCRIPTION OF OUTPUT FILE:
 The program will write all the output to stdout. The output file prints the parfile entered by the user, number of snps and individuals, jackknife block size, number of blocks for jackknif
@@ -41,7 +42,7 @@ examples/F4ratio.log
 
 ------------------------------------------------------------------------------
 Questions?
-email Arti Tandon, atandon@broadinstitute.org
+email Mengyao Zhao (mengyao_zhao@hms.harvard.edu)
 
 
 
