@@ -25,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "300" 
+#define WVERSION   "400" 
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -34,17 +34,18 @@
 // count of number of non-mono snps added
 // missing pop now just error message
 // inbreed bug in f3 score snps dropped unnecessarily
+// code cleanup (graph stuff deleted) and numchrom
 
 #define MAXFL  50   
 #define MAXSTR  512
 #define MAXPOPS 100
 
 char *parname = NULL ;
-char *rootname = NULL ;
 char *trashdir = "/var/tmp" ;
 int details = NO ;
 int qtmode = NO ;
 char *f3name = NULL ;
+double jackquart = -1.0 ;
 
 Indiv **indivmarkers;
 SNP **snpmarkers ;
@@ -52,20 +53,14 @@ int numsnps, numindivs ;
 int seed = 0 ;
 int missingmode = NO ;
 int noxdata = YES ;  /* default as pop structure dubious if Males and females */
-int doanalysis = YES ;  /* if no just print stats */
 int nostatslim = 10 ;
 int znval = -1 ;
 int popsizelimit = -1 ;
 int gfromp = NO ;  // genetic distance from physical 
 int jackweight = YES ; 
 int pubjack = NO  ; 
-double jackquart = -1.0 ;
 
-int forcezmode = NO ;
 double blgsize = 0.05 ;  // block size in Morgans */ double *chitot ;
-double diag = 0.0 ;
-int  bigiter = 100 ;
-int  startiter= 50 ;
 int  xchrom  = -1 ;
 int  zchrom  = -1 ;
 int    *xpopsize ;
@@ -79,8 +74,6 @@ char  *snpname = NULL ;
 char  *snpoutfilename = NULL ;
 char  *indivname = NULL ;
 char *badsnpname = NULL ;
-char *graphname = NULL ;
-char *graphoutname = NULL ;
 char *popfilename = NULL ;
 char *outliername = NULL ;
 char *snpdetailsname = NULL ;
@@ -184,7 +177,7 @@ int main(int argc, char **argv)
   readcommands(argc, argv) ;
   printf("## qp3Pop version: %s\n", WVERSION) ;
   if (parname == NULL) return 0 ;
-  if (xchrom == 23) noxdata = NO ;
+  if (xchrom == (numchrom+1)) noxdata = NO ;
   setjquart(pubjack, jackweight, jackquart) ;
   setinbreed(inbreed) ;
 
@@ -201,9 +194,9 @@ int main(int argc, char **argv)
     cupt = snpmarkers[i] ; 
     chrom = cupt -> chrom ;
     if ((xchrom>0) && (chrom != xchrom)) cupt -> ignore = YES ;
-    if ((noxdata) && (chrom == 23)) cupt-> ignore = YES ;
+    if ((noxdata) && (chrom == (numchrom+1))) cupt-> ignore = YES ;
     if (chrom == 0) cupt -> ignore = YES ;
-    if (chrom > 23) cupt -> ignore = YES ;
+    if (chrom > (numchrom+1)) cupt -> ignore = YES ;
     if (chrom == zchrom) cupt -> ignore = YES ;
   }
 
@@ -212,7 +205,7 @@ int main(int argc, char **argv)
   num = readpopx(popfilename, plists, 3) ;
   nplist = num ;
   printf("nplist: %d\n", nplist) ;
-  if (nplist == 0) return 0;
+  if (nplist == 0) return ;
 
 
   ZALLOC(eglist, nplist*3, char *)  ;  
@@ -361,7 +354,7 @@ void readcommands(int argc, char **argv)
   char *tempname ;
   int n, t ;
 
-  while ((i = getopt (argc, argv, "f:b:p:g:s:o:vVx")) != -1) {
+  while ((i = getopt (argc, argv, "f:b:p:s:vV")) != -1) {
 
     switch (i)
       {
@@ -374,14 +367,6 @@ void readcommands(int argc, char **argv)
 	snpdetailsname = strdup(optarg) ;
 	break;
 
-      case 'g':
-	graphname = strdup(optarg) ;
-	break;
-
-      case 'o':
-	graphoutname = strdup(optarg) ;
-	break;
-
       case 's':
 	seed = atoi(optarg) ;
 	break;
@@ -392,10 +377,6 @@ void readcommands(int argc, char **argv)
 
       case 'v':
 	printf("version: %s\n", WVERSION) ; 
-	break; 
-
-      case 'x':
-	doanalysis = NO ; 
 	break; 
 
       case 'V':
@@ -415,52 +396,40 @@ void readcommands(int argc, char **argv)
    }
 
    pcheck(parname,'p') ;
-   printf("parameter file: %s\n", parname) ;
+   printf("%s: parameter file: %s\n", argv[0], parname) ;
    ph = openpars(parname) ;
    dostrsub(ph) ;
 
    getstring(ph, "genotypename:", &genotypename) ;
    getstring(ph, "snpname:", &snpname) ;
    getstring(ph, "indivname:", &indivname) ;
-   getstring(ph, "graphname:", &graphname) ;
-   getstring(ph, "graphoutname:", &graphoutname) ;
    getstring(ph, "snpdetailsname:", &snpdetailsname) ;
    getstring(ph, "outpop:", &outpop) ;
    getstring(ph, "output:", &outputname) ;
    getstring(ph, "badsnpname:", &badsnpname) ;
    getstring(ph, "popfilename:", &popfilename) ;
    getstring(ph, "f3log:", &f3name) ;
-   getstring(ph, "root:", &rootname) ;
    getdbl(ph, "blgsize:", &blgsize) ;
-   getdbl(ph, "diag:", &diag) ;
-   getdbl(ph, "f2diag:", &f2diag) ;
-   getdbl(ph, "minvar:", &minvar) ;
-   getint(ph, "bigiter:", &bigiter) ;
+   getint(ph, "numchrom:", &numchrom) ;
    getint(ph, "inbreed:", &inbreed) ;
-   getint(ph, "startiter:", &startiter) ;
-   getint(ph, "fancynorm:", &fancynorm) ;
 
    getint(ph, "noxdata:", &noxdata) ; 
    t = -1 ;
    getint(ph, "xdata:", &t) ; if (t>=0) noxdata = 1-t ;
    getint(ph, "chrom:", &xchrom) ;
    getint(ph, "nochrom:", &zchrom) ;
-   getint(ph, "doanalysis:", &doanalysis) ; 
-   getint(ph, "quartet:", &quartet) ; 
 
    getint(ph, "nostatslim:", &nostatslim) ; 
    getint(ph, "popsizelimit:", &popsizelimit) ; 
    getint(ph, "gfromp:", &gfromp) ;  // gen dis from phys
    getint(ph, "seed:", &seed) ;  
    getint(ph, "details:", &details) ;  
-   getint(ph, "forcezmode:", &forcezmode) ;  
-   getint(ph, "dzeromode:", &dzeromode) ;  
    getdbl(ph, "baseval:", &baseval) ;  
-   getdbl(ph, "jackquart:", &jackquart) ; 
    getint(ph, "jackweight:", &jackweight) ;
    getint(ph, "pubjack:", &pubjack) ;
    getstring(ph, "dumpname:", &dumpname) ;
    getstring(ph, "loadname:", &loadname) ;
+   getdbl(ph, "jackquart:", &jackquart) ; 
 
    printf("### THE INPUT PARAMETERS\n");
    printf("##PARAMETER NAME: VALUE\n");
