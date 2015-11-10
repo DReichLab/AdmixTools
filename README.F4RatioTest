@@ -28,6 +28,13 @@ indivname:   input indiv file    (in eigenstrat format)
 popfilename:  list (contains list of 5 poulations- A 0 : X C:: A 0 : B C. Colon separators are not required and are ignored by the program. They have been included to make the input/output more readable). 
 blgsize:	jackknife block size (in centimorgan)
 
+Note:
+If you would like to use SNP number to define block size, you can:
+make a fake .snp file with (false) physical positions, and 0 genetic distances.  
+The software defaults to 1M bases = 1cm, so if (for example) you set the
+distance between each snp as 10000 bases and blgsize: .01 then each block
+will be 100 snps.
+
 DESCRIPTION OF OUTPUT FILE:
 The program will write all the output to stdout. The output file prints the parfile entered by the user, number of snps and individuals, jackknife block size, number of blocks for jackknif
 e and the results.
@@ -36,6 +43,7 @@ The results have the following format -
 result:   Pop1 (A)  Pop2 (O) Pop3 (X)  Pop4 (C): Pop1 (A)  Pop2 (O) Pop5 (B)  Pop4 (C)  alpha  std. err  Z (null=0)
 
 The result for each set of 5 populations is shown on a separate line.
+
 
 See example shown in-
 examples/F4ratio.log 
