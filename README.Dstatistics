@@ -55,6 +55,7 @@ See example shown in-
 examples/qpDstat.log, examples/qpDstat1.log
 
 NOTE:
+Z = D/standard_error
 If you would like qpDstat to output standard error, please add this following line to your parameter file:
 printsd:  YES
 
