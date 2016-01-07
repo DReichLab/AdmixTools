@@ -11,14 +11,16 @@ The output of qpDstat is informative about the direction of gene flow. So for 4 
 If the Z-score is +ve, then the gene flow occured either between W and Y or X and Z 
 If the Z-score is -ve, then the gene flow occured either between W and Z or X and Y. 
 
-qpDstat requires that the input data is available in a Recilab format such as EIGENSTRAT.  
+qpDstat requires that the input data is available in a Reichlab format such as EIGENSTRAT.  
 To convert to the appropriate format, one can use CONVERTF. See 
 README.CONVERTF for documentation of programs for converting file formats.
 
 Executable and source code:
 ------------------------------------------------------------------------------
+The executables of AdmixTools are available here:
+https://github.com/DReichLab/AdmixTools/releases
  
-For information about installing the program, see README.ADMIXTOOLS. After installing the programs, the executable for D-statistics (qpDstat) should be located in the bin directory.
+Please aware AdmixTools is designed for Linux system. If the executables don't work on your Linux machine, please compile and install the program. For information about installing the program, see README.ADMIXTOOLS. After installing the programs, the executable for D-statistics (qpDstat) should be located in the bin directory.
 
 To run qpDstat, type the following on a linux machine. 
 $DIR/bin/qpDstat -p parfile [-l lo] [-h hi] >logfile
@@ -52,7 +54,13 @@ The result for each quadrppule is shown on a separate line.
 See example shown in-
 examples/qpDstat.log, examples/qpDstat1.log
 
+NOTE:
+If you would like qpDstat to output standard error, please add this following line to your parameter file:
+printsd:  YES
+
 ------------------------------------------------------------------------------
+Updated by Mengyao Zhao on 2016-01-07
+
 Questions?
-email Mengyao Zhao, mengyao_zhao@hms.harvard.edu
+Please email Mengyao Zhao, mengyao_zhao@hms.harvard.edu
 
