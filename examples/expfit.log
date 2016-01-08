@@ -1,0 +1,10 @@
+Running rexpfit.r 
+Input file:  Uygur
+Output file:  expfit_Uygur
+Expfit logfile: expfit_Uygur.flog
+Output plot: expfit_Uygur.pdf
+Jackknife logfile: expfit_Uygur.log
+
+Jackknife summary: Uygur.jin
+Jackknife mean:         22.557
+Jackknife std. err:      2.498

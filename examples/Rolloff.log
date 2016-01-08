@@ -1,0 +1,60 @@
+Sender: LSF System <lsfadmin@clarinet001-212.orchestra>
+Subject: Job 246984: <../bin/rolloff -p parRolloff> Done
+
+Job <../bin/rolloff -p parRolloff> was submitted from host <mezzanine.orchestra> by user <pm82> in cluster <hms_orchestra>.
+Job was executed on host(s) <clarinet001-212.orchestra>, in queue <shared_12h>, as user <pm82> in cluster <hms_orchestra>.
+</home/pm82> was used as the home directory.
+</groups/reich/pm82/dev/ADMIXTOOLS/examples> was used as the working directory.
+Started at Sun Sep  9 02:44:53 2012
+Results reported at Sun Sep  9 14:16:35 2012
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+../bin/rolloff -p parRolloff
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time   :  41447.75 sec.
+    Max Memory :       437 MB
+    Max Swap   :       474 MB
+
+    Max Processes  :         3
+    Max Threads    :         4
+
+The output (if any) follows:
+
+
+## rolloff.  Version 1000
+
+parameter file: parRolloff
+DIR: ../data/
+SSS: allmap
+indivname: ../data//allmap.ind
+snpname: ../data//allmap.snp
+genotypename: ../data//allmap.geno
+poplistname: rolloff.ref
+admixlist: rolloff.target
+binsize: .001
+output: Uygur
+maxdis: 0.4
+seed: 77
+runmode: 1
+mincount: 4
+minparentcount: 0
+jackknife: YES
+seed: 77
+chithresh:     6.000
+genotypename:  ../data//allmap.geno
+packed geno read OK
+valid snps: 621038
+group 0 French
+group 1 Han
+number admixed: 9 number of references: 2
+numsnps: 621038  numindivs: 67
+starting main loop. numsnps: 465168
+##end of run

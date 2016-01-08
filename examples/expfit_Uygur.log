@@ -1,0 +1,442 @@
+Jackknife Results: 
+
+
+Input file Uygur:1 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.417e-03  4.363e-04   14.71   <2e-16 ***
+A 9.500e-02  2.369e-03   40.10   <2e-16 ***
+m 2.243e+01  8.458e-01   26.52   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006444 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 2.211e-06 
+
+mean (generations):  22.43102 
+
+Input file Uygur:2 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.234e-03  4.555e-04   13.69   <2e-16 ***
+A 9.726e-02  2.547e-03   38.19   <2e-16 ***
+m 2.304e+01  9.037e-01   25.49   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006798 on 393 degrees of freedom
+
+Number of iterations to convergence: 0 
+Achieved convergence tolerance: 3.3e-06 
+
+mean (generations):  23.03956 
+
+Input file Uygur:3 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.118e-03  4.463e-04   13.71   <2e-16 ***
+A 9.495e-02  2.534e-03   37.46   <2e-16 ***
+m 2.338e+01  9.301e-01   25.13   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006697 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 2.662e-06 
+
+mean (generations):  23.375217 
+
+Input file Uygur:4 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.470e-03  4.542e-04   14.24   <2e-16 ***
+A 9.631e-02  2.470e-03   38.99   <2e-16 ***
+m 2.246e+01  8.707e-01   25.80   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006713 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 7.072e-07 
+
+mean (generations):  22.463408 
+
+Input file Uygur:5 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 5.764e-03  4.723e-04   12.20   <2e-16 ***
+A 9.649e-02  2.494e-03   38.69   <2e-16 ***
+m 2.188e+01  8.627e-01   25.36   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006905 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 1.58e-06 
+
+mean (generations):  21.875488 
+
+Input file Uygur:6 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.322e-03  4.468e-04   14.15   <2e-16 ***
+A 9.656e-02  2.410e-03   40.07   <2e-16 ***
+m 2.229e+01  8.431e-01   26.44   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006583 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 3.786e-06 
+
+mean (generations):  22.294106 
+
+Input file Uygur:7 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.269e-03  4.647e-04   13.49   <2e-16 ***
+A 9.606e-02  2.593e-03   37.04   <2e-16 ***
+m 2.300e+01  9.307e-01   24.71   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006931 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 4.336e-06 
+
+mean (generations):  23.00005 
+
+Input file Uygur:8 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 5.879e-03  4.717e-04   12.46   <2e-16 ***
+A 9.408e-02  2.413e-03   38.99   <2e-16 ***
+m 2.126e+01  8.409e-01   25.29   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006814 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 6.763e-06 
+
+mean (generations):  21.263476 
+
+Input file Uygur:9 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.745e-03  4.541e-04   14.85   <2e-16 ***
+A 9.687e-02  2.565e-03   37.77   <2e-16 ***
+m 2.326e+01  9.193e-01   25.30   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006801 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 7.083e-06 
+
+mean (generations):  23.255262 
+
+Input file Uygur:10 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.182e-03  4.678e-04   13.21   <2e-16 ***
+A 9.572e-02  2.606e-03   36.73   <2e-16 ***
+m 2.296e+01  9.375e-01   24.49   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006973 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 6.047e-06 
+
+mean (generations):  22.961465 
+
+Input file Uygur:11 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 5.521e-03  4.799e-04    11.5   <2e-16 ***
+A 9.633e-02  2.582e-03    37.3   <2e-16 ***
+m 2.225e+01  9.044e-01    24.6   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.007065 on 393 degrees of freedom
+
+Number of iterations to convergence: 2 
+Achieved convergence tolerance: 5.356e-06 
+
+mean (generations):  22.248003 
+
+Input file Uygur:12 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.265e-03  4.504e-04   13.91   <2e-16 ***
+A 9.762e-02  2.539e-03   38.45   <2e-16 ***
+m 2.322e+01  9.021e-01   25.73   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006741 on 393 degrees of freedom
+
+Number of iterations to convergence: 0 
+Achieved convergence tolerance: 9.571e-06 
+
+mean (generations):  23.215761 
+
+Input file Uygur:13 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.127e-03  4.535e-04   13.51   <2e-16 ***
+A 9.660e-02  2.509e-03   38.50   <2e-16 ***
+m 2.282e+01  8.909e-01   25.61   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006744 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 3.174e-06 
+
+mean (generations):  22.820432 
+
+Input file Uygur:14 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 5.910e-03  4.597e-04   12.86   <2e-16 ***
+A 9.564e-02  2.444e-03   39.13   <2e-16 ***
+m 2.201e+01  8.561e-01   25.71   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006738 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 4.913e-06 
+
+mean (generations):  22.006584 
+
+Input file Uygur:15 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 5.655e-03  4.557e-04   12.41   <2e-16 ***
+A 9.489e-02  2.481e-03   38.24   <2e-16 ***
+m 2.249e+01  8.883e-01   25.32   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006738 on 393 degrees of freedom
+
+Number of iterations to convergence: 2 
+Achieved convergence tolerance: 7.342e-06 
+
+mean (generations):  22.486762 
+
+Input file Uygur:16 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.054e-03  4.438e-04   13.64   <2e-16 ***
+A 9.711e-02  2.504e-03   38.78   <2e-16 ***
+m 2.323e+01  8.949e-01   25.96   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006645 on 393 degrees of freedom
+
+Number of iterations to convergence: 2 
+Achieved convergence tolerance: 4.736e-06 
+
+mean (generations):  23.232993 
+
+Input file Uygur:17 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.662e-03  4.474e-04   14.89   <2e-16 ***
+A 9.573e-02  2.496e-03   38.35   <2e-16 ***
+m 2.299e+01  8.986e-01   25.59   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006672 on 393 degrees of freedom
+
+Number of iterations to convergence: 0 
+Achieved convergence tolerance: 8.211e-06 
+
+mean (generations):  22.993169 
+
+Input file Uygur:18 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.083e-03  4.546e-04   13.38   <2e-16 ***
+A 9.629e-02  2.515e-03   38.29   <2e-16 ***
+m 2.282e+01  8.957e-01   25.48   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006759 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 3.398e-06 
+
+mean (generations):  22.818852 
+
+Input file Uygur:19 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.455e-03  4.434e-04   14.56   <2e-16 ***
+A 9.687e-02  2.503e-03   38.70   <2e-16 ***
+m 2.324e+01  8.969e-01   25.92   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.00664 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 1.565e-06 
+
+mean (generations):  23.243286 
+
+Input file Uygur:20 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.507e-03  4.434e-04   14.68   <2e-16 ***
+A 9.658e-02  2.468e-03   39.14   <2e-16 ***
+m 2.294e+01  8.793e-01   26.09   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006607 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 5.023e-07 
+
+mean (generations):  22.941403 
+
+Input file Uygur:21 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.162e-03  4.549e-04   13.55   <2e-16 ***
+A 9.531e-02  2.461e-03   38.72   <2e-16 ***
+m 2.236e+01  8.741e-01   25.58   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.00671 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 1.059e-08 
+
+mean (generations):  22.36003 
+
+Input file Uygur:22 
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.309e-03  4.489e-04   14.05   <2e-16 ***
+A 9.545e-02  2.440e-03   39.12   <2e-16 ***
+m 2.245e+01  8.675e-01   25.88   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006633 on 393 degrees of freedom
+
+Number of iterations to convergence: 1 
+Achieved convergence tolerance: 2.337e-06 
+
+mean (generations):  22.45368 

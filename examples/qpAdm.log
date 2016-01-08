@@ -1,0 +1,98 @@
+parameter file: parqpAdm
+### THE INPUT PARAMETERS
+##PARAMETER NAME: VALUE
+DIR: ../data
+S1: qpdata
+indivname: ../data/qpdata.ind
+snpname: ../data/qpdata.snp
+genotypename: ../data/qpdata.geno
+popleft: left1
+popright: right1
+## qpAdm version: 103
+
+left pops:
+Corded_Ware_LN
+WHG
+LBK_EN
+Yamnaya
+
+right pops:
+Han
+Eskimo
+Mbuti
+Karitiana
+Ulchi
+
+  0       Corded_Ware_LN    4
+  1                  WHG    2
+  2               LBK_EN   12
+  3              Yamnaya    9
+  4                  Han   33
+  5               Eskimo   22
+  6                Mbuti   10
+  7            Karitiana   12
+  8                Ulchi   25
+jackknife block size:     0.050
+snps: 354212  indivs: 129
+number of blocks for block jackknife: 710
+dof (jackknife):   606.426
+numsnps used: 351683
+codimension 1
+f4info: 
+f4rank: 2 dof:      2 chisq:     0.536 tail:          0.764859692 dofdiff:      4 chisqdiff:    -0.536 taildiff:                    1
+B:
+          scale     1.000     1.000 
+         Eskimo     1.021     0.540 
+          Mbuti    -0.990     1.738 
+      Karitiana     1.387     0.830 
+          Ulchi     0.233     0.001 
+A:
+          scale  1202.997  3105.760 
+            WHG    -0.477    -1.556 
+         LBK_EN    -1.581     0.634 
+        Yamnaya     0.522     0.420 
+
+
+full rank 1
+f4info: 
+f4rank: 3 dof:      0 chisq:     0.000 tail:                    1 dofdiff:      2 chisqdiff:     0.536 taildiff:          0.764859692
+B:
+          scale     1.000     1.000     1.000 
+         Eskimo     0.988     0.490     1.642 
+          Mbuti    -0.992     1.730     0.101 
+      Karitiana     1.409     0.875    -1.116 
+          Ulchi     0.231    -0.005     0.218 
+A:
+          scale  1193.784  3109.317 29979.194 
+            WHG    -0.493    -1.570     0.541 
+         LBK_EN    -1.584     0.614     0.338 
+        Yamnaya     0.498     0.398     1.610 
+
+
+best coefficients:     0.228     0.140     0.632 
+ssres:
+    0.000046181     0.000008882    -0.000072372     0.000004988 
+    1.068346751     0.205479302    -1.674245163     0.115397621 
+
+Jackknife mean:      0.223656191     0.141994680     0.634349129 
+      std. errors:     0.155     0.089     0.097 
+
+error covariance (* 1000000)
+     24169     -11297     -12872 
+    -11297       7925       3372 
+    -12872       3372       9500 
+
+
+    fixed pat  wt  dof     chisq       tail prob
+          000  0     2     0.536         0.76486     0.228     0.140     0.632 
+          001  1     3    14.812               0     1.292    -0.292     0.000  infeasible
+          010  1     3     2.767         0.42894     0.435     0.000     0.565 
+          100  1     3     2.710        0.438597     0.000     0.245     0.755 
+          011  2     4    19.818     0.000542525     1.000    -0.000     0.000 
+          101  2     4   168.305               0     0.000     1.000     0.000 
+          110  2     4    22.430     0.000164556     0.000    -0.000     1.000 
+best pat:          000          0.76486              -  -
+best pat:          100         0.438597  chi(nested):     2.173 p-value for nested model:        0.140408
+best pat:          011      0.000542525  chi(nested):    17.108 p-value for nested model:     3.53115e-05
+
+## end of run

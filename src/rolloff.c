@@ -18,7 +18,7 @@
 #include "egsubs.h"  
 #include "ldsubs.h"  
 
-#define WVERSION   "1002" 
+#define WVERSION   "1100" 
 /** an attempt to 
  1) threshold for LD in parentals 
  2) Use a weighted Z-score
@@ -29,13 +29,14 @@
  nochrom added
  zdipmode added
  mincount default now 5
- Jackknife output for 22 autosomes 
+ Jackknife output for numchrom autosomes 
  Bug in clearcorr fixed
  Bug in dumpit callfixed
  xnochrom added
  checkmap added (default) 
  First admixtools release
  Count of outer + inner loop made
+ numchrom parametric
 */
 
 
@@ -265,7 +266,7 @@ int main(int argc, char **argv)
     chrom = cupt -> chrom ; 
     
     if (chrom<1) cupt -> ignore = YES ;
-    if (chrom>22) cupt -> ignore = YES ;
+    if (chrom>numchrom) cupt -> ignore = YES ;
     if ((xchrom>0) && (chrom != xchrom)) cupt -> ignore = YES ;
     if (chrom == xnochrom) cupt -> ignore = YES ;
     if (cupt -> ignore == NO) ++t ;
@@ -836,6 +837,7 @@ int readcommands(int argc, char **argv)
    getint(ph, "flatmode:", &flatmode) ;
    getint(ph, "zdipcorrmode:", &zdipcorrmode) ;
    getint(ph, "jackknife:", &jackknife) ;
+   getint(ph, "numchrom:", &numchrom) ;
 
    getdbl(ph, "maxdis:", &maxdis) ;
    getdbl(ph, "binsize:", &binsize) ;
@@ -867,7 +869,7 @@ void setfc(SNP **snpm, int numsnps)
 //  if (cupt -> isfake) continue ;
     if (cupt -> ignore) continue ;
     chrom = cupt -> chrom ;
-//  if ((noxdata) && (chrom==23)) continue  ;
+//  if ((noxdata) && (chrom==(numchrom+1))) continue  ;
     fchrom[chrom] = MIN(fchrom[chrom],i) ;
     lchrom[chrom] = MAX(lchrom[chrom],i) ;
   }
@@ -921,7 +923,7 @@ double cntit1(double *xc, SNP *cupt, Indiv **indm, int numindivs, int t)
   int k, g ;
 
   vzero(xc, 3) ;
-  if (cupt -> ignore) return 0;
+  if (cupt -> ignore) return ;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;
@@ -940,8 +942,8 @@ double cntit2(double *xc, SNP *cupt, SNP *cupt2, Indiv **indm, int numindivs, in
   int k, e, f ;
 
   vzero(xc, 9) ;
-  if (cupt -> ignore) return 0;
-  if (cupt2 -> ignore) return 0;
+  if (cupt -> ignore) return ;
+  if (cupt2 -> ignore) return ;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;
