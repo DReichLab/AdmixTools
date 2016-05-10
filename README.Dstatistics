@@ -1,0 +1,65 @@
+DOCUMENTATION OF D-statistics (qpDstat):
+
+The 4-population test, implemented here as D-statistics, is also a formal test for admixture based on a four taxon 4 statistic, which can provide some information about the direction of gene ﬂow.
+For any 4 populations (W, X, Y, Z), qpDstat computes the D-statistics as - 
+num = (w − x)(y − z )
+den = (w + x − 2wx)(y + z − 2yz )
+
+D = num/ den
+
+The output of qpDstat is informative about the direction of gene flow. So for 4 populations (W, X, Y, Z) as follows - 
+If the Z-score is +ve, then the gene flow occured either between W and Y or X and Z 
+If the Z-score is -ve, then the gene flow occured either between W and Z or X and Y. 
+
+qpDstat requires that the input data is available in a Reichlab format such as EIGENSTRAT.  
+To convert to the appropriate format, one can use CONVERTF. See 
+README.CONVERTF for documentation of programs for converting file formats.
+
+Executable and source code:
+------------------------------------------------------------------------------
+The executables of AdmixTools are available here:
+https://github.com/DReichLab/AdmixTools/releases
+ 
+Please aware AdmixTools is designed for Linux system. If the executables don't work on your Linux machine, please compile and install the program. For information about installing the program, see README.ADMIXTOOLS. After installing the programs, the executable for D-statistics (qpDstat) should be located in the bin directory.
+
+To run qpDstat, type the following on a linux machine. 
+$DIR/bin/qpDstat -p parfile [-l lo] [-h hi] >logfile
+
+$DIR: Path to the bin directory.
+logfile: Name of the logfile. The logfile contains the output of the run. 
+parfile: Name of parameter file
+
+NEW FEATURE
+In some cases using popfilename (see below) the program uses an excessive amount of memory.  
+A solution, designed to be convenient is to make multiple runs with -l lo -h hi set when only lines 
+lo through hi (starting at 1) of popfilename will be used.  This makes it easy to do multiple runs 
+and then extract all results by grep result: ... 
+
+DESCRIPTION OF EACH PARAMETER in parfile:
+
+genotypename:   input genotype file (in eigenstrat format)
+snpname:   input snp file      (in eigenstrat format)
+indivname:   input indiv file    (in eigenstrat format)
+poplistname:  list_qpDstat (contains list of poulations- one population on each line). Program will run the method for all quadrapules.
+popfilename:   list_qpDstat1 (Enter a list of tests you want to perform - 4 populations on each line. <pop1> <pop2> <pop3> <pop4>). Program will run the method for each quadrapule (included on each line). 
+
+DESCRIPTION OF OUTPUT FILE:
+The program will write all the output to stdout. The output file prints the parfile entered by the user, number of snps and individuals, jackknife block size, number of blocks for jackknife and the results.
+
+The results have the following format -
+result:   Pop1 (W)  Pop2 (X) : Pop3 (Y)  Pop4 (Z)  D-stat	Z	BABA	ABBA	#_of_SNPs_that_all_populations_have_data	
+
+The result for each quadrppule is shown on a separate line.
+
+See example shown in-
+examples/qpDstat.log, examples/qpDstat1.log
+
+NOTE:
+Z = D/standard_error
+If you would like qpDstat to output standard error, please add this following line to your parameter file:
+printsd:  YES
+
+Nick Patterson
+<nickp@broadinstitute.org>
+------------------------------------------------------------------------------
+

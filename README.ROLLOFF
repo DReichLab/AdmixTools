@@ -1,0 +1,69 @@
+DOCUMENTATION OF ROLLOFF program:
+
+Given genotype data from an admixed population and two ancestral populations, ROLLOFF computes the time since mixture using the rate of exponential decay of admixture LD. Specifically, it computes the correlation between a signed LD statistic for a pair of markers and a weight that reflects their allele frequency differentiation in the ancestral populations. The method assumes that samples are unrelated. 
+
+For details of the method, refer to Moorjani et al. (2011) and Patterson et al. (2012).
+
+ROLLOFF requires that the input data is available in EIGENSTRAT format.  To convert to the appropriate format, one can use CONVERTF program. See README.CONVERTF for documentation of programs for converting file formats.
+
+Also see README.REXPFIT for documentation of fitting a exponential using non-linear least squares to the output of ROLLOFF.
+
+Executable and source code:
+------------------------------------------------------------------------------
+
+For information about installing the program, see README.ADMIXTOOLS. After installing the programs, the executable for running ROLLOFF should be moved to the "bin" directory. The folder should contain-
+rolloff: The main ROLLOFF program. 
+convertf: Converts data to EIGENSTRAT format required for ROLLOFF.
+rexpfit.r: R program that can be used to fit an exponential distribution using non-linear least squares to estimate the date of mixture.
+
+To run the main ROLLOFF program, type the following on a linux machine. Do not run the program locally as it requires a lot of memory. 
+$DIR/bin/rolloff -p parfile >logfile
+
+$DIR: Path to the bin directory.
+logfile: Name of the logfile. The ROLLOFF program prints various statistics to standard output which should be directed to the logfile.
+parfile: Name of parameter file
+
+DESCRIPTION OF EACH PARAMETER in parfile:
+
+genotypename:   input genotype file (in eigenstrat format)
+snpname:   input snp file      (in eigenstrat format)
+indivname:   input indiv file    (in eigenstrat format)
+poplistname:   rolloff.ref. This file contains the names of the two ancestral populations. There is one population on each line.
+admixlist:   rolloff.target. This file contains the name of the admixed population. There is one population on each line.
+binsize:   binsize (in Morgans). Range is from 0-1. Optimal binsize of 0.001 is recommended.
+maxdis:   maximum_distance (in Morgans). Range is 0-1. For quicker runs, use max_distance < 1.0. However, for recent admixture, ensure that max_distance is greater than the expected admixture LD blocks.
+seed:   rand_num. Random seed to ensure reproducibility of runs. 
+runmode:   1
+chithresh:   chi-square threshold (default: 6.0). 
+zdipcorrmode:  YES. Computes a Pearsons correlation between pair of markers.
+checkmap: YES/NO. Checks if physical positions are correlated to genetic position. Error, if very high correction.  
+
+OPTIONAL PARAMETERS:
+weightname:   weight_file. Contains a weight for each SNP to be included in the run. If this parameter is not specified, the program uses the allele frequency differentiation between the ancestral populations as the weight for each SNP. 
+mincount:   number. Contains the minimum number of admixed individuals required for the run. Default = 5.
+minparentcount: number. Contains the minimum number of ancestral individuals from each population that is required for the run. Default = 10.
+chrom: chromosome_number. The analysis is limited to the specified chromosome only.
+nochrom:   chromosome_number. The specified chromosome is excluded from the analysis.
+admixlist: admix_list. If you want run ROLLOFF for a list of populations, use flag admixlist to specify a list of populations. There is one population on each line. NOTE: The ancestral populations remain the same.
+badsnpname:    badsnp_list. File contains a list of SNPs to be excluded from the analysis. 
+ransample:   random_number. Program will run rolloff with a random set (n = random_number) of samples from the admixed population.
+numchrom:	the count of chromosomes of your organism
+
+See example shown in-
+examples/Rolloff.log
+
+The output file contains 
+Genetic distance (cM) :: (Ignore) :: Z scores ::  corr coeff :: $ SNP pairs in bin used to calculate
+correlation
+
+Also read README.ROLLOFF_OUTPUT for fitting an exponential to the output of Rolloff and inferring the standard error using jackknife.
+
+
+
+Nick Patterson
+<nickp@broadinstitute.org>
+
+------------------------------------------------------------------------------
+Last revision: 2016-01-11
+
+ 

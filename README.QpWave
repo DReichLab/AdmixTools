@@ -1,0 +1,76 @@
+DOCUMENTATION OF QpWavs and qpAdm:
+See also .examples/pdoc.pdf
+
+
+qpWave: 
+
+qpWave requires that the input data is available in a Recilab format such as EIGENSTRAT.  
+To convert to the appropriate format, one can use CONVERTF. See 
+README.CONVERTF for documentation of programs for converting file formats.
+
+Executable and source code:
+------------------------------------------------------------------------------
+ 
+For information about installing the program, see README.ADMIXTOOLS. 
+After installing the programs, the executable for qpWave should be located in the bin directory.
+
+To run qpWave, type the following on a linux machine. 
+$DIR/bin/qpWave -p parfile >logfile
+
+$DIR: Path to the bin directory.
+logfile: Name of the logfile. The logfile contains the output of the run. 
+parfile: Name of parameter file
+
+qpWave gives evidence of the number of admixture flows between the left and right populations,
+ and should be run as a precursor to qpAdm (see below).
+
+DESCRIPTION OF EACH PARAMETER in parfile:
+
+genotypename:   input genotype file (in eigenstrat or packedancestrymap r format)
+snpname:       input snp file      (in eigenstrat format)
+indivname:     input indiv file    (in eigenstrat format)
+popleft:       left population list (1 per line) 
+popright:      right population list (1 per line) 
+details:       YES 
+
+DESCRIPTION OF OUTPUT FILE:
+The program will write all the output to stdout. The output file prints the parfile entered by the user, 
+number of snps and individuals, jackknife block size, number of blocks for jackknife and the results.
+
+See example shown in-
+examples/qpWave.log
+
+qpAdm: 
+To run qpAdm, type the following on a linux machine. 
+$DIR/bin/qpAdm -p parfile >logfile
+
+$DIR: Path to the bin directory.
+logfile: Name of the logfile. The logfile contains the output of the run. 
+parfile: Name of parameter file
+
+qpAdm takes a parameter file in exactly the same format as qpWave.   
+The first population of (popleft) is the target population and the 
+main purpose of the program is to provide admixture weights, writing the 
+target as a linear combination of the other populations of popleft. 
+
+details:   YES/NO 
+is a new option (not available in qpWave) 
+
+.../examples/qpAdm.log has annotations ### manually added to explain output
+
+CAVEATS 
+1) It is important to realize that the answers are invalid if there has
+been post admixture gene-flow between left and right populations. 
+2) Weights may be negative.  If significantly so, the admixture model is 
+probably wrong. 
+3) We recommend keeping popright small.  If large the covariance matrix 
+of f4-statististics is likely to be poorly estimated.   I then don't trust 
+the computed p-values although the admixture weights seem to usually be 
+reasonable.  
+
+
+Nick Patterson
+<nickp@broadinstitute.org>
+
+------------------------------------------------------------------------------
+

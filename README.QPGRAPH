@@ -1,0 +1,70 @@
+qpGraph -p parfile -g graph [-o outgraph] [-d dotfile] 
+
+See examples/runit for some simple examples and sample output
+
+Sample parameter file
+DIR:   ../data
+S1:              sim1           
+indivname:       DIR/S1.ind  
+snpname:         DIR/S1.snp       
+genotypename:    DIR/S1.geno  
+outpop:         Out     
+blgsize:        0.05
+## block size in Morgans for Jackknife
+## see below 
+lsqmode:       YES
+diag:          .0001
+hires:         YES
+initmix:      1000 
+precision:    .0001  
+zthresh:      3.0
+terse:        NO
+useallsnps:   NO
+
+
+-p parfile specifies input data (any Reich lab format) 
+
+outpop:   zzz
+f-stats normalized by heterozygosity in population zzz 
+outpop:  NULL  has special meaning : no normalization 
+blgsize: block size for Jackknife (Morgans)
+lsqmode:   Default is NO;  Estimate of error covariance is used.  Unstable for large problems 
+ and instead we fit f_3 stats with "base" population first label (see graph spec)
+diag:   small fudge factor to add on diagonal of f3.  Improves stability
+Given admixing weights the edge lengths (drifts) are set by minimizing 
+a degree 2 function, subject to non-negativity of the lengths.  
+Initially the program tries V initial tries of admixing weights 
+defailt value for V is 10 . 2^n where there are n admixtures in the graph. 
+To override this default
+
+initmix:   V  
+where V is the desired number of initial tries.  This may be useful 
+if you are worried the program may not have found the global optimum. 
+
+hires:   controls output sometimes more decimals are desired
+precision:  controls accuracy of recovereed admixture weights.  Coefficients will be within "precision" of MLE estimate.
+zthresh: controls outlier output.  All f-stats are calculated and those diverging more then "zthresh" from fitted values 
+ printed.e all SNPs even if some populations hav e n data for a SNP (default NO) 
+
+-g graph  
+See examples.qpGraph/gr1x 
+Note comments can be included in file. Begin a line with #
+
+[-o outgraph]  This can be hand edited and input again.  Note format is different. 
+qpGraph will accept either style.  
+
+[-d dotfile]  Graph output in "dot format";  dot -Tps < dotfile > dotfile.ps gives postscript
+"dot" must be installed (part of Graphviz) 
+
+===================================================================================================
+Utility program: qpreroot
+If the input graph is not connected or has loops qpGraph will die unpleasantly.  
+Best way to see what is happening: 
+
+qpreroot -g graph -d dotfile  
+## This also makes postscript
+
+We also can change the root node 
+qpreroot -g graph -o outgraph -r node 
+
+

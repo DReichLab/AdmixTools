@@ -1,0 +1,7 @@
+genotypename:    example.packedancestrymapgeno
+snpname:         example.snp
+indivname:       example.ind
+outputformat:    ANCESTRYMAP
+genotypeoutname: example.ancestrymapgeno
+snpoutname:      example.snp
+indivoutname:    example.ind

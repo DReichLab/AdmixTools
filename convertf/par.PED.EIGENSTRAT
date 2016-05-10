@@ -1,0 +1,8 @@
+genotypename:    example.ped
+snpname:         example.pedsnp # or example.map, either works 
+indivname:       example.pedind # or example.ped, either works
+outputformat:    EIGENSTRAT
+genotypeoutname: example.eigenstratgeno
+snpoutname:      example.snp
+indivoutname:    example.ind
+familynames:     NO
