@@ -3,7 +3,11 @@
 *.o
 *.bak
 
+#Data - download example data from Reight lab website
+data/*
+
 #Output directories
+bin/*
 src/admixinclude/*
 src/admixlib/*
 src/admixtables/*
@@ -34,3 +38,10 @@ src/qpWave
 src/qpreroot
 src/rolloff
 src/tables
+
+#Examples
+examples.qpGraph/*:log
+examples.qpGraph/*.ggg
+examples.qpGraph/*.dot
+examples.qpGraph/*.ps
+examples/*.log

@@ -1,0 +1,15 @@
+#!/usr/local/bin/perl -w
+
+$IN = "plist" ; 
+open (FF, "$IN") || die "badly\n" ;
+
+foreach $p (<FF>) { 
+ chomp $p ;  
+ $par = "par" . $p ; 
+ $log = "$p.log" ;
+ $pp = $p ;
+ $pp =~ s/stat1/stat/ ;
+ $cmd = "../bin/$pp -p $par > $log" ;
+ print "$cmd\n" ;
+ system "$cmd" ;
+}

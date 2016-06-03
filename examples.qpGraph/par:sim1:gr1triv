@@ -1,0 +1,11 @@
+DIR:   ../data
+S1:              sim1           
+indivname:       DIR/S1.ind  
+snpname:         DIR/S1.snp       
+genotypename:    DIR/S1.geno  
+outpop:         Out     
+blgsize:        0.005
+## block size in Morgans for Jackknife
+lsqmode:       YES
+diag:          .0001
+hires:         YES

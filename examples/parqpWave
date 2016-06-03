@@ -1,0 +1,7 @@
+DIR:             ../data  
+S1:              qpdata         
+indivname:       DIR/S1.ind  
+snpname:         DIR/S1.snp       
+genotypename:    DIR/S1.geno   
+popleft:  left1
+popright: right1 

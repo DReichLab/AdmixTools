@@ -1,0 +1,4 @@
+#!/bin/sh
+
+ ../bin/qpreroot -g gr1x -o gr1x.oroot -d gr1x.oroot.dot  -r O
+ ../bin/qpreroot -g gr1x   -d gr1x.dot 

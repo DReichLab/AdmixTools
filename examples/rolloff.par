@@ -1,0 +1,17 @@
+DIR: /groups/reich/eleftheria/AdmixTools/
+indivname: DIR/majfas_mindepth_3_compiled_0.1_eigenstrat.ind
+snpname: DIR/majfas_mindepth_3_compiled_0.1_eigenstrat_mod.snp
+genotypename: DIR/majfas_mindepth_3_compiled_0.1_eigenstrat.geno
+poplistname: elephant.ref
+admixlist: elephant.target
+binsize: .001
+output: Uygur
+maxdis: 0.4
+seed: 77
+runmode: 1
+mincount: 4
+minparentcount: 0
+jackknife: YES
+chithresh:     6.000
+numchrom: 28
+checkmap: NO
