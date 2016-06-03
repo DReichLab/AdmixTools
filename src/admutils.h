@@ -118,6 +118,7 @@ void sett1(double *tt, double theta, int numstates) ;
 void sett1r(double *tt, double theta, int numstate, double risks) ;
 void gettln(SNP *cupt, Indiv *indx, 
   double *ptheta, double *plambda, int *pnumstates, int *pignore)  ;
+int setid2pops (char *idpopstring, Indiv ** indmarkers, int numindivs) ;
 
 void puttln(SNP *cupt, Indiv *indx, 
   double theta, double lambda) ;
@@ -168,7 +169,7 @@ void setfastdupnum(int num) ;
 void setfastdupthresh(double thresh, double kill) ;
 void killxhets(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs) ;
 void fastdupcheck(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs) ;
-int grabgtypes(int *gtypes, SNP *cupt, int numindivs) ;
+void grabgtypes(int *gtypes, SNP *cupt, int numindivs) ;
 int kcode(int *w, int len, int base) ;
 // void cdup(SNP **snpm, Indiv **indm, int nsnp, int *buff, int lbuff, int iter) ;
 // void printdup(SNP **snpm, int nsnp, Indiv *inda, Indiv *indb, int nmatch, int nnomatch, int iter); 

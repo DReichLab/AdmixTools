@@ -84,12 +84,11 @@ inverse (double *mat, int n)
     fprintf (fid, "matrix U\n");
     for (i = 0; i < n; i++) {
       for (j = 0; j < n; j++) {
-        fprintf (fid, "%8.4f ", mat[i * n + j]);
+	fprintf (fid, "%8.4f ", mat[i * n + j]);
       }
       fprintf (fid, "\n");
     }
   }
-
   /*******************/
 
   inverse_ (mat, &n);
@@ -100,12 +99,11 @@ inverse (double *mat, int n)
     fprintf (fid, "inverse of matrix U\n");
     for (i = 0; i < n; i++) {
       for (j = 0; j < n; j++) {
-        fprintf (fid, "%8.4f ", mat[i * n + j]);
+	fprintf (fid, "%8.4f ", mat[i * n + j]);
       }
       fprintf (fid, "\n");
     }
   }
-
   /*******************/
 
   for (i = 0; i < n; i++) {
@@ -145,7 +143,7 @@ solve (double *mat, double *b, double *v, int n)
 
 void
 packsym (double *pmat, double *mat, int n)
-        //  lapack L mode (fortran)
+	//  lapack L mode (fortran)
 {
   int i, j, k = 0;
   for (i = 0; i < n; i++) {
@@ -178,7 +176,7 @@ geneigsolve (double *pmat, double *qmat, double *evec, double *eval, int n)
     fprintf (fid, "matrix A\n");
     for (i = 0; i < n; i++) {
       for (j = 0; j < n; j++) {
-        fprintf (fid, "%8.4f ", amat[i * n + j]);
+	fprintf (fid, "%8.4f ", amat[i * n + j]);
       }
       fprintf (fid, "\n");
     }
@@ -186,7 +184,7 @@ geneigsolve (double *pmat, double *qmat, double *evec, double *eval, int n)
     fprintf (fid, "matrix B\n");
     for (i = 0; i < n; i++) {
       for (j = 0; j < n; j++) {
-        fprintf (fid, "%8.4f ", bmat[i * n + j]);
+	fprintf (fid, "%8.4f ", bmat[i * n + j]);
       }
       fprintf (fid, "\n");
     }
@@ -203,7 +201,7 @@ geneigsolve (double *pmat, double *qmat, double *evec, double *eval, int n)
   /* ith eigenvector should be in row i */
   for (i = 0; i < n; i++) {
     for (j = 0; j < n; j++) {
-      evec[i * n + j] = pmat[i * n + j];        /* don't put back in row-major order (?) */
+      evec[i * n + j] = pmat[i * n + j];	/* don't put back in row-major order (?) */
     }
   }
   for (i = 0; i < n * n; i++) {
@@ -219,7 +217,7 @@ geneigsolve (double *pmat, double *qmat, double *evec, double *eval, int n)
     eval[i] = eval[n - 1 - i];
     eval[n - 1 - i] = t;
 
-    for (j = 0; j < n; j++) {   /* exchange row i and row(n-1-i) */
+    for (j = 0; j < n; j++) {	/* exchange row i and row(n-1-i) */
       t = evec[i * n + j];
       evec[i * n + j] = evec[(n - 1 - i) * n + j];
       evec[(n - 1 - i) * n + j] = t;

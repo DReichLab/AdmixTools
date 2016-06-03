@@ -47,19 +47,19 @@ int numsnps, numindivs;
 int isinit = NO;
 int markerscore = NO;
 int seed = 0;
-int chisqmode = NO;             // approx p-value better to use F-stat
+int chisqmode = NO;		// approx p-value better to use F-stat
 int missingmode = NO;
 int dotpopsmode = YES;
-int noxdata = YES;              /* default as pop structure dubious if Males and females */
+int noxdata = YES;		/* default as pop structure dubious if Males and females */
 int pcorrmode = NO;
 int pcpopsonly = YES;
 int nostatslim = 10;
 int znval = -1;
 int popsizelimit = -1;
-int gfromp = NO;                // genetic distance from physical 
+int gfromp = NO;		// genetic distance from physical 
 int msjack = NO;
 char *msjackname = NULL;
-int msjackweight = YES;         // weighted jackknife
+int msjackweight = YES;		// weighted jackknife
 int bankermode = NO;
 int forceclade = NO;
 int numbanker = 0;
@@ -73,7 +73,7 @@ double plo = .001;
 double phi = .999;
 double pvhit = .001;
 double pvjack = 1.0e-6;
-double blgsize = 0.05;          // block size in Morgans */
+double blgsize = 0.05;		// block size in Morgans */
 double *chitot;
 int *xpopsize;
 
@@ -89,8 +89,7 @@ double lambdascale;
 int *f2ind, *ind2f, ng2, nh2;
 
 int ldregress = 0;
-double ldlimit = 9999.0;        /* default is infinity */
-
+double ldlimit = 9999.0;	/* default is infinity */
 /* we only consider markers as in possible LD if gdis <= ldlimit */
 int diffmode = NO;
 
@@ -101,12 +100,12 @@ FILE *ofile;
 void readcommands (int argc, char **argv);
 int readpopx (char *pname, char ***plists, int npops);
 void doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
-              int nrows, int ncols, int *xtop, int *xbot, int numeg,
-              int nblocks);
+	      int nrows, int ncols, int *xtop, int *xbot, int numeg,
+	      int nblocks);
 
 void doq4ratdiff (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
-                  int nrows, int ncols, int *xtop, int *xbot, int *xtop2,
-                  int *xbot2, int numeg, int nblocks);
+		  int nrows, int ncols, int *xtop, int *xbot, int *xtop2,
+		  int *xbot2, int numeg, int nblocks);
 
 int getf4 (int **xx, int *indx, double *ans);
 
@@ -127,7 +126,7 @@ main (int argc, char **argv)
   double y1, y2, y, ysig, tail, yy1, yy2;
   char ss[11];
   int *blstart, *blsize, nblocks;
-  int xnblocks;                 /* for xsnplist */
+  int xnblocks;			/* for xsnplist */
   int *bcols;
   double maxgendis;
   int xind[4];
@@ -166,8 +165,8 @@ main (int argc, char **argv)
   double *qpscores;
   double *hest, *hsig;
   double mingenpos, maxgenpos;
-  int *qhit;                    /* number of times pair is clade in quartet */
-  int *qmiss;                   /* number of times pair migration event implied */
+  int *qhit;			/* number of times pair is clade in quartet */
+  int *qmiss;			/* number of times pair migration event implied */
   int **qplist, numqp = 0, maxqp = 10000;
   double *qpscore;
 
@@ -207,7 +206,7 @@ main (int argc, char **argv)
   setindm (indivmarkers);
 
   k = getgenos (genotypename, snpmarkers, indivmarkers,
-                numsnps, numindivs, nignore);
+		numsnps, numindivs, nignore);
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -237,11 +236,11 @@ main (int argc, char **argv)
       px = plists[trun][k];
       t = strcmp (px, "NULL");
       if (t == 0)
-        continue;
+	continue;
       t = indxindex (eglist, numeg, px);
       if (t < 0) {
-        eglist[numeg] = strdup (px);
-        ++numeg;
+	eglist[numeg] = strdup (px);
+	++numeg;
       }
     }
   }
@@ -291,7 +290,7 @@ main (int argc, char **argv)
     cupt = snpmarkers[i];
     cupt->weight = 1.0;
   }
-  numsnps = rmsnps (snpmarkers, numsnps, NULL); //  rid ignorable snps
+  numsnps = rmsnps (snpmarkers, numsnps, NULL);	//  rid ignorable snps
   if (numsnps == 0)
     fatalx ("no valid snps\n");
 
@@ -326,7 +325,7 @@ main (int argc, char **argv)
   countpops (counts, xsnplist, xindex, xtypes, nrows, ncols);
 
 
-  ZALLOC (bcols, ncols, int);   // blocks for columns -1 => unused
+  ZALLOC (bcols, ncols, int);	// blocks for columns -1 => unused
   ivclear (bcols, -1, ncols);
   for (k = 0; k < ncols; k++) {
     cupt = xsnplist[k];
@@ -335,30 +334,30 @@ main (int argc, char **argv)
   if (diffmode == NO) {
     for (a = 0; a < nplist; ++a) {
       for (i = 0; i < 4; ++i) {
-        xtop[i] = indxindex (eglist, numeg, plists[a][i]);
-        xbot[i] = indxindex (eglist, numeg, plists[a][i + 4]);
+	xtop[i] = indxindex (eglist, numeg, plists[a][i]);
+	xbot[i] = indxindex (eglist, numeg, plists[a][i + 4]);
       }
       doq4rat (&y, &ysig, counts, bcols,
-               nrows, ncols, xtop, xbot, numeg, nblocks);
+	       nrows, ncols, xtop, xbot, numeg, nblocks);
       ++numprint;
       if (numprint == 1) {
-        printf ("%9s", "");
-        for (t = 0; t < 8; ++t) {
-          printf ("%10s ", "");
-          if (t == 3)
-            printf ("   ");
-        }
-        printf ("%12s %12s  %9s", "alpha", "std. err", "Z (null=0)");
-        printnl ();
+	printf ("%9s", "");
+	for (t = 0; t < 8; ++t) {
+	  printf ("%10s ", "");
+	  if (t == 3)
+	    printf ("   ");
+	}
+	printf ("%12s %12s  %9s", "alpha", "std. err", "Z (null=0)");
+	printnl ();
       }
 
 
 
       printf ("%9s", "result: ");
       for (t = 0; t < 8; ++t) {
-        printf ("%10s ", plists[a][t]);
-        if (t == 3)
-          printf (" : ");
+	printf ("%10s ", plists[a][t]);
+	if (t == 3)
+	  printf (" : ");
       }
       printf ("%12.6f %12.6f  %9.3f", y, ysig, y / ysig);
       printnl ();
@@ -369,34 +368,34 @@ main (int argc, char **argv)
     for (a = 0; a < nplisth; ++a) {
       b = a + nplisth;
       for (i = 0; i < 4; ++i) {
-        xtop[i] = indxindex (eglist, numeg, plists[a][i]);
-        xbot[i] = indxindex (eglist, numeg, plists[a][i + 4]);
-        xtop2[i] = indxindex (eglist, numeg, plists[b][i]);
-        xbot2[i] = indxindex (eglist, numeg, plists[b][i + 4]);
+	xtop[i] = indxindex (eglist, numeg, plists[a][i]);
+	xbot[i] = indxindex (eglist, numeg, plists[a][i + 4]);
+	xtop2[i] = indxindex (eglist, numeg, plists[b][i]);
+	xbot2[i] = indxindex (eglist, numeg, plists[b][i + 4]);
       }
       doq4rat (&y, &ysig, counts, bcols,
-               nrows, ncols, xtop, xbot, numeg, nblocks);
+	       nrows, ncols, xtop, xbot, numeg, nblocks);
       printf ("q4rat A: ");
       for (t = 0; t < 8; ++t) {
-        printf ("%10s ", plists[a][t]);
-        if (t == 3)
-          printf (" : ");
+	printf ("%10s ", plists[a][t]);
+	if (t == 3)
+	  printf (" : ");
       }
       printf ("%12.6f %12.6f  %9.3f", y, ysig, y / ysig);
       printnl ();
 
       doq4rat (&y, &ysig, counts, bcols,
-               nrows, ncols, xtop2, xbot2, numeg, nblocks);
+	       nrows, ncols, xtop2, xbot2, numeg, nblocks);
       printf ("q4rat B: ");
       for (t = 0; t < 8; ++t) {
-        printf ("%10s ", plists[b][t]);
-        if (t == 3)
-          printf (" : ");
+	printf ("%10s ", plists[b][t]);
+	if (t == 3)
+	  printf (" : ");
       }
       printf ("%12.6f %12.6f  %9.3f", y, ysig, y / ysig);
       printnl ();
       doq4ratdiff (&y, &ysig, counts, bcols,
-                   nrows, ncols, xtop, xbot, xtop2, xbot2, numeg, nblocks);
+		   nrows, ncols, xtop, xbot, xtop2, xbot2, numeg, nblocks);
       printf (" diff: %12.6f %12.6f  %9.3f", y, ysig, y / ysig);
       printnl ();
       printnl ();
@@ -464,7 +463,7 @@ readcommands (int argc, char **argv)
   getint (ph, "diffmode:", &diffmode);
   getint (ph, "nostatslim:", &nostatslim);
   getint (ph, "popsizelimit:", &popsizelimit);
-  getint (ph, "gfromp:", &gfromp);      // gen dis from phys
+  getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "chrom:", &xchrom);
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -573,21 +572,21 @@ setabx (double **abx, double **bax, int ***counts, int ncols, int numeg)
     for (i = 0; i < numeg; i++) {
       for (j = i + 1; j < numeg; j++) {
 
-        t1 = intsum (ccc[i], 2);
-        t2 = intsum (ccc[j], 2);
-        if (t1 == 0)
-          continue;
-        if (t2 == 0)
-          continue;
+	t1 = intsum (ccc[i], 2);
+	t2 = intsum (ccc[j], 2);
+	if (t1 == 0)
+	  continue;
+	if (t2 == 0)
+	  continue;
 
-        a = ccc[i][0];
-        y1 = (double) a / (double) t1;
-        a = ccc[j][0];
-        y2 = (double) a / (double) t2;
-        h = f2ind[i * numeg + j];
+	a = ccc[i][0];
+	y1 = (double) a / (double) t1;
+	a = ccc[j][0];
+	y2 = (double) a / (double) t2;
+	h = f2ind[i * numeg + j];
 
-        abx[h][k] = y1 * (1 - y2);
-        bax[h][k] = y2 * (1 - y1);
+	abx[h][k] = y1 * (1 - y2);
+	bax[h][k] = y2 * (1 - y1);
 
       }
     }
@@ -621,7 +620,7 @@ readpopx (char *pname, char ***plists, int npops)
     if (nsplit < npops)
       fatalx ("length mismatch %s\n", line);
     ZALLOC (plists[num], npops + 1, char *);
-    plists[num][npops] == NULL;
+    plists[num][npops] = NULL;
     pp = plists[num];
     for (t = 0; t < npops; ++t) {
       pp[t] = strdup (spt[t]);
@@ -635,7 +634,7 @@ readpopx (char *pname, char ***plists, int npops)
 
 void
 doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
-         int nrows, int ncols, int *xtop, int *xbot, int numeg, int nblocks)
+	 int nrows, int ncols, int *xtop, int *xbot, int numeg, int nblocks)
 {
 
   int a, b, c, d;
@@ -697,7 +696,7 @@ doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
     wtop[k] = gtop - top;
     wbot[k] = gbot - bot;
     wbot[k] += 1.0e-10;
-    djack[k] = wtop[k] / wbot[k];       // delete-block estimate
+    djack[k] = wtop[k] / wbot[k];	// delete-block estimate
   }
 
   weightjack (&jest, &jsig, mean, djack, wjack, nblocks);
@@ -721,8 +720,8 @@ doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 
 void
 doq4ratdiff (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
-             int nrows, int ncols, int *xtop, int *xbot, int *xtop2,
-             int *xbot2, int numeg, int nblocks)
+	     int nrows, int ncols, int *xtop, int *xbot, int *xtop2,
+	     int *xbot2, int numeg, int nblocks)
 // calculates mean+Z of (m1 +m2 -1)
 {
 
@@ -810,7 +809,7 @@ doq4ratdiff (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
     wtop[k] = gtop2 - top;
     wbot[k] = gbot2 - bot;
     wbot[k] += 1.0e-10;
-    djack[k] += wtop[k] / wbot[k];      // delete-block estimate
+    djack[k] += wtop[k] / wbot[k];	// delete-block estimate
     djack[k] -= 1.0;
   }
 

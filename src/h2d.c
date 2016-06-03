@@ -40,7 +40,7 @@ mkindh2d (Indiv ** indivmarkers, Indiv *** pindm2, int numindivs)
 
 void
 remaph2d (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers,
-          Indiv ** indm2, int numindivs, int numind2)
+	  Indiv ** indm2, int numindivs, int numind2)
 {
 
   int *g1, *g2;
@@ -82,7 +82,7 @@ remaph2d (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers,
       g2[j] = getgtypes (cupt, t);
       tt = -1;
       if ((g1[j] >= 0) && (g2[j] >= 0))
-        tt = g1[j] + g2[j];
+	tt = g1[j] + g2[j];
       putgtypes (cupt, j, tt);
     }
   }

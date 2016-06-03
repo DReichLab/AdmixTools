@@ -602,6 +602,7 @@ numcols (char *name)
     fclose (fff);
     return nsplit;
   }
+  return -1 ;
 }
 
 int
@@ -1666,6 +1667,8 @@ int2char (int x)
 
   char c;
   c = (char) ('0' + x);
+
+  return c ; 
 }
 
 void

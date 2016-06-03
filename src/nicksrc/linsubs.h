@@ -20,7 +20,7 @@ void imulmat(int *a, int *b, int *c, int a1, int a2, int a3) ;
 int linsolv(int n, double* pfMatr, double* pfVect, double* sol) ; // Developer: Henry Guennadi Levkin
 
 double qval(double *vv, double *q, double *l, int n) ; 
-double qgrad(double *grad, double *vv, double *q, double *l, int n) ;
+void qgrad(double *grad, double *vv, double *q, double *l, int n) ;
 double mquad(double y0, double y1, double y2, double *pmx) ;
 double qminpos(double *vv, double *q, double *l, int n)  ;
 double qminposfix(double *vv, double *q, double *l, int n, int *fixlist, double *fixvals, int nfix)  ;

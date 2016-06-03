@@ -45,7 +45,7 @@ simpest (double *params, int n)
 {
   double oldval, lam, val;
   int iter, maxiter = 50, t, k, ind, miniter = 5;
-  double xlimit = 1.0;          // insist on this much improvement
+  double xlimit = 1.0;		// insist on this much improvement
   double xdiff, tmp;
 
   ZALLOC (ppp, n, double);
@@ -62,7 +62,6 @@ simpest (double *params, int n)
   for (iter = 1; iter <= maxiter; ++iter) {
     oldval = scbest;
     for (t = 0; t < n; ++t) {
-
 /**
     getvmind(t, &k, &ind) ; 
     if (ind == 0) continue ;
@@ -70,11 +69,11 @@ simpest (double *params, int n)
       lam = ppbest[t];
       val = nagopt1 (0.0, 5.0, &lam, t);
       if (val < scbest) {
-        ppbest[t] = lam;
-        normvec (ppbest, n);
-        scbest = val;
-        printf ("simpest: %4d %4d %9.3f\n", iter, t, scbest);
-        printmix ();
+	ppbest[t] = lam;
+	normvec (ppbest, n);
+	scbest = val;
+	printf ("simpest: %4d %4d %9.3f\n", iter, t, scbest);
+	printmix ();
       }
     }
     xdiff = oldval - scbest;

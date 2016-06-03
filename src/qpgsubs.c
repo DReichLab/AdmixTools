@@ -41,8 +41,8 @@ typedef struct
   int isleaf;
   int distance;
   int isadmix;
-  int isfixed;                  //  1 => no reestimate
-  int numadmix;                 //index in adlist
+  int isfixed;			//  1 => no reestimate
+  int numadmix;			//index in adlist
   struct NODE *left;
   struct NODE *right;
   struct NODE *parent;
@@ -75,10 +75,10 @@ static NODE *vlist = NULL;
 static EDGE *elist = NULL;
 static char **eglist = NULL;
 
-static int *egnum;              // vlist number correspnding to pop
+static int *egnum;		// vlist number correspnding to pop
 static NODE **adlist = NULL;
-static NODE **xadlist = NULL;   // variable admix
-static char **forcenames;       // edgenames forced to zero
+static NODE **xadlist = NULL;	// variable admix
+static char **forcenames;	// edgenames forced to zero
 static int nforce = 0;
 
 static int numedge = -1, numvertex = -1, numadmix, numpops;
@@ -284,7 +284,7 @@ getextlabel (NODE * node, char *sss)
 {
 
   if (node == NULL)
-    return;
+    return -1;
   if (node->label != NULL) {
     strcat (sss, node->label);
     return 1;
@@ -299,6 +299,8 @@ getextlabel (NODE * node, char *sss)
     getextlabel ((NODE *) node->right, sss);
     return 0;
   }
+
+  return 0 ;
 }
 
 void
@@ -775,14 +777,14 @@ gsimplify (int n)
       nparent->left = NULL;
       nparent->eleft = NULL;
       if (nparent->right == NULL)
-        nparent->isleaf = YES;
+	nparent->isleaf = YES;
     }
 
     if ((NODE *) nparent->right == node) {
       nparent->right = NULL;
       nparent->eright = NULL;
       if (nparent->left == NULL)
-        nparent->isleaf = YES;
+	nparent->isleaf = YES;
     }
     node->left = node->right = NULL;
     node->eleft = node->eright = NULL;
@@ -843,7 +845,7 @@ gsimplify (int n)
     node->eleft = node->eright = NULL;
   }
   free (ecount);
-  sprintf (tmpqq, "graphtt:%d", getpid);
+  sprintf (tmpqq, "graphtt:%d", (int) getpid());
   dumpgraph (tmpqq);
   loadgraph (tmpqq, NULL);
   unlink (tmpqq);
@@ -1190,13 +1192,13 @@ readit (char *cname)
       sx = spt[1];
       t = vindex (sx, vlist, n);
       if (t < 0)
-        fatalx ("bad label: %s\n", sx);
+	fatalx ("bad label: %s\n", sx);
       sx = spt[2];
       tnode = &vlist[t];
       tnode->label = strdup (sx);
       if (nsplit >= 4) {
-        sx = spt[3];
-        tnode->popsize = atoi (sx);
+	sx = spt[3];
+	tnode->popsize = atoi (sx);
       }
       okline = YES;
     }
@@ -1205,43 +1207,42 @@ readit (char *cname)
       sx = spt[1];
       t = vindex (sx, vlist, n);
       if (t < 0)
-        fatalx ("bad lock: %s\n", sx);
+	fatalx ("bad lock: %s\n", sx);
       tnode = &vlist[t];
       tnode->isfixed = YES;
       okline = YES;
     }
     kret = strcmp (sx, "ledge");
     if (kret == 0) {
-      if (nsplit<4) fatalx("no target node: %s\n", line) ;
       edge = &elist[numedge];
       sx = spt[1];
       s1 = spt[2];
       s2 = spt[3];
       edge->name = strdup (sx);
       if (nsplit == 6) {
-        sx = spt[5];
-        t = strcmp (sx, "lock");
-        if (t != 0)
-          fatalx ("bad line %s\n", line);
-        edge->isfixed = YES;
+	sx = spt[5];
+	t = strcmp (sx, "lock");
+	if (t != 0)
+	  fatalx ("bad line %s\n", line);
+	edge->isfixed = YES;
       }
       if (nsplit >= 5) {
-        sx = spt[4];
-        t = strcmp (sx, "zero");
-        if (t == 0)
-          edge->iszero = YES;
-        if (!isalpha (sx[0]))
-          edge->val = atof (sx);
+	sx = spt[4];
+	t = strcmp (sx, "zero");
+	if (t == 0)
+	  edge->iszero = YES;
+	if (!isalpha (sx[0]))
+	  edge->val = atof (sx);
       }
       v1 = vindex (s1, vlist, n);
       v2 = vindex (s2, vlist, n);
       if (v1 < 0)
-        fatalx ("bad edge: %s\n", line);
+	fatalx ("bad edge: %s\n", line);
       if (v2 < 0)
-        fatalx ("bad edge: %s\n", line);
+	fatalx ("bad edge: %s\n", line);
       node1 = &vlist[v1];
       if (node1->left != NULL)
-        fatalx ("two left edges! %s\n", node1->name);
+	fatalx ("two left edges! %s\n", node1->name);
       node2 = &vlist[v2];
       node = &vlist[v1];
       node->eleft = (struct EDGE *) edge;
@@ -1259,22 +1260,21 @@ readit (char *cname)
     }
     kret = strcmp (sx, "redge");
     if (kret == 0) {
-      if (nsplit<4) fatalx("no target node: %s\n", line) ;
       edge = &elist[numedge];
       if (nsplit == 6) {
-        sx = spt[5];
-        t = strcmp (sx, "lock");
-        if (t != 0)
-          fatalx ("bad line %s\n", line);
-        edge->isfixed = YES;
+	sx = spt[5];
+	t = strcmp (sx, "lock");
+	if (t != 0)
+	  fatalx ("bad line %s\n", line);
+	edge->isfixed = YES;
       }
       if (nsplit >= 5) {
-        sx = spt[4];
-        t = strcmp (sx, "zero");
-        if (t == 0)
-          edge->iszero = YES;
-        if (!isalpha (sx[0]))
-          edge->val = atof (sx);
+	sx = spt[4];
+	t = strcmp (sx, "zero");
+	if (t == 0)
+	  edge->iszero = YES;
+	if (!isalpha (sx[0]))
+	  edge->val = atof (sx);
       }
       sx = spt[1];
       s1 = spt[2];
@@ -1283,12 +1283,12 @@ readit (char *cname)
       v1 = vindex (s1, vlist, n);
       v2 = vindex (s2, vlist, n);
       if (v1 < 0)
-        fatalx ("bad edge: %s\n", line);
+	fatalx ("bad edge: %s\n", line);
       if (v2 < 0)
-        fatalx ("bad edge: %s\n", line);
+	fatalx ("bad edge: %s\n", line);
       node1 = &vlist[v1];
       if (node1->right != NULL)
-        fatalx ("two right edges! %s\n", node1->name);
+	fatalx ("two right edges! %s\n", node1->name);
       node2 = &vlist[v2];
       node = &vlist[v1];
       node->eright = (struct EDGE *) edge;
@@ -1308,26 +1308,26 @@ readit (char *cname)
       s1 = spt[1];
       v1 = vindex (s1, vlist, n);
       if (v1 < 0)
-        fatalx ("bad admix: %s\n", line);
+	fatalx ("bad admix: %s\n", line);
       node = &vlist[v1];
       sx = spt[nsplit - 1];
       t = strcmp (sx, "lock");
       if (t == 0) {
-        node->isfixed = 1;
-        getadwts (spt, ssx, ww, nsplit - 1, &nt);
+	node->isfixed = 1;
+	getadwts (spt, ssx, ww, nsplit - 1, &nt);
       }
       else
-        getadwts (spt, ssx, ww, nsplit, &nt);
+	getadwts (spt, ssx, ww, nsplit, &nt);
       w = 0;
       for (k = 0; k < nt; ++k) {
-        s2 = ssx[k];
-        v2 = vindex (s2, vlist, n);
-        if (v2 < 0)
-          fatalx ("bad admix: %s\n", line);
-        if (v1 == v2)
-          fatalx ("bad admix (recursion) %s\n", line);
-        node->windex[k] = v2;
-        ++(node->numwind);
+	s2 = ssx[k];
+	v2 = vindex (s2, vlist, n);
+	if (v2 < 0)
+	  fatalx ("bad admix: %s\n", line);
+	if (v1 == v2)
+	  fatalx ("bad admix (recursion) %s\n", line);
+	node->windex[k] = v2;
+	++(node->numwind);
       }
       copyarr (ww, node->wmix, nt);
       node->isadmix = YES;
@@ -1336,7 +1336,7 @@ readit (char *cname)
       okline = YES;
     }
     if (okline == NO) {
-      printf ("*** warning bad line:\n %s\n", line);
+      printf ("*** warning bad line:\n, %s\n", line);
     }
     freeup (spt, nsplit);
     continue;
@@ -1371,18 +1371,18 @@ getadwts (char **spt, char **ssx, double *ww, int nsplit, int *n)
   if (nw == 0) {
     setsimp (ww, nt);
     *n = nt;
-    return;
+    return nt;
   }
   if (nw != nt) {
     fatalx ("input wts for node %s not set correctly\n", spt[1]);
   }
 
-  bal1 (ww, nt);                // balance weights
+  bal1 (ww, nt);		// balance weights
   vclip (ww, ww, .001, 1.0, nt);
-  bal1 (ww, nt);                // balance weights
+  bal1 (ww, nt);		// balance weights
   isinit = YES;
   *n = nt;
-  return;
+  return nt;
 }
 
 int
@@ -1467,6 +1467,120 @@ setpopsizes (int *sizes, char **eglist, int numeg)
 }
 
 void
+dumpdotgraph_title (char *graphdotname, char *title)
+// in dot format 
+{
+
+  FILE *fff;
+  NODE *node, *xnode, *xroot;
+  EDGE *edge;
+  int k, j, t, vind, kk;
+  int *dd, *ind;
+  char sform[10];
+  double val, vmax;
+  char *sss = NULL;
+
+  if (title == NULL)  {  
+   dumpdotgraph(graphdotname) ; 
+   return ;
+  }
+
+  if (graphdotname == NULL)
+    return;
+  printf ("graphdotname:  %s\n", graphdotname);
+  fflush (stdout);
+  openit (graphdotname, &fff, "w");
+
+/** 
+ we process vertices from the root 
+*/
+  xroot = root ();
+  setdistances (xroot);
+  ZALLOC (dd, numvertex, int);
+  ZALLOC (ind, numvertex, int);
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k];
+    dd[k] = node->distance;
+  }
+  isortit (dd, ind, numvertex);	// ind stores indices in distance order
+
+  //1 dump vertex
+/**
+   for (k=0; k<numvertex; ++k) {  
+    kk = ind[k] ;
+    node = &vlist[kk] ;
+    freestring(&sss);  
+    sss=strdup(node -> name) ;  
+    substring(&sss, ":", "_") ;
+    substring(&sss, "-", "_") ;
+    fprintf(fff, "vertex %12s %9.0f\n", sss, node -> time) ;
+   }
+*/
+  //2 dump label
+  fprintf (fff, "digraph G { \n");
+  fprintf (fff, "size = \"7.5,10\" ;\n");
+  fprintf (fff, "labelloc = \"t\" ; \n");
+  fprintf (fff, "label = \"%s\" ; ", title) ;
+  fprintf (fff, "\n\n") ;
+
+  for (k = 0; k < numvertex; ++k) {
+    kk = ind[k];
+    node = &vlist[kk];
+    if (node->label == NULL)
+      continue;
+    freestring (&sss);
+    sss = strdup (node->name);
+    substring (&sss, ":", "_");
+    substring (&sss, "-", "_");
+    fprintf (fff, "%12s ", sss);
+    fprintf (fff, " [ label = \"%s\" ] ; ", node->label);
+/**
+    t = node -> popsize ;
+    if ((totpop > 0) || (t>0)) {
+     fprintf(fff, " %5d", t) ;
+    }
+*/
+    fprintf (fff, "\n");
+  }
+// dump ledge, redge 
+  vmax = 0.0;
+  for (k = 0; k < numvertex; ++k) {
+    kk = ind[k];
+    node = &vlist[kk];
+    edge = (EDGE *) node->eleft;
+    if (edge != NULL) {
+      xnode = (NODE *) node->left;
+      vmax = MAX (vmax, edge->val);
+      val = MAX (vmax * .0001, edge->val);
+      pedge (fff, node, xnode, val, 0);
+    }
+    edge = (EDGE *) node->eright;
+    if (edge != NULL) {
+      xnode = (NODE *) node->right;
+      vmax = MAX (vmax, edge->val);
+      val = MAX (vmax * .0001, edge->val);
+      pedge (fff, node, xnode, val, 0);
+    }
+  }
+  for (k = 0; k < numvertex; ++k) {
+    kk = ind[k];
+    node = &vlist[kk];
+    t = node->numwind;
+    if (t == 0)
+      continue;
+    for (j = 0; j < t; ++j) {
+      vind = node->windex[j];
+      xnode = &vlist[vind];
+      pedge (fff, xnode, node, node->wmix[j], 1);
+    }
+  }
+  fprintf (fff, "} \n");
+  fclose (fff);
+  free (dd);
+  free (ind);
+  freestring (&sss);
+}
+void
 dumpdotgraph (char *graphdotname)
 // in dot format 
 {
@@ -1497,10 +1611,9 @@ dumpdotgraph (char *graphdotname)
     node = &vlist[k];
     dd[k] = node->distance;
   }
-  isortit (dd, ind, numvertex); // ind stores indices in distance order
+  isortit (dd, ind, numvertex);	// ind stores indices in distance order
 
   //1 dump vertex
-
 /**
    for (k=0; k<numvertex; ++k) {  
     kk = ind[k] ;
@@ -1527,7 +1640,6 @@ dumpdotgraph (char *graphdotname)
     substring (&sss, "-", "_");
     fprintf (fff, "%12s ", sss);
     fprintf (fff, " [ label = \"%s\" ] ; ", node->label);
-
 /**
     t = node -> popsize ;
     if ((totpop > 0) || (t>0)) {
@@ -1647,7 +1759,7 @@ dumpgraph (char *graphname)
     node = &vlist[k];
     dd[k] = node->distance;
   }
-  isortit (dd, ind, numvertex); // ind stores indices in distance order
+  isortit (dd, ind, numvertex);	// ind stores indices in distance order
 
   //1 dump vertex
   for (k = 0; k < numvertex; ++k) {
@@ -1727,7 +1839,6 @@ dumpgraph (char *graphname)
 
 double
 exnames (char **pup, char **pdown, char **pename, int numedge)
-
 /*up down edgename for edgenum */
 {
   EDGE *edge;
@@ -1800,8 +1911,8 @@ addnode (char *nodename, char *edgename, double breakval)
 
 void
 addmixedge2 (char **nodes, char **edgenames, char *newedgename,
-             char *label, double *breakval, double eval, double *wmix,
-             double *eeval, int nadmix)
+	     char *label, double *breakval, double eval, double *wmix,
+	     double *eeval, int nadmix)
 // label can be NULL
 // xtra edge introduced... 
 {
@@ -1846,7 +1957,7 @@ addmixedge2 (char **nodes, char **edgenames, char *newedgename,
 
 void
 addedgenode (char *nodename, char *n2name, char *edgename, char *newedgename,
-             char *label, double breakval, double eval)
+	     char *label, double breakval, double eval)
 // label can be NULL
 {
   NODE *node, *newvert;
@@ -1872,8 +1983,8 @@ addedgenode (char *nodename, char *n2name, char *edgename, char *newedgename,
 
 void
 addmixedge (char **nodes, char **edgenames, char *newedgename,
-            char *label, double *breakval, double eval, double *wmix,
-            int nadmix)
+	    char *label, double *breakval, double eval, double *wmix,
+	    int nadmix)
 // label can be NULL
 {
   NODE *node, *newvert;
@@ -1976,10 +2087,9 @@ reroot (char *nodename)
     fatalx ("node: %s not found\n", nodename);
   oldroot = root ();
   printf ("oldroot: %s\n", oldroot->name);
-  nee = setxx (node, xx);       // neighbours
+  nee = setxx (node, xx);	// neighbours
   if (nee == 3)
     fatalx ("3 edges from new root: %s\n", nodename);
-
 /* set distances */
   setdistances (node);
   oldroot->isroot = NO;
@@ -2014,28 +2124,28 @@ setdistances (NODE * node)
     ++numiter;
     if (numiter > 20)
       fatalx ("looping...\n");
-    unset = NO;                 // vertex unset ??  
+    unset = NO;			// vertex unset ??  
     for (k = 0; k < numvertex; ++k) {
       tnode = &vlist[k];
       if (tnode->isdead)
-        continue;
+	continue;
       nw = tnode->numwind;
       if (nw == 0)
-        continue;
+	continue;
       if (tnode->distance < HUGEDIS)
-        continue;
+	continue;
       for (j = 0; j < nw; ++j) {
-        ttnode = nn[j] = &vlist[tnode->windex[j]];
-        dd[j] = ttnode->distance;
+	ttnode = nn[j] = &vlist[tnode->windex[j]];
+	dd[j] = ttnode->distance;
       }
       ivlmaxmin (dd, nw, NULL, &jmin);
       dmin = dd[jmin];
       if (dmin > 999999) {
-        unset = YES;
-        unode = nn[jmin];
-        continue;               // not set
+	unset = YES;
+	unode = nn[jmin];
+	continue;		// not set
       }
-      setdis (tnode, dmin + 1000);      // next tree
+      setdis (tnode, dmin + 1000);	// next tree
       ++nset;
     }
     if (nset == 0)
@@ -2068,7 +2178,7 @@ fixnode (NODE * node)
 
   if (node->numwind > 0)
     return;
-  nee = setxx (node, xx);       // neighbours
+  nee = setxx (node, xx);	// neighbours
   node->parent = node->left = node->right = NULL;
   basedis = node->distance;
   for (j = 0; j < nee; ++j) {
@@ -2126,7 +2236,7 @@ setdis (NODE * node, int dis)
   if (node->distance < dis)
     return;
   node->distance = MIN (node->distance, dis);
-  nee = setxx (node, xx);       // neighbours
+  nee = setxx (node, xx);	// neighbours
   for (j = 0; j < nee; ++j) {
     setdis (xx[j], dis + 1);
   }
@@ -2164,7 +2274,7 @@ vert (char *nodename)
 NODE *
 root ()
 {
-  NODE *node;
+  NODE *node = NULL;
   int t, k;
 
   for (k = 0; k < numvertex; ++k) {
@@ -2176,13 +2286,14 @@ root ()
     return node;
   }
   fatalx ("can't find root\n");
+  return node ;
 }
 
 void
 settime ()
 // fill in times on nodes
 {
-  double konst = 10000;         // nominal scaling for drift
+  double konst = 10000;		// nominal scaling for drift
   double *eq, *rhs, *pp, *ans;
   int nneq, neq, nv, t, v1, v2, j, x, k;
   int ww[100];
@@ -2340,7 +2451,7 @@ qreadit (char *cname)
       nv = getnumvertex ();
       k = vindex (spt[1], vlist, nv);
       if (k < 0)
-        fatalx ("bad line %d", line);
+	fatalx ("bad line %d", line);
       tnode = &vlist[k];
       tnode->isfixed = YES;
     }
@@ -2349,7 +2460,7 @@ qreadit (char *cname)
       okline = YES;
       k = edgenum (spt[1]);
       if (k < 0)
-        fatalx ("bad line %d", line);
+	fatalx ("bad line %d", line);
       edge = &elist[k];
       val = atof (spt[2]);
       edge->val = atof (spt[2]);
@@ -2393,7 +2504,7 @@ superalloc (int **xv, int ***xe, int ***adv, int **aedge)
 
 void
 supersetup (int *xvlist, int *nxvlist, int **xelist, int *nxelist,
-            int **admixv, int *admixedge, int *nxalist)
+	    int **admixv, int *admixedge, int *nxalist)
 {
   NODE *xroot, *n1, *n2, *node;
   EDGE *edge;
@@ -2448,7 +2559,7 @@ supersetup (int *xvlist, int *nxvlist, int **xelist, int *nxelist,
 
 void
 superest (double *xmean, double *xvar, double *svar, double *yobs,
-          int nxvlist, int *eelist)
+	  int nxvlist, int *eelist)
 {
   double tiny = 1.0e-12;
   int x, a, t;
@@ -2521,8 +2632,8 @@ supergetvnames (char **vnames, int *xvlist, int nxvlist)
 
 void
 supergetvar (double *svar,
-             int *xvlist, int nxvlist, int **xelist, int nxelist,
-             int **admixv, int *admixedge, int nxalist)
+	     int *xvlist, int nxvlist, int **xelist, int nxelist,
+	     int **admixv, int *admixedge, int nxalist)
 {
   double *pwts;
   double *ee, *ww;
@@ -2561,7 +2672,6 @@ supergetvar (double *svar,
       svar[b * nxvlist + a] = y;
     }
   }
-
 /**
   printf("supergetvar: \n") ;
   printmatz(svar, vnames, nxvlist) ;
@@ -2577,8 +2687,8 @@ supergetvar (double *svar,
 
 void
 superreest (double *s2,
-            int *xvlist, int nxvlist, int **xelist, int nxelist, int **admixv,
-            int *admixedge, int nxalist)
+	    int *xvlist, int nxvlist, int **xelist, int nxelist, int **admixv,
+	    int *admixedge, int nxalist)
 {
 #define MAXP (MAXW+1)
   int i, xn1, xn2, z1, z2, eenum, k, t, tp, kk, a, b;
@@ -2683,13 +2793,12 @@ superreest (double *s2,
     }
     for (a = 0; a < t; a++) {
       for (b = 0; b < t; b++) {
-        xxx[a * t + b] = xx[a * tp + b] + xx[t * tp + t];
-        xxx[a * t + b] -= xx[a * tp + t];
-        xxx[a * t + b] -= xx[b * tp + t];
+	xxx[a * t + b] = xx[a * tp + b] + xx[t * tp + t];
+	xxx[a * t + b] -= xx[a * tp + t];
+	xxx[a * t + b] -= xx[b * tp + t];
       }
     }
     y = qwmax (xxx, ww, t);
-
 /**
    printf("zzqw\n") ;
    printmat(xxx, t, t) ;
@@ -2711,8 +2820,8 @@ superreest (double *s2,
 
 void
 supergetvals (double **admixw, double *elen,
-              int *xvlist, int nxvlist, int **xelist, int nxelist,
-              int **admixv, int *admixedge, int nxalist)
+	      int *xvlist, int nxvlist, int **xelist, int nxelist,
+	      int **admixv, int *admixedge, int nxalist)
 {
   double *ewts, **vmix;
   int k, t, eenum;
@@ -2741,8 +2850,8 @@ supergetvals (double **admixw, double *elen,
 
 void
 superputvals (double **admixw, double *elen,
-              int *xvlist, int nxvlist, int **xelist, int nxelist,
-              int **admixv, int *admixedge, int nxalist)
+	      int *xvlist, int nxvlist, int **xelist, int nxelist,
+	      int **admixv, int *admixedge, int nxalist)
 {
   double *ewts, **vmix;
   int k, t, eenum;
@@ -2828,8 +2937,8 @@ setadmfix (char *fixname)
     if (k < 0) {
 
       for (a = 0; a < nv; a++) {
-        node = &vlist[a];
-        printf ("zzbad %3d %s %s\n", a, sx, node->name);
+	node = &vlist[a];
+	printf ("zzbad %3d %s %s\n", a, sx, node->name);
       }
 
       fatalx ("bad fix line: %s\n", line);

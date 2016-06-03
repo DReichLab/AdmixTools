@@ -16,11 +16,11 @@ makeeglist (char **eglist, int maxnumeg, Indiv ** indivmarkers, int numindivs)
     k = indxindex (eglist, numeg, indx->egroup);
     if (k < 0) {
       if (numeg >= maxnumeg) {
-        printf
-          ("number of populations too large.  Increase maxpops if you wish\n");
-        fatalx
-          ("(makeeglist) You really want to analyse more than %d populations?\n",
-           maxnumeg);
+	printf
+	  ("number of populations too large.  Increase maxpops if you wish\n");
+	fatalx
+	  ("(makeeglist) You really want to analyse more than %d populations?\n",
+	   maxnumeg);
       }
       eglist[numeg] = strdup (indx->egroup);
       ++numeg;

@@ -75,8 +75,8 @@ lddip (double *xc)
     vst (pf, xf, 1.0 / y, 2);
     for (e1 = 0; e1 <= 1; ++e1) {
       for (f1 = 0; f1 <= 1; ++f1) {
-        k1 = 2 * e1 + f1;
-        p4[k1] = pe[e1] * pf[f1];
+	k1 = 2 * e1 + f1;
+	p4[k1] = pe[e1] * pf[f1];
       }
     }
     if (verbose)
@@ -155,8 +155,8 @@ lddipx (double *xc, double *xd)
     vst (pf, xf, 1.0 / y, 2);
     for (e1 = 0; e1 <= 1; ++e1) {
       for (f1 = 0; f1 <= 1; ++f1) {
-        k1 = 2 * e1 + f1;
-        p4[k1] = pe[e1] * pf[f1];
+	k1 = 2 * e1 + f1;
+	p4[k1] = pe[e1] * pf[f1];
       }
     }
     if (verbose)
@@ -199,14 +199,14 @@ mk4from9 (double *xd, double *xc, double *p)
   for (e1 = 0; e1 <= 1; ++e1) {
     for (e2 = 0; e2 <= 1; ++e2) {
       for (f1 = 0; f1 <= 1; ++f1) {
-        for (f2 = 0; f2 <= 1; ++f2) {
-          k1 = 2 * e1 + f1;
-          k2 = 2 * e2 + f2;
-          e3 = e1 + e2;
-          f3 = f1 + f2;
-          k3 = 3 * e3 + f3;
-          pp[k3] += p[k1] * p[k2];
-        }
+	for (f2 = 0; f2 <= 1; ++f2) {
+	  k1 = 2 * e1 + f1;
+	  k2 = 2 * e2 + f2;
+	  e3 = e1 + e2;
+	  f3 = f1 + f2;
+	  k3 = 3 * e3 + f3;
+	  pp[k3] += p[k1] * p[k2];
+	}
       }
     }
   }
@@ -216,16 +216,16 @@ mk4from9 (double *xd, double *xc, double *p)
   for (e1 = 0; e1 <= 1; ++e1) {
     for (e2 = 0; e2 <= 1; ++e2) {
       for (f1 = 0; f1 <= 1; ++f1) {
-        for (f2 = 0; f2 <= 1; ++f2) {
-          k1 = 2 * e1 + f1;
-          k2 = 2 * e2 + f2;
-          e3 = e1 + e2;
-          f3 = f1 + f2;
-          k = k3 = 3 * e3 + f3;
-          y = p[k1] * p[k2] / pp[k3];
-          xd[k1] += y * xc[k];
-          xd[k2] += y * xc[k];
-        }
+	for (f2 = 0; f2 <= 1; ++f2) {
+	  k1 = 2 * e1 + f1;
+	  k2 = 2 * e2 + f2;
+	  e3 = e1 + e2;
+	  f3 = f1 + f2;
+	  k = k3 = 3 * e3 + f3;
+	  y = p[k1] * p[k2] / pp[k3];
+	  xd[k1] += y * xc[k];
+	  xd[k2] += y * xc[k];
+	}
       }
     }
   }
@@ -259,7 +259,6 @@ mk2from4 (double *xe, double *xf, double *xc, double *pe, double *pf)
 
 double
 lewont (double p, double q, double x)
-
 /* d(ij) statistic */
 {
   double d1, dmax;
@@ -299,7 +298,6 @@ lewontindprime (double *p4)
 
 void
 lewontinv (double *p4, double lew, double p, double pp, int ispos)
-
 /* returns a 4 long distribution matching lewontins dprime lew 
 ispos YES x = p4[0] >= p*pp 
       NO  x = p4[0] <= p*pp 
@@ -335,7 +333,6 @@ p, pp must NOT be 0 or 1
 double
 dprime (int *a1, int *a2, int n)
 {
-
 /** 
  a1, a2 are categories and contain small integers 
  computes Lewontin's dprime statistic for multialle locus
@@ -371,7 +368,7 @@ dprime (int *a1, int *a2, int n)
       continue;
     for (b = 0; b <= max2; ++b) {
       if (f2[b] == 0.0)
-        continue;
+	continue;
       dd = lewont (f1[a], f2[b], x[a * (max2 + 1) + b]);
 
 /**
@@ -390,13 +387,13 @@ dprime (int *a1, int *a2, int n)
     }
     for (a = 0; a <= max1; ++a) {
       if (f1[a] == 0.0)
-        continue;
+	continue;
       for (b = 0; b <= max2; ++b) {
-        if (f2[b] == 0.0)
-          continue;
-        dd = lewont (f1[a], f2[b], x[a * (max2 + 1) + b]);
-        printf ("yy2 %d %d %9.3f %9.3f %9.3f %9.3f\n", a, b, f1[a], f2[b],
-                x[a * (max2 + 1) + b], dd);
+	if (f2[b] == 0.0)
+	  continue;
+	dd = lewont (f1[a], f2[b], x[a * (max2 + 1) + b]);
+	printf ("yy2 %d %d %9.3f %9.3f %9.3f %9.3f\n", a, b, f1[a], f2[b],
+		x[a * (max2 + 1) + b], dd);
       }
     }
 
@@ -452,8 +449,8 @@ zdip0 (double *xc)
     vst (pf, xf, 1.0 / y, 2);
     for (e1 = 0; e1 <= 1; ++e1) {
       for (f1 = 0; f1 <= 1; ++f1) {
-        k1 = 2 * e1 + f1;
-        p4[k1] = pe[e1] * pf[f1];
+	k1 = 2 * e1 + f1;
+	p4[k1] = pe[e1] * pf[f1];
       }
     }
     if (verbose)
@@ -539,7 +536,6 @@ zdip (double *xc)
   t = calccorr (corrpt, 0, YES);
   if (t < 0)
     return 0;
-
 /**
  xran = ranmod(1000) ;
  if (xran == 0) {     
@@ -614,7 +610,7 @@ clearcorr (CORR * corrpt)
 {
   corrpt->S0 = 0;
   corrpt->S1 = 0;
-  corrpt->S2 = 0;               // was buggy
+  corrpt->S2 = 0;		// was buggy
   corrpt->S11 = 0;
   corrpt->S12 = 0;
   corrpt->S22 = 0;

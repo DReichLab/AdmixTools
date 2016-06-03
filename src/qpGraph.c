@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "5040 "
+#define WVERSION   "5052 "
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -49,6 +49,8 @@
 // fulloutlier added
 // bad2popname added
 // worstz added for outliers 
+// weigntname added 
+// dottitle added
 
 
 #define MAXFL  50
@@ -105,6 +107,7 @@ char *graphdotname = NULL;
 char *poplistname = NULL;
 char *outliername = NULL;
 char *phylipname = NULL;
+char *dottitle = NULL ;
 
 char *dumpname = NULL;
 char *loadname = NULL;
@@ -145,6 +148,8 @@ char **enames;
 double zthresh = 3.0;
 double f2diag = 0.0;
 
+int gslsetup (int nmix, double *vmix) ;
+double gslopt (double *wpars) ;
 void readcommands (int argc, char **argv);
 void indiaestit (double *f2, double *f3, double *f4, int n);
 void sol2 (double *co, double *rhs, double *ans);
@@ -473,8 +478,20 @@ outpop:    (not present)
 
 
   printf ("before setwt numsnps: %d  outpop: %s\n", numsnps, outpop);
-  setwt (snpmarkers, numsnps, indivmarkers, nrows, xindex, xtypes, outpop,
+  if (weightname != NULL) { 
+    getweights(weightname, snpmarkers, numsnps) ;
+  }
+  else { 
+    setwt (snpmarkers, numsnps, indivmarkers, nrows, xindex, xtypes, outpop,
          eglist, numeg);
+  }
+
+  for (i = 0; i < numsnps; ++i) {
+    cupt = snpmarkers[i];
+    if (cupt->weight <= 0.0)
+      cupt->ignore = YES;
+  }
+
   numsnps = rmsnps (snpmarkers, numsnps, NULL); //  rid ignorable snps
   printf ("setwt numsnps: %d\n", numsnps);
   if (numsnps == 0)
@@ -830,7 +847,7 @@ outpop:    (not present)
   printf ("initial score: %9.3f\n", y);
 
   if (nmix > 0) {
-    printf ("zzgopt\n");
+
     wtov (vgsl, vmix, nmix);
     printf ("init  vg:\n");
     printmat (vgsl, 1, nmix);
@@ -873,7 +890,7 @@ outpop:    (not present)
 
   dumppars (dumpname, wwtemp, nwts, ww2, nedge);
   dumpgraph (graphoutname);
-  dumpdotgraph (graphdotname);
+  dumpdotgraph_title (graphdotname, dottitle);
 
   printf ("## end of run\n");
   return 0;
@@ -928,7 +945,7 @@ printfit (double *ww)
   double y, worstz, y1, y2, x1, x2, diff, sig, z;
   double *zz;
   FILE *outff;
-  char ss[256], ssworst[256], *ssx ;
+  char ss[MAXSTR], ssworst[MAXSTR], *ssx ;
   int isworst ;
 
   ZALLOC (pwts, numeg * MAXG, double);
@@ -1077,6 +1094,9 @@ printfit (double *ww)
   printf("%s", ssworst) ; 
   printnl() ;
   printnl() ;
+
+  sprintf(ss, "%s ::%s\n", graphname, ssworst) ;
+  dottitle = strdup(ss) ;
 
   return;
 }
@@ -1655,6 +1675,7 @@ readcommands (int argc, char **argv)
   getint (ph, "terse:", &tersemode);
   getdbl (ph, "precision:", &gslprecision);
   getstring (ph, "badpop2name:", &badpop2name);
+  getstring (ph, "weightname:", &weightname);
 
   getint (ph, "noxdata:", &noxdata);
   t = -1;
@@ -1923,7 +1944,7 @@ initvmix (double *wwinit, int nwts, int numiter)
   double *ff3fit;
 
   if (nwts == 0)
-    return;
+    return 0 ;
   nedge = getnumedge ();
   ng2 = numeg * numeg;
 

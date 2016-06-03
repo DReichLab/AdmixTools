@@ -11,7 +11,7 @@ static int linsolvx (int nDim, double *pfMatr, double *pfVect,
                      double *pfSolution);
 static int calcdet = NO;
 
-int
+void
 setcalcdet (int val)
 {
   calcdet = val;
@@ -466,7 +466,7 @@ mquad (double y0, double y1, double y2, double *pmx)
 
 }
 
-double
+void
 qgrad (double *grad, double *vv, double *q, double *l, int n)
 {
   double y;

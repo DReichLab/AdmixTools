@@ -505,8 +505,9 @@ zprob (double ptail)
   if (isnan (z))
     fatalx ("zprob bug %15.9f %15.9f\n", z, ptail);
   t = znewt (z, ptail);
-  if (isnan (t))
+  if (isnan (t)) {
     fatalx ("zprob bug %15.9f %15.9f\n", z, ptail);
+  }
   return t;
 }
 
@@ -571,6 +572,8 @@ ifirstgt (int val, int *tab, int n)
       if (val < tab[i])
 	return i;
     }
+
+    return n ; 
 }
 
 int
@@ -586,6 +589,8 @@ firstgt (double val, double *tab, int n)
       if (val < tab[i])
 	return i;
     }
+
+    return n ;
 }
 
 void
@@ -971,10 +976,10 @@ bprob (double p, double a, double b)
   double q, yl;
   q = 1.0 - p;
   yl = (a - 1) * log (p) + (b - 1) * log (q);
-  if (!finite (yl))
+  if (!isfinite (yl))
     fatalx ("bad bprob %9.3f %9.3f %9.3f\n", p, a, b);
   yl -= lbeta (a, b);
-  if (!finite (yl))
+  if (!isfinite (yl))
     fatalx ("bad bprob (lbeta) %9.3f %9.3f %9.3f\n", p, a, b);
   return yl;
 }
@@ -1176,7 +1181,7 @@ xlgamma (double x)
       y += term;
       zz /= (x * x);
     }
-  if (!finite (y))
+  if (!isfinite (y))
     fatalx ("bad xlgamma\n");
   return y;
 }
@@ -1867,9 +1872,9 @@ betaix (double a, double b, double lo, double hi)
   y1 = betai (a, b, lo);
   y2 = betai (a, b, hi);
 
-  if (!finite (y1))
+  if (!isfinite (y1))
     fatalx ("bad y1\n");
-  if (!finite (y2))
+  if (!isfinite (y2))
     fatalx ("bad y2\n");
 
   return y2 - y1;

@@ -28,7 +28,7 @@ countcol (char *fname)
 
 int
 countcolumns (FILE * fp)
-{                               /* count number of text columns separated by whitespace */
+{				/* count number of text columns separated by whitespace */
   int i = 0, c;
   fpos_t ptr;
 
@@ -77,8 +77,7 @@ sett1r (double *tt, double theta, int numstates, double risk)
 
 void
 gettln (SNP * cupt, Indiv * indx,
-        double *ptheta, double *plambda, int *pnumstates, int *pignore)
-
+	double *ptheta, double *plambda, int *pnumstates, int *pignore)
 /* set theta, lambda numstates */
 {
   double theta, lambda;
@@ -112,7 +111,6 @@ gettln (SNP * cupt, Indiv * indx,
 
 void
 puttln (SNP * cupt, Indiv * indx, double ptheta, double plambda)
-
 /* put theta, lambda */
 {
 
@@ -326,7 +324,6 @@ numvalids (Indiv * indx, SNP ** snpmarkers, int fc, int lc)
       continue;
     if (cupt->ignore)
       continue;
-
 /**
     gettln(cupt, indx, NULL, NULL, &numstates, &ignore) ; 
     if (ignore) continue ; 
@@ -374,7 +371,7 @@ isimatch (int a, int b)
 
 void
 gethpos (int *fc, int *lc, SNP ** snpm, int numsnps,
-         int xchrom, int lo, int hi)
+	 int xchrom, int lo, int hi)
 {
   int k, xfc, xlc, pos;
   SNP *cupt;
@@ -432,7 +429,6 @@ indxindex (char **namelist, int len, char *strid)
 
 int
 indindex (Indiv ** indivmarkers, int numindivs, char *indid)
-
 /* hash table would be good here */
 {
   int k;
@@ -537,7 +533,7 @@ testnan (double *a, int n)
   int i;
 
   for (i = 0; i < n; i++) {
-    if (!finite (a[i]))
+    if (!isfinite (a[i]))
       fatalx ("(testnan) fails:  index %d\n", i);
   }
 }
@@ -566,7 +562,7 @@ getgall (SNP * cupt, int *x, int n)
       x[k] = b & 3;
       ++k;
       if (k >= n)
-        break;
+	break;
     }
   }
 }
@@ -667,7 +663,6 @@ hasharr (char **xarr, int nxarr)
 int
 hashit (char *str)
 {
-
 /* simple and unimpressive hash function NJP */
   int j, len, hash;
 
@@ -750,7 +745,7 @@ setfastdupthresh (double thresh, double kill)
 
 void
 killxhets (SNP ** snpmarkers, Indiv ** indivmarkers, int numsnps,
-           int numindivs)
+	   int numindivs)
 {
   SNP *cupt;
   Indiv *indx;
@@ -767,10 +762,10 @@ killxhets (SNP ** snpmarkers, Indiv ** indivmarkers, int numsnps,
     for (k = 0; k < numindivs; k++) {
       indx = indivmarkers[k];
       if (indx->gender != 'M')
-        continue;
+	continue;
       g = getgtypes (cupt, k);
       if (g != 1)
-        continue;
+	continue;
       putgtypes (cupt, k, -1);
     }
   }
@@ -778,7 +773,7 @@ killxhets (SNP ** snpmarkers, Indiv ** indivmarkers, int numsnps,
 
 void
 printdup (SNP ** snpm, int numsnp, Indiv * inda, Indiv * indb, int nmatch,
-          int nnomatch, int iter)
+	  int nnomatch, int iter)
 {
   int t1, t2;
   double y;
@@ -793,7 +788,7 @@ printdup (SNP ** snpm, int numsnp, Indiv * inda, Indiv * indb, int nmatch,
   t1 = numvalids (inda, snpm, 0, numsnp - 1);
   t2 = numvalids (indb, snpm, 0, numsnp - 1);
   printf ("dup? %s %s  match: %d mismatch: %d   %d %d ",
-          inda->ID, indb->ID, nmatch, nnomatch, t1, t2);
+	  inda->ID, indb->ID, nmatch, nnomatch, t1, t2);
   printf ("%20s ", inda->egroup);
   printf ("%20s", indb->egroup);
   y = nnomatch / (double) (nnomatch + nmatch);
@@ -835,32 +830,32 @@ cdup (SNP ** snpm, Indiv ** indm, int nsnp, int *buff, int lbuff, int iter)
       k2 = buff[i2];
       match = nomatch = 0;
       for (j = 0; j < nsnp; ++j) {
-        cupt = snpm[j];
-        if (cupt->ignore)
-          continue;
-        if (cupt->isfake)
-          continue;
-        g1 = getgtypes (cupt, k1);
-        g2 = getgtypes (cupt, k2);
-        if ((g1 < 0) || (g2 < 0))
-          continue;
-        if (g1 == g2)
-          ++match;
-        if (g1 != g2)
-          ++nomatch;
+	cupt = snpm[j];
+	if (cupt->ignore)
+	  continue;
+	if (cupt->isfake)
+	  continue;
+	g1 = getgtypes (cupt, k1);
+	g2 = getgtypes (cupt, k2);
+	if ((g1 < 0) || (g2 < 0))
+	  continue;
+	if (g1 == g2)
+	  ++match;
+	if (g1 != g2)
+	  ++nomatch;
       }
 
       inda = indm[k1];
       indb = indm[k2];
       ytot = (double) (match + nomatch);
       if (ytot < MINMARK)
-        continue;
+	continue;
       yhit = ((double) match) / ytot;
 
       if (yhit > fastdupthresh) {
-        printdup (snpm, nsnp, inda, indb, match, nomatch, iter);
-        if (yhit > fastdupkill)
-          killdup (inda, indb, snpm, nsnp);
+	printdup (snpm, nsnp, inda, indb, match, nomatch, iter);
+	if (yhit > fastdupkill)
+	  killdup (inda, indb, snpm, nsnp);
       }
     }
   }
@@ -868,7 +863,7 @@ cdup (SNP ** snpm, Indiv ** indm, int nsnp, int *buff, int lbuff, int iter)
 
 void
 fastdupcheck (SNP ** snpmarkers, Indiv ** indivmarkers, int numsnps,
-              int numindivs)
+	      int numindivs)
 {
   SNP *cupt;
   Indiv *indx;
@@ -897,7 +892,7 @@ fastdupcheck (SNP ** snpmarkers, Indiv ** indivmarkers, int numsnps,
     for (k = 0; k < numindivs; k++) {
       g = getgtypes (cupt, k);
       if (g < 0)
-        continue;
+	continue;
       dd[1] += g;
       dd[0] += (2 - g);
     }
@@ -924,16 +919,16 @@ fastdupcheck (SNP ** snpmarkers, Indiv ** indivmarkers, int numsnps,
     for (k = 0; k < numindivs; ++k) {
       indx = indivmarkers[k];
       if (indx->ignore)
-        continue;
+	continue;
       for (i = 0; i < 15; i++) {
-        j = tab[i];
-        g = getgtypes (snpmarkers[j], k);
-        if (g < 0)
-          break;
-        ww[i] = g;
+	j = tab[i];
+	g = getgtypes (snpmarkers[j], k);
+	if (g < 0)
+	  break;
+	ww[i] = g;
       }
       if (g < 0)
-        continue;
+	continue;
       cc = codeit[n] = cbuff + 2 * n;
       cc[0] = kcode (ww, 15, 4);
       cc[1] = k;
@@ -953,15 +948,15 @@ fastdupcheck (SNP ** snpmarkers, Indiv ** indivmarkers, int numsnps,
       cc = codeit[i];
       vv = cc[0];
       if (vv != val) {
-        cdup (snpmarkers, indivmarkers, numsnps, buff, lbuff, itry);
-        lbuff = 0;
-        val = vv;
+	cdup (snpmarkers, indivmarkers, numsnps, buff, lbuff, itry);
+	lbuff = 0;
+	val = vv;
       }
       buff[lbuff] = cc[1];
       ++lbuff;
     }
     cdup (snpmarkers, indivmarkers, numsnps, buff, lbuff, itry);
-  }                             // itry
+  }				// itry
 
   free (snphets);
   free (indsnp);
@@ -997,7 +992,7 @@ kcode (int *w, int len, int base)
   return t;
 }
 
-int
+void
 grabgtypes (int *gtypes, SNP * cupt, int numindivs)
 {
 
@@ -1107,7 +1102,7 @@ numvalidgtallind (int *x, SNP ** snpm, int numsnps, int numind)
     getgall (cupt, z, numind);
     for (j = 0; j < numind; ++j) {
       if (z[j] >= 0)
-        ++x[j];
+	++x[j];
     }
   }
   free (z);
@@ -1271,7 +1266,7 @@ setid2pops (char *idpopstring, Indiv ** indmarkers, int numindivs)
     sx = spt[k];
     t = indindex (indmarkers, numindivs, sx);
     if (t < 0) {
-      printf ("(setid2pops): %s not found\n");
+      printf ("(setid2pops): %s not found\n", sx);
       continue;
     }
     indx = indmarkers[t];

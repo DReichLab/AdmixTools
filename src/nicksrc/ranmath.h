@@ -34,8 +34,9 @@ void genmultgauss(double *rvec, int num, int n, double *covar) ;  // multivariat
 double drand2() ;  
 void ranmultinom(int *samp, int n, double *p, int len)  ;  // multinomial
 double ranchi (int d)  ;   // chisq d dof.
-double raninvwis(double *wis, int t, int d, double *s)  ;  // inverse wishart
+void raninvwis(double *wis, int t, int d, double *s)  ;  // inverse wishart
 double uniform(double lo, double hi) ;   // uniform (lo..hi)
+void ransimplex(double *x, int n) ;   // uniform on n-simplex  
 void randirichlet(double *x, double *pp, int n)  ;  // dirichlet parameter vector pp
 void randirmult(double *pp, int *aa, int len, int m) ;  // dirichlet multinomial.  Output aa
 int prob1(double p) ;

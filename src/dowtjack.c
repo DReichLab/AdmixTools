@@ -64,7 +64,7 @@ callwtjack (char *iname, char *oname)
   double *jwt, *jmean;
 
   /* output variable */
-  double est, sig;              // NB
+  double est, sig;		// NB
   est = 0;
   sig = 0;
 
@@ -90,14 +90,14 @@ callwtjack (char *iname, char *oname)
     k++;
     freeup (spt, nsplit);
   }
-  len = k;                      // better style  who knows how numlines handles commas
+  len = k;			// better style  who knows how numlines handles commas
   fclose (ifile);
   // printf("mean: %9.3f len: %d\n", mean, len) ;
 
 
   /*call weightjack */
   weightjack (&est, &sig, mean, jmean, jwt, len);
-  fprintf (ofile, "%9.3f", est);        // d format ??
+  fprintf (ofile, "%9.3f", est);	// d format ??
   fprintf (ofile, "%9.3f", sig);
   fprintf (ofile, "\n");
   free (jmean);

@@ -287,6 +287,23 @@ compiarr (int *a, int *b, int len)
   return 0;
 }
 
+int
+comparr (double *a, double *b, int len)
+{
+  int i, k;
+  for (i = 0; i < len; i++) {
+    k = i;
+    if (porder != NULL)
+      k = porder[i];
+    if (a[k] < b[k])
+      return -1;
+    if (a[k] > b[k])
+      return 1;
+  }
+  return 0;
+}
+
+
 void
 mkirank (int *rank, int *xin, int n)
 // faster to call isortit 

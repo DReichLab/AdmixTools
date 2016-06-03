@@ -41,7 +41,7 @@ char *parname = NULL;
 char *rootname = NULL;
 char *trashdir = "/var/tmp";
 int details = NO;
-int hires = NO;                 /* %10.4f */
+int hires = NO;			/* %10.4f */
 int qtmode = NO;
 int inbreed = NO;
 char *f3name = NULL;
@@ -51,25 +51,25 @@ SNP **snpmarkers;
 int numsnps, numindivs;
 int seed = 0;
 int missingmode = NO;
-int noxdata = YES;              /* default as pop structure dubious if Males and females */
-int doanalysis = YES;           /* if no just print stats */
+int noxdata = YES;		/* default as pop structure dubious if Males and females */
+int doanalysis = YES;		/* if no just print stats */
 int nostatslim = 10;
 int znval = -1;
 int popsizelimit = -1;
-int gfromp = NO;                // genetic distance from physical 
+int gfromp = NO;		// genetic distance from physical 
 
 int forcezmode = NO;
-double blgsize = 0.05;          // block size in Morgans */ double *chitot ;
+double blgsize = 0.05;		// block size in Morgans */ double *chitot ;
 double diag = 0.0;
 int bigiter = 100;
 int startiter = 50;
-int fstdmode = NO;              // YES denominators done as in qp3test
+int fstdmode = NO;		// YES denominators done as in qp3test
 int xchrom = -1;
 int *xpopsize;
 
 int isinit = NO;
 int lsqmode = NO;
-double f2weight = 1.0;          // lsqmode only
+double f2weight = 1.0;		// lsqmode only
 
 char *genotypename = NULL;
 char *snpname = NULL;
@@ -103,7 +103,7 @@ int *lmix, nmix;
 int nh2, numeg;
 int *ezero = NULL;
 double wtmin = .0001;
-double minvar = 0.0;            // minvalue for variance term
+double minvar = 0.0;		// minvalue for variance term
 int quartet = NO;
 int xnumeg;
 
@@ -124,17 +124,17 @@ void sol2 (double *co, double *rhs, double *ans);
 void mkww (double *f3, double *f2, int k, double *ww, int n);
 char *getshort (char *ss, int n);
 int doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex,
-           int *xtypes, int nrows, int ncols, int numeg, int nblocks,
-           double scale);
+	   int *xtypes, int nrows, int ncols, int numeg, int nblocks,
+	   double scale);
 void map4x (double *aa, double *bb, int n2, int *indx);
 void map4y (double *aa, double *bb, int n2, int *indx);
 void getmv (int a, int b, int c, int d, double *mean, double *var,
-            double *xest, double *xvar);
+	    double *xest, double *xvar);
 void bumpm (double *y, int a, int c, double val, double *xest);
 void bumpw (double *w, int a, int c, double val);
 void loadppwts (double *ppwts, double *pwts, int n);
 double calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
-               int nrow, int ncol);
+	       int nrow, int ncol);
 void setwww (double **tmix, double *www, int n);
 void getwww (double **tmix, double *www, int n);
 double scorit (double *www, int n, double *pfix, double *ans);
@@ -149,7 +149,7 @@ void forcez (double *cc, double *rr, int *ez, int n);
 void calcfit (double *ff3fit, double *ww, int numeg);
 void dump1 (FILE * dumpfile, double *ww, int n);
 void loadpars (char *loadname, double *www, int nwts, double *xxans,
-               int nedge);
+	       int nedge);
 void read1 (FILE * loadfile, double *ww, int n);
 void print4 (double *ff3, int a, int b, int c, int d, int numeg);
 void printf3 (char *sss, FILE * fff, double *ww, char **eglist, int n);
@@ -159,7 +159,7 @@ void estff3 (double *fv, double *v, int numv, int *elist, int n);
 void rcsquish (double *xmat, double *mat, int *cols, int oldn, int newn);
 double ff4val (double *ff3, int a, int b, int c, int d, int numeg);
 void dumpit (char *dumpname, double *ff3, double *ff3var, char **eglist,
-             int numeg);
+	     int numeg);
 void checkpd (double *a, int n);
 void dumpf3 (char *dumpf3name, double **btop, double **bbot, int nblock);
 
@@ -178,7 +178,7 @@ main (int argc, char **argv)
   double y1, y2, y, sig, tail, yy1, yy2;
   char ss[11];
   int *blstart, *blsize, nblocks;
-  int xnblocks;                 /* for xsnplist */
+  int xnblocks;			/* for xsnplist */
   int *bcols;
   int **subsets;
   double maxgendis;
@@ -215,8 +215,8 @@ main (int argc, char **argv)
   double *qpscores;
   double *hest, *hsig;
   double mingenpos, maxgenpos;
-  int *qhit;                    /* number of times pair is clade in quartet */
-  int *qmiss;                   /* number of times pair migration event implied */
+  int *qhit;			/* number of times pair is clade in quartet */
+  int *qmiss;			/* number of times pair migration event implied */
   int **qplist, numqp = 0, maxqp = 10000;
   int *popsizes;
   double *qpscore;
@@ -266,7 +266,7 @@ main (int argc, char **argv)
 
   numindivs = getindivs (indivname, &indivmarkers);
   k = getgenos (genotypename, snpmarkers, indivmarkers,
-                numsnps, numindivs, nignore);
+		numsnps, numindivs, nignore);
 
   if (poplistname != NULL) {
     ZALLOC (eglist, numindivs, char *);
@@ -376,8 +376,8 @@ main (int argc, char **argv)
 
   printf ("before setwt numsnps: %d\n", numsnps);
   setwt (snpmarkers, numsnps, indivmarkers, nrows, xindex, xtypes, outpop,
-         eglist, numeg);
-  numsnps = rmsnps (snpmarkers, numsnps, NULL); //  rid ignorable snps
+	 eglist, numeg);
+  numsnps = rmsnps (snpmarkers, numsnps, NULL);	//  rid ignorable snps
   printf ("setwt numsnps: %d\n", numsnps);
   if (numsnps == 0)
     fatalx ("no valid snps\n");
@@ -452,7 +452,7 @@ main (int argc, char **argv)
     x = 2;
   scale =
     dofstnumx (fst, f2, f2sig, xsnplist, xindex, xtypes, nrows, ncols, numeg,
-               nblocks, indivmarkers, x);
+	       nblocks, indivmarkers, x);
 
   if (lambdascale <= 0.0)
     lambdascale = scale;
@@ -478,9 +478,9 @@ main (int argc, char **argv)
       strncpy (sss, eglist[k1], 10);
       fprintf (phylipfile, "%10s", sss);
       for (k2 = 0; k2 < numeg; ++k2) {
-        y1 = f2[k1 * numeg + k2];
-        y2 = f2[k2 * numeg + k1];
-        fprintf (phylipfile, "%6.3f", (0.5 * (y1 + y2)));
+	y1 = f2[k1 * numeg + k2];
+	y2 = f2[k2 * numeg + k1];
+	fprintf (phylipfile, "%6.3f", (0.5 * (y1 + y2)));
       }
       fprintf (phylipfile, "\n");
     }
@@ -498,7 +498,7 @@ main (int argc, char **argv)
 
   ZALLOC (vest, nh2, double);
   ZALLOC (vvar, nh2 * nh2, double);
-  ZALLOC (xvvar, nh2 * nh2, double);    // adjusted
+  ZALLOC (xvvar, nh2 * nh2, double);	// adjusted
   ZALLOC (vvinv, nh2 * nh2, double);
   ZALLOC (xvvinv, nh2 * nh2, double);
 
@@ -508,7 +508,7 @@ main (int argc, char **argv)
       continue;
     for (b = a; b < numeg; ++b) {
       if (b == basenum)
-        continue;
+	continue;
       ind2f[k] = a * numeg + b;
       f2ind[a * numeg + b] = k;
       f2ind[b * numeg + a] = k;
@@ -518,7 +518,7 @@ main (int argc, char **argv)
 
   kk =
     doff3 (ff3, ff3var, xsnplist, xindex, xtypes, nrows, ncols, numeg,
-           nblocks, lambdascale);
+	   nblocks, lambdascale);
 //checkpd(ff3var, numeg*numeg) ;
 
   printf ("number of good snps: %d\n", kk);
@@ -553,8 +553,8 @@ main (int argc, char **argv)
     vzero (gg3, ng2);
     for (b = 0; b < numeg; b++) {
       for (c = 0; c < numeg; c++) {
-        y = ff3val (ff3, a, b, c, numeg);
-        bump3 (gg3, 0, b, c, numeg, y);
+	y = ff3val (ff3, a, b, c, numeg);
+	bump3 (gg3, 0, b, c, numeg, y);
       }
     }
     printmatz (gg3, egshort, numeg);
@@ -596,7 +596,7 @@ balw (double **ww, int **vv, int n, int *nw)
     t = 0;
     for (j = 0; j < MAXW; ++j) {
       if (vv[k][j] < 0)
-        break;
+	break;
       ++t;
     }
     nw[k] = t;
@@ -807,7 +807,7 @@ indiaestit (double *f2, double *f3, double *f4, int n)
   z2 = dump2 (f2, a2, d, n);
   z3 = dump2 (f2, b, d, n);
 
-  y1 = z2 - z3;                 // a0 + a2 -  b  
+  y1 = z2 - z3;			// a0 + a2 -  b  
   xa02 = 0.5 * (z1 + y1);
   xb = z1 - xa02;
   xmd = z3 - xb;
@@ -922,7 +922,7 @@ readcommands (int argc, char **argv)
 
   getint (ph, "nostatslim:", &nostatslim);
   getint (ph, "popsizelimit:", &popsizelimit);
-  getint (ph, "gfromp:", &gfromp);      // gen dis from phys
+  getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "seed:", &seed);
   getint (ph, "details:", &details);
   getint (ph, "forcezmode:", &forcezmode);
@@ -1047,12 +1047,12 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
         }
 */
 
-        top[u] += wt * ytop;
-        bot[u] += 1.0;
+	top[u] += wt * ytop;
+	bot[u] += 1.0;
       }
       else {
-        top[u] += ytop;
-        bot[u] += 1.0 / wt;
+	top[u] += ytop;
+	bot[u] += 1.0 / wt;
       }
     }
   }
@@ -1087,7 +1087,7 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
     vvm (wtop, gtop, top, nh2);
     vvm (wbot, gbot, bot, nh2);
     vsp (wbot, wbot, 1.0e-10, nh2);
-    vvd (top, wtop, wbot, nh2); // delete-block estimate
+    vvd (top, wtop, wbot, nh2);	// delete-block estimate
   }
 
   vsp (gbot, gbot, 1.0e-10, nh2);
@@ -1126,7 +1126,7 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
     printnl() ;
 */
 
-  vst (ff3, ff3, scale, numeg * numeg); // correct ff3 not scaled 
+  vst (ff3, ff3, scale, numeg * numeg);	// correct ff3 not scaled 
   map4x (vvar, ff3var, numeg, ind2f);
 
 //  vst(ff3var, ff3var, scale*scale, numeg*numeg*numeg*numeg) ;

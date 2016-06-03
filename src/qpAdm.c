@@ -43,17 +43,17 @@ SNP **snpmarkers;
 int numsnps, numindivs;
 int seed = 0;
 int qtmode = NO;
-int chisqmode = NO;             // approx p-value better to use F-stat
+int chisqmode = NO;		// approx p-value better to use F-stat
 int dotpopsmode = YES;
-int noxdata = YES;              /* default as pop structure dubious if Males and females */
+int noxdata = YES;		/* default as pop structure dubious if Males and females */
 int popsizelimit = -1;
-int gfromp = NO;                // genetic distance from physical 
+int gfromp = NO;		// genetic distance from physical 
 int xchrom = -1;
 // if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
 
 int allsnps = NO;
 
-double blgsize = 0.05;          // block size in Morgans */
+double blgsize = 0.05;		// block size in Morgans */
 double *chitot;
 char *popleft, *popright;
 char **popllist, **poprlist;
@@ -71,7 +71,7 @@ double *jmean;
 int *wkprint;
 
 int ldregress = 0;
-double ldlimit = 9999.0;        /* default is infinity */
+double ldlimit = 9999.0;	/* default is infinity */
 
 char *outputname = NULL;
 char *weightname = NULL;
@@ -86,14 +86,14 @@ void readcommands (int argc, char **argv);
 
 double
 doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
-          int nrows, int ncols,
-          int lbase, int *llist, int nl, int rbase, int *rlist, int nr,
-          int nblocks);
+	  int nrows, int ncols,
+	  int lbase, int *llist, int nl, int rbase, int *rlist, int nr,
+	  int nblocks);
 
 void
 calcevar (double *var, double *yvar, int nl, int nr,
-          double **btop, double **bbot, double *gtop, double *gbot,
-          int nblocks, int dim);
+	  double **btop, double **bbot, double *gtop, double *gbot,
+	  int nblocks, int dim);
 
 int getf4 (int **xx, int *indx, double *ans);
 void calcadm (double *ans, double *A, int n);
@@ -114,7 +114,7 @@ main (int argc, char **argv)
   Indiv *indx;
   double zscore, y1, y2, y, ysig, tail, yy1, yy2, yy;
   int *blstart, *blsize, nblocks;
-  int xnblocks;                 /* for xsnplist */
+  int xnblocks;			/* for xsnplist */
   int *bcols;
   double maxgendis;
   int **xtop;
@@ -170,7 +170,7 @@ main (int argc, char **argv)
   setindm (indivmarkers);
 
   k = getgenos (genotypename, snpmarkers, indivmarkers,
-                numsnps, numindivs, nignore);
+		numsnps, numindivs, nignore);
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -267,7 +267,7 @@ main (int argc, char **argv)
     cupt = snpmarkers[i];
     cupt->weight = 1.0;
   }
-  numsnps = rmsnps (snpmarkers, numsnps, NULL); //  rid ignorable snps
+  numsnps = rmsnps (snpmarkers, numsnps, NULL);	//  rid ignorable snps
   if (numsnps == 0)
     fatalx ("no valid snps\n");
 
@@ -302,7 +302,7 @@ main (int argc, char **argv)
   countpops (counts, xsnplist, xindex, xtypes, nrows, ncols);
 
 
-  ZALLOC (bcols, ncols, int);   // blocks for columns -1 => unused
+  ZALLOC (bcols, ncols, int);	// blocks for columns -1 => unused
   ivclear (bcols, -1, ncols);
   for (k = 0; k < ncols; k++) {
     cupt = xsnplist[k];
@@ -350,7 +350,7 @@ main (int argc, char **argv)
 
 
   y = doq4vecb (ymean, yvar, counts, bcols,
-                nrows, ncols, lbase, xind, nl, rbase, rlist, nr, nblocks);
+		nrows, ncols, lbase, xind, nl, rbase, rlist, nr, nblocks);
 // y is jackknife dof 
   printf ("dof (jackknife): %9.3f\n", y);
   printf ("numsnps used: %d\n", nsnpused);
@@ -443,7 +443,7 @@ main (int argc, char **argv)
   ZALLOC (sbest, nl, int);
   ZALLOC (yscbest, nl, double);
   ZALLOC (ychi, nl, double);
-  vclear (yscbest, -1.0e5, nl); // p-value large is good
+  vclear (yscbest, -1.0e5, nl);	// p-value large is good
   printf (" %12s  ", "fixed pat");
   printf ("wt  %3s", "dof");
   printf (" %9s", "chisq");
@@ -455,40 +455,39 @@ main (int argc, char **argv)
       dekodeitb (vfix, k, nl, 2);
       t = intsum (vfix, nl);
       if (t != wt)
-        continue;
+	continue;
       if (wt == 0) {
-        f4pt = g4info[0] = f4info[nl - 1];
+	f4pt = g4info[0] = f4info[nl - 1];
       }
       else {
-        doranktestfix (ymean, yvar, nl, nr, nl - 1, f4pt, vfix);
+	doranktestfix (ymean, yvar, nl, nr, nl - 1, f4pt, vfix);
       }
       calcadm (ww, f4pt->A, nl);
       vmaxmin (ww, nl, NULL, &y);
       dof = nnint (f4pt->dof);
       if (dof > 0)
-        tail = rtlchsq (dof, f4pt->chisq);
+	tail = rtlchsq (dof, f4pt->chisq);
       else
-        tail = 0;
+	tail = 0;
       if (y < -0.001)
-        tail = 0;               // not feasible
+	tail = 0;		// not feasible
       if (tail < 1.0e-30)
-        tail = 0;
+	tail = 0;
       if (tail > yscbest[wt]) {
-        yscbest[wt] = tail;
-        sbest[wt] = k;
-        ychi[wt] = f4pt->chisq;
+	yscbest[wt] = tail;
+	sbest[wt] = k;
+	ychi[wt] = f4pt->chisq;
       }
       printf (" %12s  %1d   %3d %9.3f %15.6g ", binary_string (k, nl), wt,
-              dof, f4pt->chisq, tail);
+	      dof, f4pt->chisq, tail);
       printmatx (ww, 1, nl);
       if (y < -.001)
-        printf (" infeasible");
+	printf (" infeasible");
       printnl ();
       if (verbose) {
-        printf4info (f4pt);
-        printnl ();
+	printf4info (f4pt);
+	printnl ();
       }
-
 /**
    if (y>yscbest[wt]) { 
     sbest[wt] = k ;
@@ -509,7 +508,7 @@ main (int argc, char **argv)
     y = ychi[wt] - ychi[wt - 1];
     tail = rtlchsq (1, y);
     printf (" chi(nested): %9.3f p-value for nested model: %15.6g\n", y,
-            tail);
+	    tail);
   }
   printnl ();
   fflush (stdout);
@@ -522,23 +521,23 @@ main (int argc, char **argv)
       vzero (w0, nl * nr);
       vzero (w1, nl * nr);
       for (a = 0; a < nl; ++a) {
-        k = ktable[a * nr + b];
-        printf ("details: ");
-        printf ("%15s %15s ", popllist[a + 1], poprlist[b + 1]);
-        y1 = w0[a] = ymean[k];
-        w1[k] = wbest[a];
-        printf ("%12.6f", y1);
-        yy = yvar[k * dim + k];
-        ysig = sqrt (yy);
-        printf ("%12.6f", y1 / ysig);   // Z-score
-        printnl ();
+	k = ktable[a * nr + b];
+	printf ("details: ");
+	printf ("%15s %15s ", popllist[a + 1], poprlist[b + 1]);
+	y1 = w0[a] = ymean[k];
+	w1[k] = wbest[a];
+	printf ("%12.6f", y1);
+	yy = yvar[k * dim + k];
+	ysig = sqrt (yy);
+	printf ("%12.6f", y1 / ysig);	// Z-score
+	printnl ();
       }
       printf ("dscore: %15s ", poprlist[b + 1]);
 // printf(" ") ; printmatl(w0, 1, nl) ;
       y1 = vdot (w0, wbest, nl);
 // w0 is empirical f4;  wbest coeffs;  ideally should eb zero. 
       mulmat (w2, yvar, w1, dim, dim, 1);
-      y2 = vdot (w1, w2, nl * nr);      // variance
+      y2 = vdot (w1, w2, nl * nr);	// variance
       ysig = y1 / sqrt (y2);
       printf ("f4: %12.6f Z: %12.6f\n", y1, ysig);
       printnl ();
@@ -633,7 +632,7 @@ readcommands (int argc, char **argv)
   getdbl (ph, "blgsize:", &blgsize);
 
   getint (ph, "popsizelimit:", &popsizelimit);
-  getint (ph, "gfromp:", &gfromp);      // gen dis from phys
+  getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "chrom:", &xchrom);
   getint (ph, "maxrank:", &maxrank);
   getint (ph, "hires:", &hires);
@@ -651,8 +650,8 @@ readcommands (int argc, char **argv)
 
 double
 doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
-          int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
-          int *rlist, int nr, int nblocks)
+	  int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
+	  int *rlist, int nr, int nblocks)
 // return dof estimate
 {
 
@@ -719,16 +718,16 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
     for (a = 0; a < dim; ++a) {
       ret = getf4 (counts[col], xtop[a], &y);
       if ((allsnps == NO) && (ret < 0)) {
-        isok = NO;
-        break;
+	isok = NO;
+	break;
       }
       if ((allsnps == YES) && (ret < 0))
-        continue;
+	continue;
       if (allsnps == YES)
-        isok = YES;
+	isok = YES;
       bbot[bnum][a] += 1;
       if (ret == 2)
-        fatalx ("bad pop in numerator\n");
+	fatalx ("bad pop in numerator\n");
       f4[a] = y;
     }
     if (isok == NO)
@@ -777,7 +776,7 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
   free2D (&bjtop, nblocks);
 
   nsnpused = totnum;
-  return (y1 * y1) / y2;        // a natural estimate for degrees of freedom in F-test. 
+  return (y1 * y1) / y2;	// a natural estimate for degrees of freedom in F-test. 
 
 }
 
@@ -842,7 +841,7 @@ getf4 (int **xx, int *indx, double *ans)
 
 void
 calcevar (double *var, double *yvar, int nl, int nr, double **btop,
-          double **bbot, double *gtop, double *gbot, int nblocks, int dim)
+	  double **bbot, double *gtop, double *gbot, int nblocks, int dim)
 {
   double *ymean, *mean, *wtop, *wbot, *totmean, **tmean, *wjack;
   F4INFO *f4wk, f4tt;

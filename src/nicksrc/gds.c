@@ -527,7 +527,7 @@ ranchi (int d)
 
 }
 
-double
+void
 raninvwis (double *wis, int t, int d, double *s)
 // inverse Wishart:  t d.o.f. d dimension S data matrix  
 // Ref Liu: Monte Carlo Strategies pp 40-41
@@ -594,6 +594,19 @@ uniform (double lo, double hi)
 
 }
 
+void ransimplex(double *x, int n) 
+// special case of randirichlet
+{
+  
+  int i;
+
+  for (i=0; i<n; i++) { 
+   x[i] = ranexp() ;
+  }  
+
+  bal1(x, n) ;
+
+}
 
 void
 randirichlet (double *x, double *pp, int n)

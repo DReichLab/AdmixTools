@@ -44,17 +44,17 @@ Indiv **indivmarkers;
 SNP **snpmarkers;
 int numsnps, numindivs;
 int seed = 0;
-int chisqmode = NO;             // approx p-value better to use F-stat
+int chisqmode = NO;		// approx p-value better to use F-stat
 int dotpopsmode = YES;
-int noxdata = YES;              /* default as pop structure dubious if Males and females */
+int noxdata = YES;		/* default as pop structure dubious if Males and females */
 int popsizelimit = -1;
-int gfromp = NO;                // genetic distance from physical 
+int gfromp = NO;		// genetic distance from physical 
 int xchrom = -1;
 // if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
 
 int allsnps = NO;
 
-double blgsize = 0.05;          // block size in Morgans */
+double blgsize = 0.05;		// block size in Morgans */
 double *chitot;
 char *popleft, *popright;
 char **popllist, **poprlist;
@@ -70,7 +70,7 @@ int inbreed = NO;
 double lambdascale;
 
 int ldregress = 0;
-double ldlimit = 9999.0;        /* default is infinity */
+double ldlimit = 9999.0;	/* default is infinity */
 
 char *outputname = NULL;
 char *weightname = NULL;
@@ -84,8 +84,8 @@ void readcommands (int argc, char **argv);
 
 double
 doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
-          int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
-          int *rlist, int nr, int nblocks);
+	  int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
+	  int *rlist, int nr, int nblocks);
 
 int getf4 (int **xx, int *indx, double *ans);
 
@@ -104,7 +104,7 @@ main (int argc, char **argv)
   Indiv *indx;
   double zscore, y1, y2, y, ysig, tail, yy1, yy2, yy;
   int *blstart, *blsize, nblocks;
-  int xnblocks;                 /* for xsnplist */
+  int xnblocks;			/* for xsnplist */
   int *bcols;
   double maxgendis;
   int **xtop;
@@ -152,7 +152,7 @@ main (int argc, char **argv)
   setindm (indivmarkers);
 
   k = getgenos (genotypename, snpmarkers, indivmarkers,
-                numsnps, numindivs, nignore);
+		numsnps, numindivs, nignore);
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -245,7 +245,7 @@ main (int argc, char **argv)
     cupt = snpmarkers[i];
     cupt->weight = 1.0;
   }
-  numsnps = rmsnps (snpmarkers, numsnps, NULL); //  rid ignorable snps
+  numsnps = rmsnps (snpmarkers, numsnps, NULL);	//  rid ignorable snps
   if (numsnps == 0)
     fatalx ("no valid snps\n");
 
@@ -280,7 +280,7 @@ main (int argc, char **argv)
   countpops (counts, xsnplist, xindex, xtypes, nrows, ncols);
 
 
-  ZALLOC (bcols, ncols, int);   // blocks for columns -1 => unused
+  ZALLOC (bcols, ncols, int);	// blocks for columns -1 => unused
   ivclear (bcols, -1, ncols);
   for (k = 0; k < ncols; k++) {
     cupt = xsnplist[k];
@@ -326,7 +326,7 @@ main (int argc, char **argv)
 
 
   y = doq4vecb (ymean, yvar, counts, bcols,
-                nrows, ncols, lbase, xind, nl, rbase, rlist, nr, nblocks);
+		nrows, ncols, lbase, xind, nl, rbase, rlist, nr, nblocks);
 // y is jackknife dof 
   printf ("dof (jackknife): %9.3f\n", y);
   printf ("numsnps used: %d\n", nsnpused);
@@ -406,7 +406,7 @@ readcommands (int argc, char **argv)
   getdbl (ph, "blgsize:", &blgsize);
 
   getint (ph, "popsizelimit:", &popsizelimit);
-  getint (ph, "gfromp:", &gfromp);      // gen dis from phys
+  getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "chrom:", &xchrom);
   getint (ph, "maxrank:", &maxrank);
   getint (ph, "allsnps:", &allsnps);
@@ -420,8 +420,8 @@ readcommands (int argc, char **argv)
 
 double
 doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
-          int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
-          int *rlist, int nr, int nblocks)
+	  int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
+	  int *rlist, int nr, int nblocks)
 // return dof estimate
 {
 
@@ -487,16 +487,16 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
     for (a = 0; a < dim; ++a) {
       ret = getf4 (counts[col], xtop[a], &y);
       if ((allsnps == NO) && (ret < 0)) {
-        isok = NO;
-        break;
+	isok = NO;
+	break;
       }
       if ((allsnps == YES) && (ret < 0))
-        continue;
+	continue;
       if (allsnps == YES)
-        isok = YES;
+	isok = YES;
       bbot[bnum][a] += 1;
       if (ret == 2)
-        fatalx ("bad pop in numerator\n");
+	fatalx ("bad pop in numerator\n");
       f4[a] = y;
     }
     if (isok == NO)
@@ -545,7 +545,7 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
   free2D (&bjtop, nblocks);
 
   nsnpused = totnum;
-  return (y1 * y1) / y2;        // a natural estimate for degrees of freedom in F-test. 
+  return (y1 * y1) / y2;	// a natural estimate for degrees of freedom in F-test. 
 
 }
 

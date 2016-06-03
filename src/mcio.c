@@ -14,24 +14,24 @@
 /* global data */
 
 extern int numchrom;
-int usecm = NO;                 //!< genetic distances are in cMorgans
+int usecm = NO;			//!< genetic distances are in cMorgans
 int plinkinputmode = NO;
 static int snprawtab = NO;
 static int debug = NO;
 extern char *trashdir;
-extern int qtmode;              //!< user parameter (phenotype is quantitative)
-extern int verbose;             //!< user parameter (print additional output to stdout)
-extern int familynames;         //!< user parameter (prepend PLINK family names with colon to individual names)
+extern int qtmode;		//!< user parameter (phenotype is quantitative)
+extern int verbose;		//!< user parameter (print additional output to stdout)
+extern int familynames;		//!< user parameter (prepend PLINK family names with colon to individual names)
 extern double lp1, lp2;
 extern double a1, b1;
 
-extern int packmode;            //!< flag - input {is not,is} in packed mode
-extern char *packgenos;         //!< packed genotype data (packit.h)
+extern int packmode;		//!< flag - input {is not,is} in packed mode
+extern char *packgenos;		//!< packed genotype data (packit.h)
 extern char *packepath;
-extern long packlen;            //!< allocated size of packgenos data space
-extern long rlen;               //!< number of bytes in packgenos space that each SNP's data occupies
-extern int malexhet;            //!< user parameter (retain het genotype data on male X chromosome)
-extern int hashcheck;           //!< user parameter (check input file hashes against input data)
+extern long packlen;		//!< allocated size of packgenos data space
+extern long rlen;		//!< number of bytes in packgenos space that each SNP's data occupies
+extern int malexhet;		//!< user parameter (retain het genotype data on male X chromosome)
+extern int hashcheck;		//!< user parameter (check input file hashes against input data)
 extern int outputall;
 extern int sevencolumnped;
 static int dofreeped = YES;
@@ -39,12 +39,12 @@ static int dofreeped = YES;
 int tempnum = 0;
 int tempfake = 0;
 
-static int *snpord = NULL;      //!< snpord[i] == j if and only if  snpm[j] is ith SNP in input file
-static int numsnpord = 0;       //!< current size of array snpord
-static int *snporda[3];         //!< Copies of snpord for various data sets (used by mergeit)
-static int numsnporda[3];       //!< Number of elements of snporda in use
+static int *snpord = NULL;	//!< snpord[i] == j if and only if  snpm[j] is ith SNP in input file
+static int numsnpord = 0;	//!< current size of array snpord
+static int *snporda[3];		//!< Copies of snpord for various data sets (used by mergeit)
+static int numsnporda[3];	//!< Number of elements of snporda in use
 
-static int badpedignore = NO;   //!< flag - ignore bad allele symbols in PED file 
+static int badpedignore = NO;	//!< flag - ignore bad allele symbols in PED file 
 
 static int maxgenolinelength = -1;
 static int tersemode = NO;
@@ -56,7 +56,7 @@ static int chrmode = NO;
 static int chimpmode = NO;
 static int pordercheck = YES;
 static int snpordered;
-static int isgdis = YES;        // no means gsid 0 in input 
+static int isgdis = YES;	// no means gsid 0 in input 
 // fails if packed and out of order 
 static int familypopnames = NO;
 // in .fam output use popnames (egroup) 
@@ -67,7 +67,7 @@ SNPDATA *tsdpt;
 /* local function prototypes */
 
 int getbedgenos (char *gname, SNP ** snpmarkers, Indiv ** indivmarkers,
-                 int numsnps, int numindivs, int nignore);
+		 int numsnps, int numindivs, int nignore);
 
 void freeped ();
 
@@ -75,9 +75,9 @@ static char x2base (int x);
 static void gtox (int g, char *cvals, int *p1, int *p2);
 
 int ancval (int x);
-static int setskipit (char *sx);        // ignore lines in snp, map files
+static int setskipit (char *sx);	// ignore lines in snp, map files
 int calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind,
-                int *pihash, int *pshash);
+		int *pihash, int *pshash);
 
 /* ---------------------------------------------------------------------------------------------------- */
 
@@ -124,7 +124,7 @@ snpsortit (int **spos, int *indx, int n)
 
 int
 getsnps (char *snpfname, SNP *** snpmarkpt, double spacing,
-         char *badsnpname, int *numignore, int numrisks)
+	 char *badsnpname, int *numignore, int numrisks)
 {
   // returns number of SNPS
   // numrisks 
@@ -154,7 +154,7 @@ getsnps (char *snpfname, SNP *** snpmarkpt, double spacing,
   }
   for (i = 0; i < nreal; i++) {
     ZALLOC (snpraw[i], 1, SNPDATA);
-    cclear (snpraw[i]->cchrom, CNULL, 7);
+    charclear (snpraw[i]->cchrom, CNULL, 7);
     snpraw[i]->inputrow = -1;
     snpraw[i]->alleles[0] = '1';
     snpraw[i]->alleles[1] = '2';
@@ -173,8 +173,8 @@ getsnps (char *snpfname, SNP *** snpmarkpt, double spacing,
     if ((sdpt->ignore) && (plinkinputmode)) {
       snppos[i][0] = 99;
       if (pordercheck == YES) {
-        pordercheck = NO;
-        printf ("PLINK input. No check on SNP order\n");
+	pordercheck = NO;
+	printf ("PLINK input. No check on SNP order\n");
       }
     }
     t = snppos[i][1] = nnint ((sdpt->gpos) * GDISMUL);
@@ -207,11 +207,11 @@ getsnps (char *snpfname, SNP *** snpmarkpt, double spacing,
       snpordered = NO;
       ++failx;
       if (failx < 10) {
-        printf
-          ("snp order check fail; snp list not ordered: %s (processing continues)",
-           snpfname);
-        printimat (snppos[i], 1, 3);
-        printf ("zzz %d %d\n", i, j);
+	printf
+	  ("snp order check fail; snp list not ordered: %s (processing continues)",
+	   snpfname);
+	printimat (snppos[i], 1, 3);
+	printf ("zzz %d %d\n", i, j);
       }
     }
   }
@@ -299,7 +299,7 @@ getsizex (char *fname)
     if (nsplit == 0)
       continue;
     sx = spt[0];
-    skipit = setskipit (sx);    // comment line
+    skipit = setskipit (sx);	// comment line
     if (skipit == NO) {
       ++num;
     }
@@ -309,8 +309,8 @@ getsizex (char *fname)
     c = line[len - 1];
     if (c != '\n') {
       while ((c = fgetc (fff)) != EOF) {
-        if (c == '\n')
-          break;
+	if (c == '\n')
+	  break;
       }
     }
     freeup (spt, nsplit);
@@ -436,25 +436,25 @@ readsnpdata (SNPDATA ** snpraw, char *fname)
     skipit = setskipit (sx);
     if (skipit == NO) {
       if (nsplit < 4)
-        fatalx ("(readsnpdata) bad line: %s\n", line);
+	fatalx ("(readsnpdata) bad line: %s\n", line);
       sdpt = snpraw[num];
       sdpt->inputrow = num;
 
       if (strlen (spt[0]) >= IDSIZE)
-        fatalx ("ID too long\n", spt[0]);
+	fatalx ("ID too long\n", spt[0]);
       strcpy (sdpt->ID, spt[0]);
 
       sdpt->chrom = chrom = str2chrom (spt[1]);
       strncpy (sdpt->cchrom, spt[1], 6);
 
       if ((chrom >= MAXCH) || (chrom <= 0)) {
-        if (nbad < 10)
-          printf ("warning: bad chrom: %s", line);
-        ++nbad;
+	if (nbad < 10)
+	  printf ("warning: bad chrom: %s", line);
+	++nbad;
 
-        sdpt->chrom = MIN (chrom, BADCHROM);
-        sdpt->chrom = MAX (chrom, 0);
-        sdpt->ignore = YES;
+	sdpt->chrom = MIN (chrom, BADCHROM);
+	sdpt->chrom = MAX (chrom, 0);
+	sdpt->ignore = YES;
       }
 
       // the genetic positions will be converted to Morgans (assumed to be in cM) if and only if
@@ -462,13 +462,13 @@ readsnpdata (SNPDATA ** snpraw, char *fname)
 
       sdpt->gpos = atof (spt[2]);
       if (sdpt->gpos > 100) {
-        if (sdpt->gpos > 1.0e6)
-          fatalx ("absurd genetic distance:\n%s\n", line);
-        if (!usecm) {
-          printf ("*** warning.  genetic distances are in cM not Morgans\n");
-          printf ("%s\n", line);
-        }
-        usecm = YES;            // set flag to connvert to Morgans
+	if (sdpt->gpos > 1.0e6)
+	  fatalx ("absurd genetic distance:\n%s\n", line);
+	if (!usecm) {
+	  printf ("*** warning.  genetic distances are in cM not Morgans\n");
+	  printf ("%s\n", line);
+	}
+	usecm = YES;		// set flag to connvert to Morgans
       }
 
       maxgpos[chrom] = MAX (maxgpos[chrom], sdpt->gpos);
@@ -476,30 +476,30 @@ readsnpdata (SNPDATA ** snpraw, char *fname)
 
       setsdpos (sdpt, atoi (spt[3]));
       if (nsplit < 8) {
-        ivzero (sdpt->nn, 4);
-        if (nsplit == 6) {
-          sx = spt[4];
-          sdpt->alleles[0] = toupper (sx[0]);
-          sx = spt[5];
-          sdpt->alleles[1] = toupper (sx[0]);
-        }
+	ivzero (sdpt->nn, 4);
+	if (nsplit == 6) {
+	  sx = spt[4];
+	  sdpt->alleles[0] = toupper (sx[0]);
+	  sx = spt[5];
+	  sdpt->alleles[1] = toupper (sx[0]);
+	}
       }
-      else {                    // QUESTION:  when does a SNP file have more than seven columns?
-        for (k = 0; k < 4; k++) {
-          sdpt->nn[k] = atoi (spt[4 + k]);
-        }
-        if (nsplit == 10) {
-          sx = spt[8];
-          sdpt->alleles[0] = toupper (sx[0]);
-          sx = spt[9];
-          sdpt->alleles[1] = toupper (sx[0]);
-        }
+      else {			// QUESTION:  when does a SNP file have more than seven columns?
+	for (k = 0; k < 4; k++) {
+	  sdpt->nn[k] = atoi (spt[4 + k]);
+	}
+	if (nsplit == 10) {
+	  sx = spt[8];
+	  sdpt->alleles[0] = toupper (sx[0]);
+	  sx = spt[9];
+	  sdpt->alleles[1] = toupper (sx[0]);
+	}
       }
       ++num;
     }
     freeup (spt, nsplit);
     continue;
-  }                             // elihw
+  }				// elihw
 
   // if all genetic positions are set to zero, set from physical position 
   if (maxg <= 0.00001) {
@@ -548,24 +548,24 @@ readsnpmapdata (SNPDATA ** snpraw, char *fname)
     skipit = setskipit (sx);
     if (skipit == NO) {
       if (nsplit < 4)
-        fatalx ("(readsnpmapdata) bad line: %s\n", line);
+	fatalx ("(readsnpmapdata) bad line: %s\n", line);
       sdpt = snpraw[num];
       if (strlen (spt[1]) >= IDSIZE)
-        fatalx ("ID too long\n", spt[1]);
+	fatalx ("ID too long\n", spt[1]);
       strcpy (sdpt->ID, spt[1]);
 
-      if (nsplit >= 6) {        // alleles in .map file are optional
-        sx = spt[4];
-        sdpt->alleles[0] = sx[0];
-        sx = spt[5];
-        sdpt->alleles[1] = sx[0];
-        if (sdpt->alleles[0] == '0')
-          sdpt->alleles[0] = 'X';       // unknown
-        if (sdpt->alleles[1] == '0')
-          sdpt->alleles[1] = 'X';
+      if (nsplit >= 6) {	// alleles in .map file are optional
+	sx = spt[4];
+	sdpt->alleles[0] = sx[0];
+	sx = spt[5];
+	sdpt->alleles[1] = sx[0];
+	if (sdpt->alleles[0] == '0')
+	  sdpt->alleles[0] = 'X';	// unknown
+	if (sdpt->alleles[1] == '0')
+	  sdpt->alleles[1] = 'X';
       }
       else {
-        cclear ((unsigned char *) sdpt->alleles, CNULL, 2);
+	charclear ( sdpt->alleles, CNULL, 2);
       }
 
       sx = spt[0];
@@ -573,15 +573,15 @@ readsnpmapdata (SNPDATA ** snpraw, char *fname)
       strncpy (sdpt->cchrom, sx, 6);
 
       if ((chrom >= MAXCH) || (chrom <= 0)) {
-        if (nbad < 10)
-          printf ("warning (mapfile): bad chrom: %s", line);
-        ++nbad;
+	if (nbad < 10)
+	  printf ("warning (mapfile): bad chrom: %s", line);
+	++nbad;
 
-        sdpt->chrom = MIN (chrom, BADCHROM);
-        sdpt->chrom = MAX (chrom, 0);
-        sdpt->chrom = 99;
-        strcpy (sdpt->cchrom, "99");
-        sdpt->ignore = YES;
+	sdpt->chrom = MIN (chrom, BADCHROM);
+	sdpt->chrom = MAX (chrom, 0);
+	sdpt->chrom = 99;
+	strcpy (sdpt->cchrom, "99");
+	sdpt->ignore = YES;
       }
 
       // the genetic positions will be converted to Morgans (assumed to be in cM) if and only if
@@ -589,24 +589,24 @@ readsnpmapdata (SNPDATA ** snpraw, char *fname)
 
       sdpt->gpos = atof (spt[2]);
       if (sdpt->gpos > 100) {
-        if (sdpt->gpos > 1.0e6)
-          fatalx ("absurd genetic distance:\n%s\n", line);
-        if (!usecm) {
-          printf ("*** warning.  genetic distances are in cM not Morgans\n");
-          printf ("%s\n", line);
-        }
-        usecm = YES;
+	if (sdpt->gpos > 1.0e6)
+	  fatalx ("absurd genetic distance:\n%s\n", line);
+	if (!usecm) {
+	  printf ("*** warning.  genetic distances are in cM not Morgans\n");
+	  printf ("%s\n", line);
+	}
+	usecm = YES;
       }
       maxgpos[chrom] = MAX (maxgpos[chrom], sdpt->gpos);
       maxg = MAX (maxg, maxgpos[chrom]);
       sdpt->ppos = atof (spt[3]);
       if (nsplit < 8) {
-        ivzero (sdpt->nn, 4);
+	ivzero (sdpt->nn, 4);
       }
       else {
-        for (k = 0; k < 4; k++) {
-          sdpt->nn[k] = atoi (spt[4 + k]);
-        }
+	for (k = 0; k < 4; k++) {
+	  sdpt->nn[k] = atoi (spt[4 + k]);
+	}
       }
       sdpt->inputrow = num;
 //    printf("zz %d %d %s %12.0f\n", num, sdpt -> chrom, sdpt -> ID, sdpt -> ppos) ;
@@ -658,7 +658,7 @@ numfakes (SNPDATA ** snpraw, int *snpindx, int nreal, double spacing)
   char *sname;
   int *sp;
   int xc = 0, chrom;
-  double fakedis, realdis;      // gpos for fake marker 
+  double fakedis, realdis;	// gpos for fake marker 
   double yf, yr;
   double physpos;
 
@@ -706,7 +706,6 @@ nextmesh (double val, double spacing)
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-
 /*! \fn int loadsnps(SNP **snpm, SNPDATA **snpraw, 
             int *snpindx, int nreal, double spacing, int *numignore)    
     \brief  Store raw SNP data in final array of type SNP *
@@ -722,7 +721,7 @@ nextmesh (double val, double spacing)
 
 int
 loadsnps (SNP ** snpm, SNPDATA ** snpraw,
-          int *snpindx, int nreal, double spacing, int *numignore)
+	  int *snpindx, int nreal, double spacing, int *numignore)
 {
 
   // snppos, snpindx could be recalculated but 
@@ -738,7 +737,7 @@ loadsnps (SNP ** snpm, SNPDATA ** snpraw,
   char *sname;
   int *sp;
   int xc = 0, chrom;
-  double fakedis, realdis, xrealdis;    // gpos for fake marker 
+  double fakedis, realdis, xrealdis;	// gpos for fake marker 
   double yf, yr;
   double physpos;
   double xl, xr, xmid, al, ar, fraw;
@@ -791,41 +790,41 @@ loadsnps (SNP ** snpm, SNPDATA ** snpraw,
     while (fakedis < realdis) {
 
       if (cnum == 0)
-        break;                  // first SNP on chromosome
+	break;			// first SNP on chromosome
       if (sdpt->ignore)
-        break;
+	break;
 
       if (nfake >= tempfake)
-        fatalx (" too many fake markers (bug) %d %d\n", num, nfake);
+	fatalx (" too many fake markers (bug) %d %d\n", num, nfake);
       if (num >= tempnum)
-        fatalx (" too many markers (bug) %d %d\n", num, nfake);
+	fatalx (" too many markers (bug) %d %d\n", num, nfake);
 
       cupt = snpm[num];
       if (cupt == NULL)
-        fatalx ("bad loadsnps\n");
+	fatalx ("bad loadsnps\n");
       sprintf (cupt->ID, "fake-%d:%d", xc, nfake);
       cupt->estgenpos = cupt->genpos = fakedis;
       tcupt = lastcupt;
       for (;;) {
-        xl = tcupt->genpos;
-        if (xl < fakedis)
-          break;
-        tnum = tcupt->markernum;
-        --tnum;
-        if (tnum < 0)
-          fatalx ("verybadbug\n");
-        tcupt = snpm[tnum];
-        if (tcupt->chrom != chrom)
-          fatalx ("badbug\n");
+	xl = tcupt->genpos;
+	if (xl < fakedis)
+	  break;
+	tnum = tcupt->markernum;
+	--tnum;
+	if (tnum < 0)
+	  fatalx ("verybadbug\n");
+	tcupt = snpm[tnum];
+	if (tcupt->chrom != chrom)
+	  fatalx ("badbug\n");
       }
       al = tcupt->physpos;
       xr = realdis;;
       ar = physpos;
       y = cupt->physpos = interp (xl, xr, fakedis, al, ar);
       if (chrom == -199) {
-        printf
-          ("zzinterp %12.6f  %12.6f  %12.6f  %12.0f  %12.0f     %12.6f\n", xl,
-           xr, fakedis, al, ar, y);
+	printf
+	  ("zzinterp %12.6f  %12.6f  %12.6f  %12.0f  %12.0f     %12.6f\n", xl,
+	   xr, fakedis, al, ar, y);
       }
       cupt->markernum = num;
       cupt->isfake = YES;
@@ -847,17 +846,17 @@ loadsnps (SNP ** snpm, SNPDATA ** snpraw,
     cupt->isfake = NO;
     cupt->ignore = sdpt->ignore;
     // if ((cupt -> ignore == NO) && (cupt -> isfake == NO))   
-    if ((cupt->isfake == NO)) {
+    if ((cupt->isfake = NO)) {
       lastcupt = cupt;
       ++cnum;
     }
     cupt->isrfake = sdpt->isrfake;
     cupt->chrom = xc;
     strncpy (cupt->cchrom, ss, 6);
-    cupt->tagnumber = inputrow; // just used for pedfile 
+    cupt->tagnumber = inputrow;	// just used for pedfile 
     if (inputrow >= 0) {
       if (inputrow >= numsnpord)
-        fatalx ("snpord overflow\n");
+	fatalx ("snpord overflow\n");
       snpord[inputrow] = num;
     }
 
@@ -899,7 +898,7 @@ loadsnps (SNP ** snpm, SNPDATA ** snpraw,
     realdis = sdpt->gpos;
     physpos = sdpt->ppos;
     cupt = snpm[sdpt->cuptnum];
-    cupt->tagnumber = inputrow; // just used for pedfile 
+    cupt->tagnumber = inputrow;	// just used for pedfile 
     /* 
        strncpy(cupt -> ID, sname, IDSIZE-1) ; 
        cupt -> genpos = realdis ;                          
@@ -989,10 +988,10 @@ readinddata (Indiv ** indivmarkers, char *fname)
     skipit = setskipit (sx);
     if (skipit == NO) {
       if (nsplit < 3)
-        fatalx ("%s bad line: %s", fname, line);
+	fatalx ("%s bad line: %s", fname, line);
       indx = indivmarkers[num];
       if (strlen (sx) >= IDSIZE)
-        fatalx ("ID too long: %s\n", sx);
+	fatalx ("ID too long: %s\n", sx);
       strcpy (indx->ID, sx);
       indx->idnum = num;
       sx = spt[1];
@@ -1000,13 +999,13 @@ readinddata (Indiv ** indivmarkers, char *fname)
       indx->affstatus = indx->ignore = NO;
       sx = spt[2];
       if (strcmp (sx, "Ignore") == 0)
-        indx->ignore = YES;
-      if ((qtmode) && (!indx->ignore)) {        // store quantitative phenotype in qval
-        indx->egroup = strdup ("Case");
-        indx->qval = indx->rawqval = atof (sx);
+	indx->ignore = YES;
+      if ((qtmode) && (!indx->ignore)) {	// store quantitative phenotype in qval
+	indx->egroup = strdup ("Case");
+	indx->qval = indx->rawqval = atof (sx);
       }
       else {
-        indx->egroup = strdup (sx);     // store discrete phenotype in egroup
+	indx->egroup = strdup (sx);	// store discrete phenotype in egroup
       }
       // affstatus set by setstatus  
       ++num;
@@ -1049,10 +1048,10 @@ readindpeddata (Indiv ** indivmarkers, char *fname)
       skipit = YES;
     if (skipit == NO) {
       if (nsplit < 6)
-        fatalx ("%s bad line: %s", fname, line);
+	fatalx ("%s bad line: %s", fname, line);
       indx = indivmarkers[num];
       if (strlen (sx) >= IDSIZE)
-        fatalx ("ID too long: %s\n", sx);
+	fatalx ("ID too long: %s\n", sx);
       maxnsplit = MAX (maxnsplit, nsplit);
 
       sx = spt[1];
@@ -1063,61 +1062,61 @@ readindpeddata (Indiv ** indivmarkers, char *fname)
       k = atoi (sx);
       gender = 'U';
       if (k == 1)
-        gender = 'M';
+	gender = 'M';
       if (k == 2)
-        gender = 'F';
+	gender = 'F';
       indx->gender = gender;
       indx->affstatus = indx->ignore = NO;
 
       sx = spt[5];
       if (qtmode) {
-        indx->egroup = strdup ("Case");
-        indx->qval = indx->rawqval = atof (sx);
+	indx->egroup = strdup ("Case");
+	indx->qval = indx->rawqval = atof (sx);
       }
       else {
-        k = 99;
-        if (strcmp (sx, "-9") == 0)
-          k = -9;
-        if (strcmp (sx, "9") == 0)
-          k = 9;
-        if (strcmp (sx, "0") == 0)
-          k = 0;
-        if ((pedignore == NO) && (k == 0))
-          k = 3;
-        if (strcmp (sx, "1") == 0)
-          k = 1;
-        if (strcmp (sx, "2") == 0)
-          k = 2;
-        switch (k) {
-        case 9:
-          indx->ignore = YES;
-          printf ("%s ignored\n", indx->ID);
-          break;
-        case -9:
-          indx->ignore = YES;
-          printf ("%s ignored\n", indx->ID);
-          break;
-        case 0:
-          indx->ignore = YES;
-          printf ("%s ignored\n", indx->ID);
-          break;
-        case 1:
-          indx->egroup = strdup ("Control");
-          break;
-        case 2:
-          indx->egroup = strdup ("Case");
-          break;
-        case 3:
-          indx->egroup = strdup ("???");
-          break;
-        default:
-          indx->egroup = strdup (sx);
-        }
+	k = 99;
+	if (strcmp (sx, "-9") == 0)
+	  k = -9;
+	if (strcmp (sx, "9") == 0)
+	  k = 9;
+	if (strcmp (sx, "0") == 0)
+	  k = 0;
+	if ((pedignore == NO) && (k == 0))
+	  k = 3;
+	if (strcmp (sx, "1") == 0)
+	  k = 1;
+	if (strcmp (sx, "2") == 0)
+	  k = 2;
+	switch (k) {
+	case 9:
+	  indx->ignore = YES;
+	  printf ("%s ignored\n", indx->ID);
+	  break;
+	case -9:
+	  indx->ignore = YES;
+	  printf ("%s ignored\n", indx->ID);
+	  break;
+	case 0:
+	  indx->ignore = YES;
+	  printf ("%s ignored\n", indx->ID);
+	  break;
+	case 1:
+	  indx->egroup = strdup ("Control");
+	  break;
+	case 2:
+	  indx->egroup = strdup ("Case");
+	  break;
+	case 3:
+	  indx->egroup = strdup ("???");
+	  break;
+	default:
+	  indx->egroup = strdup (sx);
+	}
       }
 
       // affstatus set by setstatus  
       if (indx->ignore == NO)
-        ++nok;
+	++nok;
       ++num;
     }
     freeup (spt, nsplit);
@@ -1156,9 +1155,9 @@ pedname (char *cbuff, char *sx0, char *sx1)
     ll = l1;
   if (ll >= IDSIZE) {
     fatalx ("idnames too long %s %s ll: %d limit: %d\n", sx0, sx1, ll,
-            IDSIZE - 1);
+	    IDSIZE - 1);
   }
-  if (familynames == YES) {     // prepend family name to individual name
+  if (familynames == YES) {	// prepend family name to individual name
     strcpy (cbuff, sx0);
     cbuff[l0] = ':';
     strcpy (cbuff + l0 + 1, sx1);
@@ -1319,7 +1318,7 @@ setstatusv (Indiv ** indm, int numindivs, char *smatch, int val)
 /* ---------------------------------------------------------------------------------------------------- */
 long
 getgenos (char *genoname, SNP ** snpmarkers, Indiv ** indivmarkers,
-          int numsnps, int numindivs, int nignore)
+	  int numsnps, int numindivs, int nignore)
 {
   // read genofile.  Use hashtable to improve search 
   // if genofile is gzipped decompress to trashdir
@@ -1390,7 +1389,7 @@ getgenos (char *genoname, SNP ** snpmarkers, Indiv ** indivmarkers,
     if (snpord == NULL)
       fatalx ("snpord not allocated (no map file ?)");
     getpedgenos (genoname, snpmarkers, indivmarkers, numsnps, numindivs,
-                 nignore);
+		 nignore);
     freeped ();
     return numsnps * numindivs;
   }
@@ -1398,7 +1397,7 @@ getgenos (char *genoname, SNP ** snpmarkers, Indiv ** indivmarkers,
   // Call routine to read PLINK format packed genotype file
   if (isbedfile (gname)) {
     return getbedgenos (genoname, snpmarkers, indivmarkers, numsnps,
-                        numindivs, nignore);
+			numindivs, nignore);
   }
 
   // Check whether file is packed ANCESTRYMAP format (packed EIGENSTRAT does not exist)
@@ -1411,11 +1410,11 @@ getgenos (char *genoname, SNP ** snpmarkers, Indiv ** indivmarkers,
     for (k = 0; k < nsnp; k++) {
       cupt = snpmarkers[k];
       if (cupt->ignore)
-        continue;
+	continue;
       if ((cupt->isfake) && (!(cupt->isrfake)))
-        continue;
+	continue;
       if (cupt->gtypes == NULL)
-        ZALLOC (cupt->gtypes, 1, int);
+	ZALLOC (cupt->gtypes, 1, int);
       cupt->ngtypes = numindivs;
     }
     packmode = YES;
@@ -1491,29 +1490,29 @@ getgenos (char *genoname, SNP ** snpmarkers, Indiv ** indivmarkers,
     skipit = setskipit (sx);
     if (skipit == NO) {
       if (nsplit < 3)
-        fatalx ("bad geno line.  missing field?\n", line);
+	fatalx ("bad geno line.  missing field?\n", line);
 
       // Look up SNP and individual indices in hash table
       item1.key = spt[0];
       iteml = xhsearch (item1, FIND);
       if (iteml == NULL) {
-        fatalx ("(genotypes) bad ID (SNP): %s\n", line);
+	fatalx ("(genotypes) bad ID (SNP): %s\n", line);
       }
       k = (int) (iteml->data - basept);
 
       if (k >= numsnps) {
-        fatalx ("bad genotype line: `snp' may be Indiv Id\n%s\n", line);
+	fatalx ("bad genotype line: `snp' may be Indiv Id\n%s\n", line);
       }
 
       cupt = snpmarkers[k];
       if (cupt->ignore) {
-        freeup (spt, nsplit);
-        continue;
+	freeup (spt, nsplit);
+	continue;
       }
       item1.key = spt[1];
       iteml = xhsearch (item1, FIND);
       if (iteml == NULL) {
-        fatalx ("(genotypes) bad ID: (Indiv) %s\n", line);
+	fatalx ("(genotypes) bad ID: (Indiv) %s\n", line);
       }
       indiv = (int) (iteml->data - basept);
       indiv -= bigoff;
@@ -1521,35 +1520,35 @@ getgenos (char *genoname, SNP ** snpmarkers, Indiv ** indivmarkers,
 
       indx = indivmarkers[indiv];
       if (indx->ignore)
-        val = -1;
+	val = -1;
       if (checkxval (cupt, indx, val) == NO)
-        val = -1;
+	val = -1;
       if (val > 2) {
-        printf ("*** warning invalid genotype: %s %s %d\n",
-                cupt->ID, indx->ID, val);
-        val = -1;
+	printf ("*** warning invalid genotype: %s %s %d\n",
+		cupt->ID, indx->ID, val);
+	val = -1;
       }
 
       if (cupt->ngtypes == 0) {
 
-        // If this is the first datum for this SNP, initialize
-        // Set cupt->puff to point to the SNP's data in the genotype array.
-        // Set cupt->gtypes to the number of individuals stored in the genotype.
+	// If this is the first datum for this SNP, initialize
+	// Set cupt->puff to point to the SNP's data in the genotype array.
+	// Set cupt->gtypes to the number of individuals stored in the genotype.
 
-        if (packmode == NO) {
-          ZALLOC (cupt->gtypes, numindivs, int);
-        }
-        else {
-          ZALLOC (cupt->gtypes, 1, int);
-          cupt->pbuff = pbuff;
-          pbuff += rlen;
-        }
-        cupt->ngtypes = numindivs;
-        for (k = 0; k < numindivs; ++k) {
-          putgtypes (cupt, k, -1);      // initialize all individuals to "missing data"
-        }
+	if (packmode == NO) {
+	  ZALLOC (cupt->gtypes, numindivs, int);
+	}
+	else {
+	  ZALLOC (cupt->gtypes, 1, int);
+	  cupt->pbuff = pbuff;
+	  pbuff += rlen;
+	}
+	cupt->ngtypes = numindivs;
+	for (k = 0; k < numindivs; ++k) {
+	  putgtypes (cupt, k, -1);	// initialize all individuals to "missing data"
+	}
       }
-      putgtypes (cupt, indiv, val);     // store this individual's genotype at this SNP
+      putgtypes (cupt, indiv, val);	// store this individual's genotype at this SNP
       ++ngenos;
     }
     freeup (spt, nsplit);
@@ -1630,10 +1629,11 @@ clearsnp (SNP * cupt)
   cupt->gpnum = 0;
   cupt->pcupt = NULL;
   cupt->tagnumber = -1;
-  cclear (cupt->cchrom, CNULL, 7);
+
+  charclear (cupt->cchrom, CNULL, 7);
   strcpy (cupt->cchrom, "");
   cupt->chimpfudge = NO;
-  cclear ((unsigned char *) cupt->alleles, CNULL, 2);
+  charclear (cupt->alleles, CNULL, 2);
 }
 
 /* ---------------------------------------------------------------------------------------------------- */
@@ -1651,29 +1651,29 @@ rmindivs (SNP ** snpm, int numsnps, Indiv ** indivmarkers, int numindivs)
 
   for (k = 0; k < numindivs; ++k) {
     if (indivmarkers[k]->ignore == YES)
-      continue;                 // don't store
-    if (n == k) {               // if no ignored found yet, 
-      ++n;                      //   next unused is next element
-      continue;                 //   and no need to copy
+      continue;			// don't store
+    if (n == k) {		// if no ignored found yet, 
+      ++n;			//   next unused is next element
+      continue;			//   and no need to copy
     }
 
     // copy k -> n 
-    indx = indivmarkers[n];     // if kth element is not ignored, put it 
-    indivmarkers[n] = indivmarkers[k];  //   into next unused element
+    indx = indivmarkers[n];	// if kth element is not ignored, put it 
+    indivmarkers[n] = indivmarkers[k];	//   into next unused element
     indx->idnum = n;
     for (i = 0; i < numsnps; i++) {
       cupt = snpm[i];
       if (cupt->gtypes == NULL)
-        break;
+	break;
       if (cupt->ignore)
-        continue;               // copy only genotypes of non-ignored SNPs
+	continue;		// copy only genotypes of non-ignored SNPs
       g = getgtypes (cupt, k);
       putgtypes (cupt, n, g);
     }
     ++n;
   }
 
-  for (i = 0; i < numsnps; i++) {       // reset number of individuals 
+  for (i = 0; i < numsnps; i++) {	// reset number of individuals 
     cupt = snpm[i];
     cupt->ngtypes = n;
   }
@@ -1690,7 +1690,7 @@ rmsnps (SNP ** snpm, int numsnps, char *deletesnpoutname)
   SNP *cupt;
   int lastc, chrom;
 
-  freesnpindex ();              // clear hash table
+  freesnpindex ();		// clear hash table
 
   // wipe out fakes not between real markers
   lastc = -1;
@@ -1700,7 +1700,7 @@ rmsnps (SNP ** snpm, int numsnps, char *deletesnpoutname)
       continue;
     chrom = cupt->chrom;
     if ((cupt->isfake) && (chrom != lastc)) {
-      cupt->ignore = YES;       // precedes first real SNP
+      cupt->ignore = YES;	// precedes first real SNP
       logdeletedsnp (cupt->ID, "isfake", deletesnpoutname);
     }
     if (!cupt->isfake)
@@ -1714,14 +1714,14 @@ rmsnps (SNP ** snpm, int numsnps, char *deletesnpoutname)
       continue;
     chrom = cupt->chrom;
     if ((cupt->isfake) && (chrom != lastc)) {
-      cupt->ignore = YES;       // follows last real SNP
+      cupt->ignore = YES;	// follows last real SNP
       logdeletedsnp (cupt->ID, "isfake", deletesnpoutname);
     }
     if (!cupt->isfake)
       lastc = chrom;
   }
 
-  x = 0;                        // index of next retained SNP in the array 
+  x = 0;			// index of next retained SNP in the array 
   for (i = 0; i < numsnps; i++) {
     cupt = snpm[i];
     if (cupt->ignore) {
@@ -1775,7 +1775,7 @@ clearind (Indiv ** indm, int numind)
     indx = indm[i];
     indx->Xtheta_mode = indx->theta_mode = a1 / (a1 + b1);
     indx->Xlambda_mode = indx->lambda_mode = lp1 / lp2;
-    indx->thetatrue = -1.0;     // silly value
+    indx->thetatrue = -1.0;	// silly value
     indx->qval = indx->rawqval = 0.0;
   }
   cleartg (indm, numind);
@@ -1858,8 +1858,8 @@ dobadsnps (SNPDATA ** snpraw, int nreal, char *badsnpname)
     if (indx >= 0) {
       snpraw[indx]->ignore = YES;
       if ((nsplit >= 2) && (checkfake (spt[1]))) {
-        snpraw[indx]->ignore = NO;
-        snpraw[indx]->isrfake = YES;
+	snpraw[indx]->ignore = NO;
+	snpraw[indx]->isrfake = YES;
       }
     }
     freeup (spt, nsplit);
@@ -1913,7 +1913,7 @@ mkchrom (char *ss, int chrom, double *ppos, int fudge, int chrmode)
 /* ---------------------------------------------------------------------------------------------------- */
 void
 printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
-           int printfake, int printvalids)
+	   int printfake, int printvalids)
 {
 
   int i, chrom;
@@ -1936,26 +1936,26 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
     fprintf (xfile, "\n");
     fprintf (xfile, "###DETAILS ABOUT THE MARKERS\n");
     fprintf (xfile,
-             "##Gen_Pos: genetic position, Phys_pos: Physical position\n");
+	     "##Gen_Pos: genetic position, Phys_pos: Physical position\n");
     fprintf (xfile,
-             "##Afr_vart: Parental African variant allele count, Afr_ref: Parental African reference allele count\n");
+	     "##Afr_vart: Parental African variant allele count, Afr_ref: Parental African reference allele count\n");
     fprintf (xfile,
-             "##Eur_vart: Parental European variant allele count, Eur:ref:Parental European reference allele count\n");
+	     "##Eur_vart: Parental European variant allele count, Eur:ref:Parental European reference allele count\n");
 
     fprintf (xfile, "\n");
     fprintf (xfile, "%20s %5s %10s %18s", "#SNP_Id", "Chr_Num", "Gen_Pos",
-             "Phys_Pos");
+	     "Phys_Pos");
     fprintf (xfile, " %9s %9s %9s %9s", "Afr_vart", "Afr_ref", "Eur_vart",
-             "Eur_ref");
+	     "Eur_ref");
     fprintf (xfile, "\n");
   }
   for (i = 0; i < num; ++i) {
     cupt = snpm[i];
     if (outputall == NO) {
       if (!printfake && (ignoresnp (cupt)))
-        continue;
+	continue;
       if (!printfake && (cupt->isrfake))
-        continue;
+	continue;
     }
 
     ppos = cupt->physpos;
@@ -1989,7 +1989,7 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
     numvcontrol = numvalidgtx (indm, cupt, 0);
     fprintf (xfile, "   %6d %6d", numvcase, numvcontrol);
     fprintf (xfile, "    %d %d %d", cupt->ignore, cupt->isfake,
-             cupt->isrfake);
+	     cupt->isrfake);
     printalleles (cupt, xfile);
     fprintf (xfile, "\n");
   }
@@ -2013,7 +2013,7 @@ printalleles (SNP * cupt, FILE * fff)
 /* ---------------------------------------------------------------------------------------------------- */
 void
 printdata (char *genooutfilename, char *indoutfilename,
-           SNP ** snpm, Indiv ** indiv, int numsnps, int numind, int packem)
+	   SNP ** snpm, Indiv ** indiv, int numsnps, int numind, int packem)
 {
 
   FILE *gfile, *ifile;
@@ -2045,27 +2045,27 @@ printdata (char *genooutfilename, char *indoutfilename,
     if (gfilename != NULL) {
       openit (gfilename, &gfile, "w");
       if (tersemode == NO)
-        fprintf (gfile, "#SNP_ID,INDIV_ID,VART_ALLELE_CNT\n");
+	fprintf (gfile, "#SNP_ID,INDIV_ID,VART_ALLELE_CNT\n");
     }
 
     for (i = 0; i < numsnps; i++) {
       if (gfilename == NULL)
-        break;
+	break;
       cupt = snpm[i];
 
       if (outputall == NO) {
-        if (ignoresnp (cupt))
-          continue;
-        if (cupt->isrfake)
-          continue;
+	if (ignoresnp (cupt))
+	  continue;
+	if (cupt->isrfake)
+	  continue;
       }
 
       for (j = 0; j < cupt->ngtypes; j++) {
-        indx = indiv[j];
-        if (indx->ignore)
-          continue;
-        fprintf (gfile, "%20s %20s %3d\n", cupt->ID, indx->ID,
-                 getgtypes (cupt, j));
+	indx = indiv[j];
+	if (indx->ignore)
+	  continue;
+	fprintf (gfile, "%20s %20s %3d\n", cupt->ID, indx->ID,
+		 getgtypes (cupt, j));
       }
     }
 
@@ -2184,17 +2184,17 @@ readgdata (Indiv ** indivmarkers, int numindivs, char *gname)
     skipit = setskipit (sx);
     if (skipit == NO) {
       if (nsplit < 4)
-        fatalx ("%s bad line: %s", gname, line);
+	fatalx ("%s bad line: %s", gname, line);
       ind = indindex (indivmarkers, numindivs, sx);
       if (ind < 0)
-        fatalx ("(readgdata) indiv: %s not found \n", sx);
+	fatalx ("(readgdata) indiv: %s not found \n", sx);
       indx = indivmarkers[ind];
       for (k = 0; k < 3; k++) {
-        gg[k] = atof (spt[k + 1]);
+	gg[k] = atof (spt[k + 1]);
       }
       y = asum (gg, 3);
       vst (gg, gg, 1.0 / y, 3);
-      y = 0.5 * (gg[1] + 2.0 * gg[2]);  /* est caucasian ancestry */
+      y = 0.5 * (gg[1] + 2.0 * gg[2]);	/* est caucasian ancestry */
       indx->thetatrue = y;
       copyarr (gg, indx->totgamms, 3);
     }
@@ -2261,11 +2261,11 @@ getweights (char *fname, SNP ** snpm, int numsnps)
       skipit = YES;
     if (skipit == NO) {
       if (nsplit > 1) {
-        sx = spt[1];
-        weight = atof (sx);
-        snpm[k]->weight = weight;
-        printf ("weight set: %20s %9.3f\n", snpm[k]->ID, weight);
-        ++num;
+	sx = spt[1];
+	weight = atof (sx);
+	snpm[k]->weight = weight;
+	printf ("weight set: %20s %9.3f\n", snpm[k]->ID, weight);
+	++num;
       }
     }
     freeup (spt, nsplit);
@@ -2279,7 +2279,7 @@ getweights (char *fname, SNP ** snpm, int numsnps)
 /* ---------------------------------------------------------------------------------------------------- */
 void
 outpack (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int numsnps,
-         int numind)
+	 int numind)
 {
   char **arrx;
   int n, num, ihash, shash, i, g, j, k;
@@ -2316,9 +2316,9 @@ outpack (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int numsnps,
     cupt = snpm[i];
     if (outputall == NO) {
       if (ignoresnp (cupt))
-        continue;
+	continue;
       if (cupt->isrfake)
-        continue;
+	continue;
     }
     arrx[num] = strdup (cupt->ID);
     ++num;
@@ -2360,23 +2360,23 @@ outpack (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int numsnps,
     cupt = snpm[i];
     if (outputall == NO) {
       if (ignoresnp (cupt))
-        continue;
+	continue;
       if (cupt->isrfake)
-        continue;
+	continue;
     }
-    cclear ((unsigned char *) buff, 0X00, rlen);
+    cclear (buff, 0X00, rlen);
     num = 0;
     for (j = 0; j < numind; j++) {
       indx = indiv[j];
       if (indx->ignore)
-        continue;
+	continue;
       g = getgtypes (cupt, j);
       if (g < 0)
-        g = 3;
-      wbuff (buff, num, g);     // store two-bit genotype in packed data buffer
+	g = 3;
+      wbuff (buff, num, g);	// store two-bit genotype in packed data buffer
       ++num;
     }
-    ret = write (fdes, buff, rlen);     // print out all SNPs in packed data buffer
+    ret = write (fdes, buff, rlen);	// print out all SNPs in packed data buffer
     if (ret < 0) {
       perror ("write failure");
       fatalx ("(outpack) bad write");
@@ -2384,7 +2384,7 @@ outpack (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int numsnps,
     if (verbose) {
       printf ("record: %4d ", irec);
       for (k = 0; k < rlen; ++k) {
-        printf (" %02x", (unsigned char) buff[k]);
+	printf (" %02x", (unsigned char) buff[k]);
       }
       printf ("\n");
     }
@@ -2455,6 +2455,7 @@ iseigenstrat (char *gname)
     return YES;
   }
   fatalx ("(iseigenstrat) no genotyped data found\n");
+  return NO ;
 
 }
 
@@ -2463,7 +2464,7 @@ iseigenstrat (char *gname)
 /* ---------------------------------------------------------------------------------------------------- */
 int
 ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
-              int numind)
+	      int numind)
 {
   // supports enhanced format fist character X => all missing data for SNP
   FILE *fff;
@@ -2516,11 +2517,11 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
     }
 
     if (nsplit > 1)
-      fatalx ("(ineigenstrat) more than 1 field\n");    // white space not expected
+      fatalx ("(ineigenstrat) more than 1 field\n");	// white space not expected
 
     if (rownum >= numsnps)
       fatalx ("(ineigenstrat) too many lines in file %d %d\n", rownum,
-              numsnps);
+	      numsnps);
     num = snpord[rownum];
     cupt = snpm[num];
     ++rownum;
@@ -2529,13 +2530,13 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
 
     if (cupt->ngtypes == 0) {
       if (packmode == NO) {
-        ZALLOC (cupt->gtypes, numind, int);
-        ivclear (cupt->gtypes, -1, numind);
+	ZALLOC (cupt->gtypes, numind, int);
+	ivclear (cupt->gtypes, -1, numind);
       }
       else {
-        ZALLOC (cupt->gtypes, 1, int);
-        cupt->pbuff = pbuff;
-        pbuff += rlen;
+	ZALLOC (cupt->gtypes, 1, int);
+	cupt->pbuff = pbuff;
+	pbuff += rlen;
       }
       cupt->ngtypes = numind;
     }
@@ -2555,37 +2556,37 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
       sscanf (sx + k, "%c", &c);
       g = -2;
       if (c == '0')
-        g = 0;
+	g = 0;
       if (c == '1')
-        g = 1;
+	g = 1;
       if (c == '2')
-        g = 2;
+	g = 2;
       if (c == '9')
-        g = -1;
+	g = -1;
 
       if (g == -2)
-        fatalx ("(ineigenstrat) bad character %c\n", c);
+	fatalx ("(ineigenstrat) bad character %c\n", c);
       if (indiv[k]->ignore)
-        g = -1;
+	g = -1;
       if (checkxval (cupt, indiv[k], g) == NO)
-        g = -1;
+	g = -1;
 
       indx = indiv[k];
       if (checkxval (cupt, indx, g) == NO)
-        g = -1;
+	g = -1;
       g2 = g;
       if (g2 < 0)
-        continue;
+	continue;
       g1 = getgtypes (cupt, k);
       if ((g1 >= 0) && (g1 != g2))
-        ++nbad;                 // something is already stored there
+	++nbad;			// something is already stored there
       putgtypes (cupt, k, g2);
     }
     freeup (spt, nsplit);
   }
   if (rownum != numsnps)
     fatalx ("(ineigenstrat) mismatch in numsnps %d and numlines %d\n",
-            numsnps, rownum);
+	    numsnps, rownum);
   fclose (fff);
   freestring (&line);
 
@@ -2595,7 +2596,7 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
 /* ---------------------------------------------------------------------------------------------------- */
 int
 calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind, int *pihash,
-            int *pshash)
+	    int *pshash)
 {
   char **arrx;
   int ihash, shash, n, num;
@@ -2745,16 +2746,16 @@ inpack (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
   // check for file modification
   if (hashcheck) {
     sscanf ((char *) buff, "GENO %d %d %x %x", &xnind, &xnsnp, &xihash,
-            &xshash);
+	    &xshash);
     if (xnind != nind)
       fatalx ("OOPS number of individuals %d != %d in input files\n", nind,
-              xnind);
+	      xnind);
     if (xnsnp != nsnp)
       fatalx ("OOPS number of SNPs %d != %d in input file: %s\n", nsnp, xnsnp,
-              gname);
+	      gname);
     if (xihash != ihash)
       fatalx
-        ("OOPS indiv file has changed since genotype file was created\n");
+	("OOPS indiv file has changed since genotype file was created\n");
     if (xshash != shash)
       fatalx ("OOPS snp file has changed since genotype file was created\n");
   }
@@ -2789,7 +2790,6 @@ inpack (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
     if (j > nsnp)
       fatalx ("(inpack) bug\n");
     cupt = snpm[j];
-
 /**
     if ((i % 100000) == 0)  { 
      printf("zz %d %d %d\n", i, j, numsnps) ;  fflush(stdout) ;
@@ -2804,7 +2804,7 @@ inpack (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
       indx = indiv[k];
       g = getgtypes (cupt, k);
       if (checkxval (cupt, indx, g) == NO) {
-        putgtypes (cupt, k, -1);
+	putgtypes (cupt, k, -1);
       }
     }
   }
@@ -2848,12 +2848,12 @@ getsnpsc (char *snpscname, SNP ** snpm, int numsnps)
     k = snpindex (snpm, numsnps, sx);
     if (k < 0) {
       printf ("*** warning.  snp %s in snpscname but not in main snp file\n",
-              spt[0]);
+	      spt[0]);
       freeup (spt, nsplit);
       continue;
     }
     y = atof (spt[1]);
-    y += .1 * gauss ();         // dither 
+    y += .1 * gauss ();		// dither 
     cupt = snpm[k];
     cupt->score = y;
     freeup (spt, nsplit);
@@ -2899,7 +2899,7 @@ clearepath (char *packp)
 /* ---------------------------------------------------------------------------------------------------- */
 int
 getpedgenos (char *gname, SNP ** snpmarkers, Indiv ** indivmarkers,
-             int numsnps, int numindivs, int nignore)
+	     int numsnps, int numindivs, int nignore)
 {
   int val;
   int ngenos = 0;
@@ -2995,10 +2995,10 @@ getpedgenos (char *gname, SNP ** snpmarkers, Indiv ** indivmarkers,
       snpnumber = (k - colbase) / 2;
 
       if (snpnumber >= numsnpord)
-        fatalx ("snpord overflow\n");
+	fatalx ("snpord overflow\n");
       snpnum = snpord[snpnumber];
       if (snpnum < 0)
-        fatalx ("logic bug (bad snpord)\n");
+	fatalx ("logic bug (bad snpord)\n");
 
       xvar = gvar[snpnum];
       xref = gref[snpnum];
@@ -3008,44 +3008,44 @@ getpedgenos (char *gname, SNP ** snpmarkers, Indiv ** indivmarkers,
       n1 = n = pedval (spt[k]);
       n2 = pedval (spt[k + 1]);
 
-      if ((n1 == 5) || (n2 == 5)) {     // Missing data or invalid
-        val = -1;
-        putgtypes (cupt, num, val);
-        continue;
+      if ((n1 == 5) || (n2 == 5)) {	// Missing data or invalid
+	val = -1;
+	putgtypes (cupt, num, val);
+	continue;
       }
 
       if ((n < 0) || (n > 4))
-        fatalx ("(getpedgenos) %s bad geno %s\n", gname, spt[k]);
+	fatalx ("(getpedgenos) %s bad geno %s\n", gname, spt[k]);
       if (n == xvar)
-        ++t;
+	++t;
       if ((n != xvar) && (n != xref))
-        t = -10;
+	t = -10;
 
       n = n2;
       if ((n < 0) || (n > 4))
-        fatalx ("(getpedgenos) %s bad geno %s\n", gname, spt[k + 1]);
+	fatalx ("(getpedgenos) %s bad geno %s\n", gname, spt[k + 1]);
       if (n == xvar)
-        ++t;
+	++t;
       if ((n != xvar) && (n != xref))
-        t = -10;
+	t = -10;
 
       if (t < 0)
-        t = -1;                 // Any unexpected allele is stored as "missing"
+	t = -1;			// Any unexpected allele is stored as "missing"
       cupt = snpmarkers[snpnum];
       if (cupt->ignore)
-        continue;
+	continue;
       val = t;
       if (checkxval (cupt, indivmarkers[num], val) == NO)
-        val = -1;
-      putgtypes (cupt, num, val);       // Store genotype 
+	val = -1;
+      putgtypes (cupt, num, val);	// Store genotype 
       if (val >= 0)
-        ++ngenos;
+	++ngenos;
 
-    }                           // rof (SNP)
+    }				// rof (SNP)
     freeup (spt, nsplit);
     ++num;
 
-  }                             // elihw (individual)
+  }				// elihw (individual)
 
   free (spt);
   fclose (fff);
@@ -3102,31 +3102,31 @@ genopedcnt (char *gname, int **gcounts, int nsnp)
     if (num == 0) {
       parity = nsplit % 2;
       ncols = nsplit;
-      colbase = 6 + parity;     // QUESTION:  what is the optional seventh column?
+      colbase = 6 + parity;	// QUESTION:  what is the optional seventh column?
     }
 
     for (k = colbase; k < nsplit - 1; k += 2) {
       snpnumber = (k - colbase) / 2;
       if (snpnumber >= numsnpord)
-        fatalx ("snpord overflow\n");
+	fatalx ("snpord overflow\n");
       snpnum = snpord[snpnumber];
       if (snpnum < 0)
-        fatalx ("logic bug (bad snpord)\n");
+	fatalx ("logic bug (bad snpord)\n");
       n = pedval (spt[k]);
       //  if ((n<0) || (n>4)) fatalx("(genopedcnt) %s bad geno %s\n", gname, spt[k]) ;
       if ((n < 0) || (n > 4))
-        continue;
+	continue;
       if (n > 0) {
-        ++gcounts[snpnum][n];
-        ++num;
+	++gcounts[snpnum][n];
+	++num;
       }
       n = pedval (spt[k + 1]);
       //  if ((n<0) || (n>4)) fatalx("(genopedcnt) %s bad geno %s\n", gname, spt[k+1]) ;
       if ((n < 0) || (n > 4))
-        continue;
+	continue;
       if (n > 0) {
-        ++gcounts[snpnum][n];
-        ++num;
+	++gcounts[snpnum][n];
+	++num;
       }
     }
     freeup (spt, nsplit);
@@ -3142,7 +3142,7 @@ genopedcnt (char *gname, int **gcounts, int nsnp)
 /* ---------------------------------------------------------------------------------------------------- */
 void
 outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
-          Indiv ** indiv, int numsnps, int numindx, int packem, int ogmode)
+	  Indiv ** indiv, int numsnps, int numindx, int packem, int ogmode)
 {
   /*  call at end of main program usually  */
 
@@ -3173,7 +3173,7 @@ outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
   case PACKEDPED:
     printf ("packedped output\n");
     outpackped (snpname, indname, gname, snpm, indiv, numsnps, numind,
-                ogmode);
+		ogmode);
     return;
 
   case PACKEDANCESTRYMAP:
@@ -3198,7 +3198,7 @@ outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
 /* ---------------------------------------------------------------------------------------------------- */
 void
 outeigenstrat (char *snpname, char *indname, char *gname, SNP ** snpm,
-               Indiv ** indiv, int numsnps, int numind)
+	       Indiv ** indiv, int numsnps, int numind)
 {
 
   FILE *fff, *ifile;
@@ -3218,10 +3218,10 @@ outeigenstrat (char *snpname, char *indname, char *gname, SNP ** snpm,
     for (i = 0; i < numind; i++) {
       indx = indiv[i];
       if (indx->ignore)
-        continue;
+	continue;
       strcpy (ss, indx->egroup);
       if (qtmode) {
-        sprintf (ss, "%9.3f", indx->rawqval);
+	sprintf (ss, "%9.3f", indx->rawqval);
       }
       fprintf (ifile, "%20s %c %10s", indx->ID, indx->gender, ss);
       fprintf (ifile, "\n");
@@ -3239,17 +3239,17 @@ outeigenstrat (char *snpname, char *indname, char *gname, SNP ** snpm,
     cupt = snpm[k];
     if (outputall == NO) {
       if (ignoresnp (cupt))
-        continue;
+	continue;
       if (cupt->isrfake)
-        continue;
+	continue;
     }
     for (i = 0; i < numind; i++) {
       indx = indiv[i];
       if (indx->ignore)
-        continue;
+	continue;
       g = getgtypes (cupt, i);
       if (g < 0)
-        g = 9;
+	g = 9;
       fprintf (fff, "%1d", g);
     }
     fprintf (fff, "\n");
@@ -3268,14 +3268,14 @@ setgref (int **gcounts, int nsnp, int *gvar, int *gref)
 
   for (i = 0; i < nsnp; i++) {
     copyiarr (gcounts[i], tt, 5);
-    tt[0] = -9999;              // Ensure "missing data" is not ref or var allele
+    tt[0] = -9999;		// Ensure "missing data" is not ref or var allele
     ivlmaxmin (tt, 5, &kmax, NULL);
-    gvar[i] = kmax;             // designate major allele "variant"
+    gvar[i] = kmax;		// designate major allele "variant"
     if (tt[kmax] == 0)
       gvar[i] = 5;
     tt[kmax] = -9999;
     ivlmaxmin (tt, 5, &kmax, NULL);
-    gref[i] = kmax;             // designate minor allele "variant"
+    gref[i] = kmax;		// designate minor allele "variant"
     if (tt[kmax] == 0)
       gref[i] = 5;
   }
@@ -3314,16 +3314,16 @@ cleargdata (SNP ** snpmarkers, int numsnps, int numindivs)
     //  if (cupt -> ignore) continue ;
     if (cupt->ngtypes == 0) {
       if (packmode == NO) {
-        ZALLOC (cupt->gtypes, numindivs, int);
+	ZALLOC (cupt->gtypes, numindivs, int);
       }
       else {
-        ZALLOC (cupt->gtypes, 1, int);
-        cupt->pbuff = pbuff;
-        pbuff += rlen;
+	ZALLOC (cupt->gtypes, 1, int);
+	cupt->pbuff = pbuff;
+	pbuff += rlen;
       }
       cupt->ngtypes = numindivs;
       for (k = 0; k < numindivs; ++k) {
-        putgtypes (cupt, k, -1);
+	putgtypes (cupt, k, -1);
       }
     }
   }
@@ -3408,7 +3408,7 @@ outindped (char *indname, Indiv ** indiv, int numind, int ogmode)
     if (familypopnames == YES)
       fprintf (ifile, "%20s ", indx->egroup);
     fprintf (ifile, "  %12s", indx->ID);
-    fprintf (ifile, " %d %d", 0, 0);    // parents 
+    fprintf (ifile, " %d %d", 0, 0);	// parents 
     c = indx->gender;
     pgender = 0;
     if (c == 'M')
@@ -3419,10 +3419,10 @@ outindped (char *indname, Indiv ** indiv, int numind, int ogmode)
     if (ogmode == NO) {
       astatus = indx->affstatus + 1;
       if (qtmode) {
-        fprintf (ifile, "%9.3f", indx->rawqval);
+	fprintf (ifile, "%9.3f", indx->rawqval);
       }
       else {
-        fprintf (ifile, " %d", astatus);
+	fprintf (ifile, " %d", astatus);
       }
     }
     if (ogmode == YES)
@@ -3438,7 +3438,7 @@ outindped (char *indname, Indiv ** indiv, int numind, int ogmode)
 /* ---------------------------------------------------------------------------------------------------- */
 void
 outped (char *snpname, char *indname, char *gname, SNP ** snpm,
-        Indiv ** indiv, int numsnps, int numind, int ogmode)
+	Indiv ** indiv, int numsnps, int numind, int ogmode)
 {
 
   FILE *fff, *ifile;
@@ -3451,10 +3451,10 @@ outped (char *snpname, char *indname, char *gname, SNP ** snpm,
 
   settersemode (YES);
   if (snpname != NULL)
-    printmap (snpname, snpm, numsnps, indiv);   // print .map file
+    printmap (snpname, snpm, numsnps, indiv);	// print .map file
 
   if (indname != NULL)
-    outindped (indname, indiv, numind, ogmode); // print .pedind file
+    outindped (indname, indiv, numind, ogmode);	// print .pedind file
 
   // Here, printt the .ped file
   if (gname == NULL)
@@ -3464,8 +3464,8 @@ outped (char *snpname, char *indname, char *gname, SNP ** snpm,
     indx = indiv[i];
     if (indx->ignore)
       continue;
-    fprintf (fff, "%6d %12s", i + 1, indx->ID); // make up a family name (index) and print individual name
-    fprintf (fff, " %d %d", 0, 0);      // set parents to "not in data set"  
+    fprintf (fff, "%6d %12s", i + 1, indx->ID);	// make up a family name (index) and print individual name
+    fprintf (fff, " %d %d", 0, 0);	// set parents to "not in data set"  
     c = indx->gender;
     pgender = 0;
     if (c == 'M')
@@ -3476,10 +3476,10 @@ outped (char *snpname, char *indname, char *gname, SNP ** snpm,
     if (ogmode == NO) {
       astatus = indx->affstatus + 1;
       if (qtmode) {
-        fprintf (fff, "%9.3f", indx->rawqval);
+	fprintf (fff, "%9.3f", indx->rawqval);
       }
       else
-        fprintf (fff, " %d", astatus);
+	fprintf (fff, " %d", astatus);
     }
     if (ogmode == YES)
       fprintf (fff, " %10s", indx->egroup);
@@ -3488,22 +3488,22 @@ outped (char *snpname, char *indname, char *gname, SNP ** snpm,
     for (k = 0; k < numsnps; k++) {
       cupt = snpm[k];
       if (outputall == NO) {
-        if (ignoresnp (cupt))
-          continue;
-        if (cupt->isrfake)
-          continue;
+	if (ignoresnp (cupt))
+	  continue;
+	if (cupt->isrfake)
+	  continue;
       }
       g = getgtypes (cupt, i);
       gtox (g, cupt->alleles, &g1, &g2);
       fprintf (fff, "  %d %d", g1, g2);
       if ((g1 > 4) || (g2 > 4)) {
-        fprintf (fff, "\n");
-        fflush (fff);
-        fclose (fff);
-        printf ("bad genotype for snp %s alleles: ", cupt->ID);
-        printalleles (cupt, stdout);
-        printf ("\n");
-        fatalx ("trying to make invalid ped file %s\n", gname);
+	fprintf (fff, "\n");
+	fflush (fff);
+	fclose (fff);
+	printf ("bad genotype for snp %s alleles: ", cupt->ID);
+	printalleles (cupt, stdout);
+	printf ("\n");
+	fatalx ("trying to make invalid ped file %s\n", gname);
       }
     }
     fprintf (fff, "\n");
@@ -3555,7 +3555,7 @@ gtox (int g, char *cvals, int *p1, int *p2)
 /* ---------------------------------------------------------------------------------------------------- */
 void
 outpackped (char *snpname, char *indname, char *gname, SNP ** snpm,
-            Indiv ** indiv, int numsnps, int numind, int ogmode)
+	    Indiv ** indiv, int numsnps, int numind, int ogmode)
 {
 
   FILE *fff, *ifile;
@@ -3573,9 +3573,9 @@ outpackped (char *snpname, char *indname, char *gname, SNP ** snpm,
 
   settersemode (YES);
   if (snpname != NULL)
-    printmap (snpname, snpm, numsnps, indiv);   // print .map (not .bim)
+    printmap (snpname, snpm, numsnps, indiv);	// print .map (not .bim)
 
-  if (indname != NULL)          // print .pedind file
+  if (indname != NULL)		// print .pedind file
     outindped (indname, indiv, numind, ogmode);
 
   if (gname == NULL)
@@ -3616,14 +3616,14 @@ outpackped (char *snpname, char *indname, char *gname, SNP ** snpm,
     cupt = snpm[i];
     if (outputall == NO) {
       if (ignoresnp (cupt))
-        continue;
+	continue;
       if (cupt->isrfake)
-        continue;
+	continue;
     }
     for (k = 0; k < numind; ++k) {
       g = getgtypes (cupt, k);
       if (g >= 0)
-        g = 2 - g;
+	g = 2 - g;
       gtypes[k] = g;
     }
     setbedbuff ((char *) buff, gtypes, numind);
@@ -3651,13 +3651,13 @@ setbedbuff (char *buff, int *gtypes, int numind)
   y = (double) (numind * 2) / (8 * (double) sizeof (char));
   blen = nnint (ceil (y));
 
-  c = 0xAA;                     // missing 
-  cclear ((unsigned char *) buff, c, blen);     // initialize buffer to "missing"
+  c = 0xAA;			// missing 
+  cclear ((unsigned char *) buff, c, blen);	// initialize buffer to "missing"
 
   for (k = 0; k < numind; k++) {
     wnum = k / 4;
     t = k % 4;
-    wplace = 3 - t;             // switch for bed 
+    wplace = 3 - t;		// switch for bed 
     bplace = 4 * wnum + wplace;
     g = bedval (gtypes[k]);
     wbuff ((unsigned char *) buff, bplace, g);
@@ -3679,6 +3679,7 @@ bedval (int g)
     return 0;
 
   fatalx ("(bedval) bad g value %d\n", g);
+  return -1 ;
 }
 
 
@@ -3736,9 +3737,9 @@ printmap (char *snpname, SNP ** snpm, int numsnps, Indiv ** indiv)
     cupt = snpm[i];
     if (outputall == NO) {
       if (ignoresnp (cupt))
-        continue;
+	continue;
       if (cupt->isrfake)
-        continue;
+	continue;
     }
     atopchrom (ss, cupt->chrom);
     fprintf (fff, "%-2s", ss);
@@ -3828,7 +3829,7 @@ pedval (char *sx)
 /* ---------------------------------------------------------------------------------------------------- */
 int
 getbedgenos (char *gname, SNP ** snpmarkers, Indiv ** indivmarkers,
-             int numsnps, int numindivs, int nignore)
+	     int numsnps, int numindivs, int nignore)
 {
 
   int val, i, k, x, j;
@@ -3908,15 +3909,15 @@ getbedgenos (char *gname, SNP ** snpmarkers, Indiv ** indivmarkers,
       indx = indivmarkers[k];
       wnum = k / 4;
       t = k % 4;
-      wplace = 3 - t;           // switch for bed 
+      wplace = 3 - t;		// switch for bed 
       wplace += 4 * wnum;
       x = rbuff (buff, wplace);
       val = ancval (x);
       if (checkxval (cupt, indx, val) == NO)
-        val = -1;
+	val = -1;
       putgtypes (cupt, k, val);
       if (val >= 0)
-        ++ngenos;
+	++ngenos;
     }
   }
 
@@ -3942,6 +3943,7 @@ ancval (int x)
   if (x == 0)
     return 2;
   fatalx ("(ancval) bad value %d\n", x);
+  return -99 ;
 }
 
 
@@ -3994,7 +3996,7 @@ snpdecimate (SNP ** snpm, int nsnp, int decim, int mindis, int maxdis)
   int k, k2, n, t;
 
   printf ("snpdecimate called: decim: %d  mindis: %d  maxdis: %d\n", decim,
-          mindis, maxdis);
+	  mindis, maxdis);
   ZALLOC (cbuff, nsnp, SNP *);
   for (k = 0; k < nsnp; ++k) {
     cupt = snpm[k];
@@ -4002,18 +4004,18 @@ snpdecimate (SNP ** snpm, int nsnp, int decim, int mindis, int maxdis)
       chrom = cupt->chrom;
       n = 0;
       for (k2 = k; k2 < nsnp; ++k2) {
-        cupt2 = snpm[k2];
-        if (cupt2->chrom != chrom)
-          break;
-        if (cupt2->ignore)
-          continue;
-        if (cupt2->isfake)
-          continue;
-        cbuff[n] = cupt2;
-        ++n;
+	cupt2 = snpm[k2];
+	if (cupt2->chrom != chrom)
+	  break;
+	if (cupt2->ignore)
+	  continue;
+	if (cupt2->isfake)
+	  continue;
+	cbuff[n] = cupt2;
+	++n;
       }
       if (n < decim)
-        continue;
+	continue;
       decimate (cbuff, n, decim, mindis, maxdis);
     }
   }
@@ -4069,7 +4071,7 @@ decimate (SNP ** cbuff, int n, int decim, int mindis, int maxdis)
   if (verbose) {
     for (k = 0; k < n; ++k) {
       printf ("zz %6d %20s %20d  %3d\n", k, cbuff[k]->ID,
-              (int) cbuff[k]->physpos, ttt[k]);
+	      (int) cbuff[k]->physpos, ttt[k]);
     }
   }
 
@@ -4081,7 +4083,7 @@ decimate (SNP ** cbuff, int n, int decim, int mindis, int maxdis)
 /* ---------------------------------------------------------------------------------------------------- */
 int
 killhir2 (SNP ** snpm, int numsnps, int numind, double physlim, double genlim,
-          double rhothresh)
+	  double rhothresh)
 {
   // physlim = genlim = 0 => kill monomorphs 
   double *badbuff;
@@ -4110,7 +4112,7 @@ killhir2 (SNP ** snpm, int numsnps, int numind, double physlim, double genlim,
     if (cupt->ignore)
       continue;
     cupt->score = numvalidgtypes (cupt);
-    cupt->score += DRAND ();    // jitter
+    cupt->score += DRAND ();	// jitter
   }
 
   ZALLOC (badbuff, badbuffsize, double);
@@ -4139,60 +4141,60 @@ killhir2 (SNP ** snpm, int numsnps, int numind, double physlim, double genlim,
       y1 = asum2 (p1, numind);
       yy1[j - lo] = y1;
       if (y1 < 0.01) {
-        ++nkill;
-        cupt->ignore = YES;
+	++nkill;
+	cupt->ignore = YES;
       }
     }
     for (j1 = 0; j1 < 5000; ++j1) {
       if (j1 > (hi - lo))
-        break;
+	break;
       cupt1 = snpxl[j1];
       if (cupt1->ignore)
-        continue;
+	continue;
       nbad = 0;
       tj = 0;
       for (j2 = j1 + 1; j2 <= hi - lo; ++j2) {
-        cupt2 = snpxl[j2];
-        if (cupt2->ignore)
-          continue;
-        if (cupt2->chrom != cupt1->chrom)
-          break;
+	cupt2 = snpxl[j2];
+	if (cupt2->ignore)
+	  continue;
+	if (cupt2->chrom != cupt1->chrom)
+	  break;
 
-        dis = cupt2->genpos - cupt1->genpos;
-        if (dis > genlim)
-          break;
+	dis = cupt2->genpos - cupt1->genpos;
+	if (dis > genlim)
+	  break;
 
-        dis = cupt2->physpos - cupt1->physpos;
-        if (dis > physlim)
-          break;
-        ++tj;
+	dis = cupt2->physpos - cupt1->physpos;
+	if (dis > physlim)
+	  break;
+	++tj;
 
-        y1 = yy1[j1];
-        y2 = yy1[j2];
+	y1 = yy1[j1];
+	y2 = yy1[j2];
 
-        y = vdot (xx1[j1], xx1[j2], numind) / sqrt (y1 * y2);   // compute correlation
-        rho = y * y;
-        if (rho < rhothresh)
-          continue;
-        badbuff[nbad] = cupt2->score;
-        xbadbuff[nbad] = j2 + lo;
-        ++nbad;
+	y = vdot (xx1[j1], xx1[j2], numind) / sqrt (y1 * y2);	// compute correlation
+	rho = y * y;
+	if (rho < rhothresh)
+	  continue;
+	badbuff[nbad] = cupt2->score;
+	xbadbuff[nbad] = j2 + lo;
+	++nbad;
 
       }
       t = (j1 + lo) % 100;
       if (nbad == 0)
-        continue;
+	continue;
       vlmaxmin (badbuff, nbad, &kmax, &kmin);
       smax = snpm[kmax]->score;
       if (smax > cupt1->score) {
-        cupt1->ignore = YES;
-        ++nkill;
-        continue;
+	cupt1->ignore = YES;
+	++nkill;
+	continue;
       }
       for (k = 0; k < nbad; ++k) {
-        j = xbadbuff[k];
-        snpm[j]->ignore = YES;
-        ++nkill;
+	j = xbadbuff[k];
+	snpm[j]->ignore = YES;
+	++nkill;
       }
     }
   }
@@ -4347,7 +4349,7 @@ inpack2 (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
     fatalx ("(inpack2) bad read");
   }
   sscanf ((char *) buff, "GENO %d %d %x %x", &xnind, &xnsnp, &xihash,
-          &xshash);
+	  &xshash);
 
   if (xnind != nind)
     fatalx ("(inpack2) nind mismatch %d %d \n", nind, xnind);
@@ -4373,23 +4375,23 @@ inpack2 (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
     cupt2 = &xsnp;
     cupt2->pbuff = (char *) tbuff;
     for (k = 0; k < numind; ++k) {
-      g2 = getgtypes (cupt2, k);        // store in temporary buffer
+      g2 = getgtypes (cupt2, k);	// store in temporary buffer
       if (g2 < 0)
-        continue;
+	continue;
       g1 = getgtypes (cupt, k);
       if ((g1 >= 0) && (g1 != g2))
-        ++nbad;                 // inconsistent data
+	++nbad;			// inconsistent data
       putgtypes (cupt, k, g2);
     }
 
     // now check xhets
     for (k = 0; k < numind; ++k) {
       if (cupt->chrom != (numchrom + 1))
-        break;
+	break;
       indx = indiv[k];
       g = getgtypes (cupt, k);
       if (checkxval (cupt, indx, g) == NO) {
-        putgtypes (cupt, k, -1);
+	putgtypes (cupt, k, -1);
       }
     }
   }
@@ -4403,7 +4405,7 @@ inpack2 (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
 /* ---------------------------------------------------------------------------------------------------- */
 void
 getgenos_list (char *genotypelist, SNP ** snpmarkers, Indiv ** indivmarkers,
-               int numsnps, int numindivs, int nignore)
+	       int numsnps, int numindivs, int nignore)
 {
 
   char **fnames, *fn;
@@ -4658,7 +4660,7 @@ genocloseit (genofile * gfile)
 /* ---------------------------------------------------------------------------------------------------- */
 int
 genoopenit (genofile ** gfile, char *geno2name, SNP ** snp2m,
-            Indiv ** indiv2m, int numsnp2, int numindiv2, int nignore)
+	    Indiv ** indiv2m, int numsnp2, int numindiv2, int nignore)
 {
   // only one gfile can be open 
   static genofile xfile;
@@ -4708,16 +4710,16 @@ genoopenit (genofile ** gfile, char *geno2name, SNP ** snp2m,
   calcishash (snp2m, indiv2m, nsnp, nind, &ihash, &shash);
   if (hashcheck) {
     sscanf ((char *) buff, "GENO %d %d %x %x", &xnind, &xnsnp, &xihash,
-            &xshash);
+	    &xshash);
     if (xnind != nind)
       fatalx ("OOPS number of individuals %d != %d in input files\n", nind,
-              xnind);
+	      xnind);
     if (xnsnp != nsnp)
       fatalx ("OOPS number of SNPs %d != %d in input file: %s\n", nsnp, xnsnp,
-              gname);
+	      gname);
     if (xihash != ihash)
       fatalx
-        ("OOPS indiv file has changed since genotype file was created\n");
+	("OOPS indiv file has changed since genotype file was created\n");
     if (xshash != shash)
       fatalx ("OOPS snp file has changed since genotype file was created\n");
   }
@@ -4746,7 +4748,6 @@ typedef struct {
 int
 genoreadit (genofile * gfile, SNP ** pcupt)
 {
-
 /*  
  return code 
  < 0 bad read  
@@ -4897,6 +4898,7 @@ setstatuslist (Indiv ** indm, int numindivs, char **smatchlist, int slen)
     indx->affstatus = k + 1;
     ++n;
   }
+  return n ;
 }
 
 
@@ -4971,7 +4973,7 @@ setstatuslist (Indiv ** indm, int numindivs, char **smatchlist, int slen)
     \brief Determine whether an input line from the SNP file should be skipped
     \param sx is the first token on the input line
     Skip if this is a comment or a line of column headers.
-  /
+*/
 
 /*! \fn int numfakes(SNPDATA **snpraw, int *snpindx, int nreal, double spacing)    
     \brief Return (approximate) number of fake SNPs that will be inserted

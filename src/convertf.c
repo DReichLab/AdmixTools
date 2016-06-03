@@ -16,8 +16,7 @@
 #include "egsubs.h"
 #include "exclude.h"
 
-#define WVERSION   "4502"
-
+#define WVERSION   "4510"
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -86,6 +85,8 @@
  copyalleles (if newsnpname alleles are copied from old file) 
  familypopnames (use egroup for family in .fam output
  dupcheck contains iter number
+
+ minvalpop :: every pop must have at least this number of valids (defualt not set) 
 */
 
 
@@ -97,8 +98,8 @@ int qtmode = NO;
 Indiv **indivmarkers, **indm2;
 SNP **snpmarkers;
 SNP **snpm2;
-int zerodistance = NO;          // YES => force gdis 0
-int downsample = NO;            // make pseudo homozygotes
+int zerodistance = NO;		// YES => force gdis 0
+int downsample = NO;		// make pseudo homozygotes
 int pordercheck = YES;
 int familypopnames = NO;
 
@@ -125,10 +126,11 @@ int remapcheck = YES;
 char *poplistname = NULL;
 
 double r2thresh = -1.0;
-double r2genlim = 0.01;         // Morgans 
+double r2genlim = 0.01;		// Morgans 
 double r2physlim = 5.0e6;
-double maxmissfrac = 1000.0;    // no thresh
-int maxmiss = -1;               // no thresh
+double maxmissfrac = 1000.0;	// no thresh
+int maxmiss = -1;		// no thresh
+int minvalpop = -1 ;
 int killr2 = NO;
 int mkdiploid = NO;
 
@@ -159,9 +161,9 @@ int hipos = 999999999;
 int minchrom = 1;
 int maxchrom = 97;
 
-int deletedup = YES;            // only one marker at a position
-char *newsnpname = NULL;        // new map  
-int newignore = YES;            // default ignore snps not in old list
+int deletedup = YES;		// only one marker at a position
+char *newsnpname = NULL;	// new map  
+int newignore = YES;		// default ignore snps not in old list
 int polarcheck = NO;
 int copyalleles = NO;
 
@@ -174,18 +176,18 @@ double nhwfilter = -1;
 void setomode (enum outputmodetype *outmode, char *omode);
 void readcommands (int argc, char **argv);
 void outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
-               Indiv ** indiv, int numsnps, int numind, int packem,
-               int ogmode);
+	       Indiv ** indiv, int numsnps, int numind, int packem,
+	       int ogmode);
 void remap (SNP ** s1, int nums1, SNP ** s2, int nums2);
 void remapind (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers,
-               Indiv ** indm2, int numindivs, int numind2);
+	       Indiv ** indm2, int numindivs, int numind2);
 void pickx (SNP * c1, SNP * c2, SNP ** px1, SNP ** px2);
 void dedupit (SNP ** snpmarkers, int numsnps);
 void flipsnps (char *fsname, SNP ** snpm, int numsnps, int phasedmode);
 void flipstrand (char *fsname, SNP ** snpm, int numsnps);
 int mkindh2d (Indiv ** indivmarkers, Indiv *** pindm2, int numindivs);
 void remaph2d (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers,
-               Indiv ** indm2, int numindivs, int numind2);
+	       Indiv ** indm2, int numindivs, int numind2);
 void flip1 (SNP * cupt, int phasedmode, int flipreference);
 
 void fixaa (SNP * cupt1, SNP * cupt2);
@@ -193,6 +195,7 @@ void fvalg (SNP * cupt, int val);
 char cxx (char *c1, char *c2);
 void downsamp (SNP * cupt);
 int setsamp (Indiv ** indivmarkers, int numindivs, char *usesamples);
+int testmisspop(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int numindivs, int minvalpops)   ;
 
 
 
@@ -229,8 +232,8 @@ main (int argc, char **argv)
   char c1, c2;
   int t1, t2;
 
-  malexhet = YES;               // convertf default is don't change the data
-  tersem = YES;                 // no snp counts
+  malexhet = YES;		// convertf default is don't change the data
+  tersem = YES;			// no snp counts
 
   readcommands (argc, argv);
 
@@ -305,13 +308,13 @@ main (int argc, char **argv)
 
   if (genotypelist != NULL) {
     getgenos_list (genotypelist, snpmarkers, indivmarkers,
-                   numsnps, numindivs, nignore);
+		   numsnps, numindivs, nignore);
   }
 
   else {
     setgenotypename (&genotypename, indivname);
     getgenos (genotypename, snpmarkers, indivmarkers,
-              numsnps, numindivs, nignore);
+	      numsnps, numindivs, nignore);
   }
 
   if (newsnpname != NULL) {
@@ -348,7 +351,7 @@ main (int argc, char **argv)
 
 
   if (deletedup)
-    dedupit (snpmarkers, numsnps);      // only one marker per position
+    dedupit (snpmarkers, numsnps);	// only one marker per position
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -358,7 +361,7 @@ main (int argc, char **argv)
     c1 = cupt->alleles[0];
     c2 = cupt->alleles[1];
     t1 = pedval (&c1) % 5;
-    t2 = pedval (&c2) % 5;      // 0 and 5 are no good
+    t2 = pedval (&c2) % 5;	// 0 and 5 are no good
     if ((t1 == 0) && (t2 > 0))
       flip1 (cupt, phasedmode, YES);
   }
@@ -367,7 +370,7 @@ main (int argc, char **argv)
   flipsnps (flipsnpname, snpmarkers, numsnps, phasedmode);
 
   if (deletedup)
-    dedupit (snpmarkers, numsnps);      // only one marker per position
+    dedupit (snpmarkers, numsnps);	// only one marker per position
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -377,7 +380,7 @@ main (int argc, char **argv)
     c1 = cupt->alleles[0];
     c2 = cupt->alleles[1];
     t1 = pedval (&c1) % 5;
-    t2 = pedval (&c2) % 5;      // 0 and 5 are no good
+    t2 = pedval (&c2) % 5;	// 0 and 5 are no good
     if ((t1 == 0) && (t2 > 0))
       flip1 (cupt, phasedmode, YES);
   }
@@ -390,17 +393,17 @@ main (int argc, char **argv)
       cupt = snpmarkers[i];
       g = getgtypes (cupt, polarindex);
       if (g == 0) {
-        printf ("polarizing %s", cupt->ID);
-        printf (" %3d %12.0f", cupt->chrom, cupt->physpos);
-        printnl ();
-        fflush (stdout);
-        flip1 (cupt, NO, YES);
-        g = getgtypes (cupt, polarindex);
-        if (g != 2)
-          fatalx ("badbug\n");
+	printf ("polarizing %s", cupt->ID);
+	printf (" %3d %12.0f", cupt->chrom, cupt->physpos);
+	printnl ();
+	fflush (stdout);
+	flip1 (cupt, NO, YES);
+	g = getgtypes (cupt, polarindex);
+	if (g != 2)
+	  fatalx ("badbug\n");
       }
       if (g != 2)
-        cupt->ignore = YES;
+	cupt->ignore = YES;
     }
   }
   for (i = 0; i < numsnps; i++) {
@@ -411,7 +414,7 @@ main (int argc, char **argv)
 
   if (outputall) {
     outfiles (snpoutfilename, indoutfilename, genooutfilename,
-              snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
+	      snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
 
     printf ("##end of convertf run (outputall mode)\n");
     return 0;
@@ -430,7 +433,7 @@ main (int argc, char **argv)
     for (i = 0; i < numindivs; ++i) {
       indx = indivmarkers[i];
       if (indx->affstatus == NO)
-        indx->ignore = YES;
+	indx->ignore = YES;
     }
   }
   else
@@ -443,7 +446,7 @@ main (int argc, char **argv)
   if (killr2) {
     nkill =
       killhir2 (snpmarkers, numsnps, numindivs, r2physlim, r2genlim,
-                r2thresh);
+		r2thresh);
     if (nkill > 0)
       printf ("killhir2.  number of snps killed: %d\n", nkill);
   }
@@ -477,6 +480,10 @@ main (int argc, char **argv)
   if (numvalidind == 0)
     fatalx ("no valid samples!\n");
 
+  t = testmisspop(snpmarkers, numsnps, indivmarkers, numindivs, minvalpop) ; 
+  if (minvalpop>0) printf("minvalpop: deleted %d   retained %d\n", t, numsnps-t) ;
+
+
   for (k = 0; k < numsnps; ++k) {
     if (maxmiss > numvalidind)
       break;
@@ -485,7 +492,6 @@ main (int argc, char **argv)
     if (maxmiss < t) {
       cupt->ignore = YES;
     }
-
 /**
    if (numvalidind ==  t) { 
     printf("no data for snp: %s\n", cupt -> ID) ;
@@ -515,7 +521,7 @@ main (int argc, char **argv)
   }
 
   outfiles (snpoutfilename, indoutfilename, genooutfilename,
-            snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
+	    snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
 
   printf ("##end of convertf run\n");
   return 0;
@@ -574,11 +580,11 @@ output:        eurout
   getstring (ph, "flipsnpname:", &flipsnpname);
   getstring (ph, "flipstrandname:", &flipstrandname);
   getstring (ph, "indoutfilename:", &indoutfilename);
-  getstring (ph, "indivoutname:", &indoutfilename);     /* changed 11/02/06 */
+  getstring (ph, "indivoutname:", &indoutfilename);	/* changed 11/02/06 */
   getstring (ph, "snpoutfilename:", &snpoutfilename);
-  getstring (ph, "snpoutname:", &snpoutfilename);       /* changed 11/02/06 */
+  getstring (ph, "snpoutname:", &snpoutfilename);	/* changed 11/02/06 */
   getstring (ph, "genooutfilename:", &genooutfilename);
-  getstring (ph, "genotypeoutname:", &genooutfilename); /* changed 11/02/06 */
+  getstring (ph, "genotypeoutname:", &genooutfilename);	/* changed 11/02/06 */
   getstring (ph, "outputformat:", &omode);
   getstring (ph, "outputmode:", &omode);
   getstring (ph, "polarize:", &polarid);
@@ -601,10 +607,10 @@ output:        eurout
 
   getint (ph, "outputgroup:", &ogmode);
   getint (ph, "malexhet:", &malexhet);
-  getint (ph, "nomalexhet:", &malexhet);        /* changed 11/02/06 */
+  getint (ph, "nomalexhet:", &malexhet);	/* changed 11/02/06 */
   getint (ph, "tersemode:", &tersem);
   getint (ph, "familynames:", &familynames);
-  getint (ph, "packout:", &packout);    /* now obsolete 11/02/06 */
+  getint (ph, "packout:", &packout);	/* now obsolete 11/02/06 */
   getint (ph, "decimate:", &decim);
   getint (ph, "dmindis:", &dmindis);
   getint (ph, "dmaxdis:", &dmaxdis);
@@ -634,6 +640,7 @@ output:        eurout
   getint (ph, "maxchrom:", &maxchrom);
   getdbl (ph, "maxmissfrac:", &maxmissfrac);
   getint (ph, "maxmissing:", &maxmiss);
+  getint (ph, "minvalpop:", &minvalpop);
 
   getstring (ph, "poplistname:", &poplistname);
   getstring (ph, "newsnpname:", &newsnpname);
@@ -660,7 +667,7 @@ remap (SNP ** s1, int nums1, SNP ** s2, int nums2)
     if (k < 0) {
       printf ("%20s not found\n", cupt2->ID);
       if (newignore) {
-        cupt2->ignore = YES;
+	cupt2->ignore = YES;
       }
       continue;
     }
@@ -694,6 +701,8 @@ cxx (char *c1, char *c2)
     return c2[1];
   if (c1[0] == c2[1])
     return c2[0];
+
+  return 'X' ; 
 
 }
 
@@ -731,7 +740,7 @@ fixaa (SNP * cupt1, SNP * cupt2)
       ok = NO;
     if (ok == NO) {
       printf ("forcing all genos invalid for %s %c %c     %c %c\n", cupt1->ID,
-              c1[0], c1[1], c2[0], c2[1]);
+	      c1[0], c1[1], c2[0], c2[1]);
       fvalg (cupt1, 999);
       cupt1->ignore = YES;
       return;
@@ -752,13 +761,13 @@ fixaa (SNP * cupt1, SNP * cupt2)
   }
   if ((c1[1] == c2[1]) && (c1[0] != c2[0])) {
     t = 0;
-    fvalg (cupt1, 0);           // only valid genotype ;
+    fvalg (cupt1, 0);		// only valid genotype ;
     return;
   }
-  fvalg (cupt1, t);             // force all snps invalid
+  fvalg (cupt1, t);		// force all snps invalid
   if (t == 999) {
     printf ("forcing all genos invalid for %s %c %c     %c %c\n", cupt1->ID,
-            c1[0], c1[1], c2[0], c2[1]);
+	    c1[0], c1[1], c2[0], c2[1]);
   }
 }
 
@@ -798,7 +807,7 @@ fvalg (SNP * cupt, int val)
 
 void
 remapind (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers,
-          Indiv ** indm2, int numindivs, int numind2)
+	  Indiv ** indm2, int numindivs, int numind2)
 {
 
   int *g1, *g2, *w1;
@@ -875,7 +884,7 @@ dedupit (SNP ** snpmarkers, int numsnps)
       cupt1 = cupt2;
       continue;
     }
-    pickx (cupt1, cupt2, &x1, &x2);     // x2 bad
+    pickx (cupt1, cupt2, &x1, &x2);	// x2 bad
     x2->ignore = YES;
     cupt1 = x1;
   }
@@ -1000,13 +1009,13 @@ flip1 (SNP * cupt, int phasedmode, int flipreference)
 
 void
 setsamplist (Indiv ** indivmarkers, int numindivs, char **samplist,
-             int nsplit)
+	     int nsplit)
 {
   int i, j, k;
   Indiv *indx;
   int t = 0;
 
-  setstatusv (indivmarkers, numindivs, NULL, NO);       // set affstatus to NO
+  setstatusv (indivmarkers, numindivs, NULL, NO);	// set affstatus to NO
 
   for (j = 0; j < nsplit; ++j) {
     k = indindex (indivmarkers, numindivs, samplist[j]);
@@ -1043,5 +1052,74 @@ setsamp (Indiv ** indivmarkers, int numindivs, char *usesamples)
   freeup (spt, nsplit);
 
   return nsplit;
+
+}
+int mkpops(char **pops, Indiv **indm, int numind) 
+// make a list of pops from indm
+{
+  int n = 0 ;
+  Indiv *indx ; 
+  int k, t ; 
+  char *sx ; 
+ 
+  for (k=0; k<numind; ++k) { 
+   indx = indivmarkers[k] ;
+   if (indx -> ignore) continue ;
+   sx = indx -> egroup ; 
+   t = indxstring(pops, n, sx) ; 
+   if (t>=0) continue ; 
+   pops[n] = strdup(sx) ;
+   ++n ; 
+  }
+// make a list of pops from indm
+
+  return n ; 
+
+
+}
+int
+testmisspop(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int numindivs, int minvalpops)  
+{
+    
+  char **pops ; 
+  int  npops, ndelete = 0 ;
+  int **valcnt, i, k, x, g ; 
+  Indiv *indx ; 
+  SNP *cupt ;
+
+  if (minvalpops<1) return 0 ; 
+  ZALLOC(pops, numindivs, char *) ; 
+  npops = mkpops(pops, indivmarkers, numindivs) ;
+  if (npops == 0) fatalx("no valid data\n") ;
+  if (verbose) {
+   printf("zzpops:\n") ; printstrings(pops, npops) ;
+  }
+
+  valcnt = initarray_2Dint(numsnps, npops, 0) ; 
+  for (i=0; i<numindivs; ++i) { 
+   indx = indivmarkers[i] ; 
+   if (indx -> ignore) continue ; 
+   x = indxstring(pops, npops, indx -> egroup) ; 
+   if (x<0) continue ; 
+   for (k=0; k<numsnps; ++k) { 
+    cupt = snpmarkers[k] ; 
+    if (cupt -> ignore) continue ; 
+    g = getgtypes(cupt, i) ; 
+    if (g<0) continue ; 
+    ++valcnt[k][x] ; 
+   }
+  }
+  for (k=0; k<numsnps; ++k) { 
+   if (verbose && (k<10))  printimat(valcnt[k], 1, npops) ;
+   ivmaxmin(valcnt[k], npops, NULL, &x) ; 
+   if (x<minvalpops) { 
+     snpmarkers[k] -> ignore = YES ; 
+     ++ndelete ; 
+   }
+  }
+
+ freeup(pops, numindivs) ; 
+ free2Dint(&valcnt, numsnps) ;
+ return ndelete ; 
 
 }

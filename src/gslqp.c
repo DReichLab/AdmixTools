@@ -28,7 +28,7 @@ gsl_multimin_fminimizer *s = NULL;
 static gsl_vector *ss, *x;
 gsl_multimin_function minex_func;
 
-double fjunk (const gsl_vector * v, void *params);
+double fjunk (const gsl_vector *v, void *params);
 static double fff (double *a, int n);
 
 int
@@ -100,19 +100,19 @@ gslopt (double *wpars)
     status = gsl_multimin_test_size (size, gslprecision);
     q = s->fval;
     if (gsldetails)
-      printf ("gslopt: %3d %12.6f\n", iter, q);
+      printf ("gslopt: %3d %12.6f\n", (int) iter, q);
     if (q < qbest) {
       if (gsldetails)
-        printf ("+++ new best\n");
+	printf ("+++ new best\n");
       qbest = q;
       for (k = 0; k < xnmix; ++k) {
-        wpars[k] = gsl_vector_get (s->x, k);
+	wpars[k] = gsl_vector_get (s->x, k);
       }
     }
   }
   while (status == GSL_CONTINUE && iter < 10000);
 
-  printf ("gslans: %4d %12.6f\n", iter, q);
+  printf ("gslans: %4d %12.6f\n", (int) iter, q);
   fff (wpars, xnmix);
   printmat (wpars, 1, xnmix);
 
@@ -135,9 +135,9 @@ fff (double *a, int n)
       yy = -yy;
     }
     if (yy > 1) {
-      yy = 2.0 * modf (0.5 * yy, &y);   // periodicity is 2 
+      yy = 2.0 * modf (0.5 * yy, &y);	// periodicity is 2 
       if (yy > 1)
-        yy = 2 - yy;
+	yy = 2 - yy;
     }
     y = yy - xx;
     penalty += y * y;

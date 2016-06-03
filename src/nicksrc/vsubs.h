@@ -28,6 +28,7 @@ void lvclear(long *a,  long c, long n) ;
 void ivzero(int *a, int n) ;
 void lvzero(long *a, long n) ;
 void cclear(unsigned char *a,  unsigned char c, long n) ;
+void charclear(char *a,  unsigned char c, long n) ;
 
 double clip(double x, double lo, double hi)  ;
 void ivclip(int *a, int *b,int loval, int hival,int n)  ; 
@@ -122,8 +123,8 @@ double logmultinom(int *cc, int n) ;
 double addlog(double a, double b) ;
 double vldot(double *x, double *y, int n) ;
 double pow10 (double x) ;
-double vpow10 (double *a, double *b, int n) ;
-double vlog10 (double *a, double *b, int n) ;
+void vpow10 (double *a, double *b, int n) ;
+void vlog10 (double *a, double *b, int n) ;
 /* matrix transpose */
 void transpose(double *aout, double *ain, int m, int n)  ;
 void addoutmul(double *out, double *a, double mul, int n) ;
@@ -191,5 +192,4 @@ long lrevcomp (long xx, int stringlen) ;
 void ismatch(int *a, int *b, int n, int val) ;
 int pmult(double *a, double *b, double *c, int na, int nb) ;
 void pdiff(double *a, double *b, int deg) ;
-
-
+void vswap(double *a, double *b, int n)  ;

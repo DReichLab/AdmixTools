@@ -19,7 +19,6 @@
 #include "ldsubs.h"
 
 #define WVERSION   "1100"
-
 /** an attempt to 
  1) threshold for LD in parentals 
  2) Use a weighted Z-score
@@ -82,7 +81,7 @@ int runmode = 0;
 int ldmode = NO;
 int ransample = -1;
 int flatmode = NO;
-double chithresh = -1.0;        // default 6.0 
+double chithresh = -1.0;	// default 6.0 
 int jackknife = NO;
 
 FILE *ofile;
@@ -97,7 +96,7 @@ int seed = 0;
 int noxdata = YES;
 int samelambda = NO;
 int fixlambda = NO;
-int flatinit = NO;              // different default
+int flatinit = NO;		// different default
 int popestimate = NO;
 int nxlim = 100000;
 int mincount = 5;
@@ -128,18 +127,18 @@ void printgams ();
 void calcgtl (int ind);
 double doscore (double **thet, double *lam);
 void dumppars (char *dumpname, double **wmix, double **theta, int nums,
-               int numeg);
+	       int numeg);
 void dorc (double *ans, double *res, double binsize, double maxdis);
 void dorc2 (double *ans, double *res, double binsize, double maxdis);
 void dorcx (double *ans, double *rr, double *dd, double binsize,
-            double maxdis);
+	    double maxdis);
 void dorcxx (double *ans, double *rr, double *dd, double binsize,
-             double maxdis);
+	     double maxdis);
 void dumpit (char *oname, double *ww, CORR ** corrbins, int len, double bsize,
-             char *hdr);
+	     char *hdr);
 double cntit1 (double *xc, SNP * cupt, Indiv ** indm, int numindivs, int t);
 double cntit2 (double *xc, SNP * cupt, SNP * cupt2, Indiv ** indm,
-               int numindivs, int t);
+	       int numindivs, int t);
 void clipwt (SNP ** snpmarkers, int numsnps);
 double estyran (SNP ** snpmarkers, int numsnps, int nxlim);
 void cx1 (double *xc, double *y1, double *y2);
@@ -179,7 +178,7 @@ main (int argc, char **argv)
   double wtmean, wtnum;
   CORR **corrbins;
   CORR *corrpt;
-  CORR ***corrjbins;            //jackknife
+  CORR ***corrjbins;		//jackknife
   int nloop = 0;
   int nncount = 0;
   int nsnp1 = 0, nsnp2 = 0;
@@ -254,7 +253,7 @@ main (int argc, char **argv)
   fflush (stdout);
 
   getgenos (genotypename, snpmarkers, indivmarkers,
-            numsnps, numindivs, nignore);
+	    numsnps, numindivs, nignore);
 
   if (checkmap && (cmap (snpmarkers, numsnps) == NO)) {
     printf
@@ -294,7 +293,7 @@ main (int argc, char **argv)
 
   numsnps = rmsnps (snpmarkers, numsnps, NULL);
 
-  setfc (snpmarkers, numsnps);  // does allocation
+  setfc (snpmarkers, numsnps);	// does allocation
   for (k = 0; k < numeg; ++k) {
     printf ("group %d %s\n", k, eglist[k]);
   }
@@ -310,7 +309,7 @@ main (int argc, char **argv)
     tt = indxindex (admixpoplist, nadmixpop, indx->egroup);
     if (tt >= 0) {
       if (t > 0)
-        fatalx (" %s in admixing and admixed pops\n", indx->egroup);
+	fatalx (" %s in admixing and admixed pops\n", indx->egroup);
       indx->affstatus = 99;
       ++ncount;
     }
@@ -413,7 +412,7 @@ main (int argc, char **argv)
       continue;
     }
     ++nsnp2;
-    znorm = sqrt (y);           // ?? involved in weight ?
+    znorm = sqrt (y);		// ?? involved in weight ?
     switch (runmode) {
     case 0:
       cupt->weight = y1 / znorm;
@@ -455,7 +454,7 @@ main (int argc, char **argv)
     for (x = 0; x < numsnps; ++x) {
       cupt = snpmarkers[x];
       if (cupt->ignore)
-        continue;
+	continue;
       wtmean += cupt->weight;
       wtnum += 1.0;
     }
@@ -475,14 +474,14 @@ main (int argc, char **argv)
       y2 = 2 * asum (xc, 3);
       t = nnint (y1);
       if (t < mincount)
-        cupt->ignore = YES;
+	cupt->ignore = YES;
       t = nnint (y2 - y1);
       if (t < mincount)
-        cupt->ignore = YES;
+	cupt->ignore = YES;
 //   if (x<1000) printf("%s %d %9.0f %9.0f %d\n", cupt -> ID, cupt -> ignore, y1, y2-y1, mincount) ;
 
       if (!cupt->ignore)
-        ++ncount;
+	++ncount;
     }
   }
 
@@ -515,7 +514,6 @@ main (int argc, char **argv)
     if (cupt->ignore)
       continue;
     chrom = cupt->chrom;
-
 /**
    t = ranmod(1000) ;
    if (t==0) printf("processing snp %6d: %20s topheap: %x \n", x, cupt -> ID, topheap()) ;
@@ -525,64 +523,63 @@ main (int argc, char **argv)
     for (x2 = x + 1; x2 < numsnps; ++x2) {
       cupt2 = snpmarkers[x2];
       if (cupt2->ignore)
-        continue;
+	continue;
       t = cupt2->chrom - cupt->chrom;
       if (t != 0)
-        break;
+	break;
       dis = cupt2->genpos - cupt->genpos;
       if (dis >= maxdis)
-        break;
-      s = (int) (dis / binsize);        // as in simpsim2 
+	break;
+      s = (int) (dis / binsize);	// as in simpsim2 
 
       if (ransample > 0) {
-        t = ranmod (ransample);
-        if (t != 0)
-          continue;
+	t = ranmod (ransample);
+	if (t != 0)
+	  continue;
       }
 
       ++snpdo2;
 
       if (runmode == 2) {
-        t = calcldscore (cupt, cupt2, &yy);
-        if (t == 0)
-          continue;
-        yy /= yran;
-        wt = 1.0;
-        xnum[s] += wt * yy;
-        xden[s] += wt * wt;
-        yy2[s] += yy * yy;
-        corrpt = corrbins[s];
-        addcorr (corrpt, wt, yy);
-        continue;
+	t = calcldscore (cupt, cupt2, &yy);
+	if (t == 0)
+	  continue;
+	yy /= yran;
+	wt = 1.0;
+	xnum[s] += wt * yy;
+	xden[s] += wt * wt;
+	yy2[s] += yy * yy;
+	corrpt = corrbins[s];
+	addcorr (corrpt, wt, yy);
+	continue;
       }
       wt = cupt->weight * cupt2->weight;
       if (wt == 0.0)
-        continue;
+	continue;
       ++ncount;
 //    if (ncount > 100) break ; 
       if ((weightname == NULL) && (chithresh > 0.001)) {
 //  set chithresh 0 if weightname NULL ?? 
-        //    printf("qq1\n") ;
-        y = cntit2 (xc, cupt, cupt2, indivmarkers, numindivs, 0);
-        if (y < minparentcount)
-          continue;
-        y1 = lddip (xc);
-        if (y1 >= chithresh)
-          continue;
-        y = cntit2 (xc, cupt, cupt2, indivmarkers, numindivs, 1);
-        if (y < minparentcount)
-          continue;
-        y2 = lddip (xc);
-        if (y2 >= chithresh)
-          continue;
+	//    printf("qq1\n") ;
+	y = cntit2 (xc, cupt, cupt2, indivmarkers, numindivs, 0);
+	if (y < minparentcount)
+	  continue;
+	y1 = lddip (xc);
+	if (y1 >= chithresh)
+	  continue;
+	y = cntit2 (xc, cupt, cupt2, indivmarkers, numindivs, 1);
+	if (y < minparentcount)
+	  continue;
+	y2 = lddip (xc);
+	if (y2 >= chithresh)
+	  continue;
       }
 
       y = cntit2 (xc, cupt, cupt2, indivmarkers, numindivs, 99);
 //    printf("qq2 %9.3f\n", y) ;
       if (y < 4)
-        continue;
+	continue;
       cx1 (xc, &y1, &y2);
-
 /**
  bug ?? 
        if (ncount < -1) {
@@ -592,14 +589,14 @@ main (int argc, char **argv)
 */
 
       if (nnint (y1) < mincount)
-        continue;
+	continue;
       if (nnint (y2) < mincount)
-        continue;
+	continue;
 
       xww[0] = xww[2] = 0.5;
       xww[1] = 1.0;
       if (flatmode)
-        addouter (xc, xww, 3);
+	addouter (xc, xww, 3);
 
 //    t = ranmod(100) ; 
 //    if (t==0) verbose = YES ;
@@ -607,19 +604,19 @@ main (int argc, char **argv)
       t = 999;
 
       if (runmode == 2) {
-        if (nnint (y1) < mincount)
-          continue;
-        if (nnint (y2) < mincount)
-          continue;
-        if (flatmode)
-          vsp (xc, xc, 0.5, 9);
-        yy = lddip (xc);
-        yy /= yran;
+	if (nnint (y1) < mincount)
+	  continue;
+	if (nnint (y2) < mincount)
+	  continue;
+	if (flatmode)
+	  vsp (xc, xc, 0.5, 9);
+	yy = lddip (xc);
+	yy /= yran;
       }
 
       else {
-        ++nloop;
-        yy = zdip (xc);
+	++nloop;
+	yy = zdip (xc);
       }
 
       ++nncount;
@@ -627,10 +624,10 @@ main (int argc, char **argv)
 //    if (nloop == -1) return 0 ;
 
       if (t == 0) {
-        y1 = lddip (xc);
-        printf ("zzz %3d %12.6f %12.6f %12.6f\n", s, wt, yy, y1);
-        printnl ();
-        printmat (xc, 3, 3);
+	y1 = lddip (xc);
+	printf ("zzz %3d %12.6f %12.6f %12.6f\n", s, wt, yy, y1);
+	printnl ();
+	printmat (xc, 3, 3);
       }
 
       xnum[s] += wt * yy;
@@ -640,12 +637,12 @@ main (int argc, char **argv)
       addcorr (corrpt, wt, yy);
       ++jwt[chrom][s];
       for (k = 1; k <= numchrom; ++k) {
-        if (k == chrom)
-          continue;
-        if (jackknife == NO)
-          break;
-        corrpt = corrjbins[k][s];
-        addcorr (corrpt, wt, yy);
+	if (k == chrom)
+	  continue;
+	if (jackknife == NO)
+	  break;
+	corrpt = corrjbins[k][s];
+	addcorr (corrpt, wt, yy);
       }
     }
   }
@@ -682,7 +679,7 @@ main (int argc, char **argv)
   vvd (ww, xnum, xden, numbins);
 
   sprintf (sss, " ##Z-score and correlation:: %s  binsize: %12.6f",
-           poplistname, binsize);
+	   poplistname, binsize);
   dumpit (oname, ww, corrbins, numbins - 5, binsize, sss);
   for (k = 1; k <= numchrom; ++k) {
     if (jackknife == NO)
@@ -702,7 +699,7 @@ main (int argc, char **argv)
 
 void
 dumpit (char *oname, double *ww, CORR ** corrbins, int len, double bsize,
-        char *hdr)
+	char *hdr)
 {
   double y, yreg;
   int k, ret;
@@ -762,25 +759,25 @@ dorcx (double *ans, double *rr, double *dd, double binsize, double maxdis)
       cupt2 = snpmarkers[x2];
       t = cupt2->chrom - cupt->chrom;
       if (t != 0)
-        break;
+	break;
       dis = cupt2->genpos - cupt->genpos;
       if (dis >= maxdis)
-        break;
+	break;
       s = nnint (dis / binsize);
       y2 = dd[x] * dd[x2];
       for (k = 0; k < numindivs; ++k) {
-        rrr = rr + k * numsnps;
+	rrr = rr + k * numsnps;
 
-        switch (runmode) {
-        case 0:
-          y2 = dd[x] * dd[x2];
-          y1 = rrr[x] * rrr[x2];
-          break;
+	switch (runmode) {
+	case 0:
+	  y2 = dd[x] * dd[x2];
+	  y1 = rrr[x] * rrr[x2];
+	  break;
 
-        case 1:
-          y2 = rrr[x2] * dd[x2];
-          y1 = rrr[x] * dd[x];
-          break;
+	case 1:
+	  y2 = rrr[x2] * dd[x2];
+	  y1 = rrr[x] * dd[x];
+	  break;
 
 /**
         case 2:  
@@ -794,17 +791,17 @@ dorcx (double *ans, double *rr, double *dd, double binsize, double maxdis)
          break ;
 */
 
-        default:
-          fatalx ("bad runmode\n");
-        }
+	default:
+	  fatalx ("bad runmode\n");
+	}
 
-        if (isnan (y1))
-          fatalx ("bad y1\n");
-        if (isnan (y2))
-          fatalx ("bad y2\n");
-        xnum[s] += y1 * y2;
-        xd1[s] += y1 * y1;
-        xd2[s] += y2 * y2;
+	if (isnan (y1))
+	  fatalx ("bad y1\n");
+	if (isnan (y2))
+	  fatalx ("bad y2\n");
+	xnum[s] += y1 * y2;
+	xd1[s] += y1 * y1;
+	xd2[s] += y2 * y2;
       }
     }
   }
@@ -835,10 +832,10 @@ dorc2 (double *ans, double *res, double binsize, double maxdis)
       cupt2 = snpmarkers[x2];
       t = cupt2->chrom - cupt->chrom;
       if (t != 0)
-        break;
+	break;
       dis = cupt2->genpos - cupt->genpos;
       if (dis >= maxdis)
-        break;
+	break;
       z = nnint (dis / binsize);
       y = res[x] * res[x2];
       ans[z] += y * y;
@@ -1010,7 +1007,7 @@ cntit1 (double *xc, SNP * cupt, Indiv ** indm, int numindivs, int t)
 
   vzero (xc, 3);
   if (cupt->ignore)
-    return;
+    return -1;
   for (k = 0; k < numindivs; ++k) {
     indx = indm[k];
     if (indx->ignore)
@@ -1028,16 +1025,16 @@ cntit1 (double *xc, SNP * cupt, Indiv ** indm, int numindivs, int t)
 
 double
 cntit2 (double *xc, SNP * cupt, SNP * cupt2, Indiv ** indm, int numindivs,
-        int t)
+	int t)
 {
   Indiv *indx;
   int k, e, f;
 
   vzero (xc, 9);
   if (cupt->ignore)
-    return;
+    return -1 ;
   if (cupt2->ignore)
-    return;
+    return -1;
   for (k = 0; k < numindivs; ++k) {
     indx = indm[k];
     if (indx->ignore)
@@ -1076,7 +1073,7 @@ clipwt (SNP ** snpmarkers, int numsnps)
       cupt->weight = 0.0;
     if (k < -1)
       printf ("qq1 %12s %d %d %9.3f %9.3f\n", cupt->ID, k, cupt->ignore, y,
-              cupt->weight);
+	      cupt->weight);
   }
 
 }

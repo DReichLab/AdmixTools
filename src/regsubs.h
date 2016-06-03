@@ -23,6 +23,7 @@ double zlike(double *eq, double *n0, double *n1,
   double *ans, int neq, int nv)  ;
 
 void squish(double *xmat, double *mat, int nrow, int oldc, int newc)  ;
+void rcsquish (double *xmat, double *mat, int *cols, int oldn, int newn) ;
 
 void
 calcres(double *res, double *ans, double *eq, double *rhs, 

@@ -6,7 +6,7 @@
 
 void
 excluderegions (char *xregionname, SNP ** snps, int nsnps,
-                char *deletesnpoutname)
+		char *deletesnpoutname)
 {
   FILE *fp;
 
@@ -44,11 +44,11 @@ excluderegions (char *xregionname, SNP ** snps, int nsnps,
     SNP *cupt = snps[i];
     for (j = 0; j < nrgn; j++) {
       if (cupt->chrom == chr[j] && cupt->physpos >= lo[j]
-          && cupt->physpos <= hi[j]) {
-        cupt->ignore = YES;
-        if (deletesnpoutname != NULL) {
-          logdeletedsnp (cupt->ID, "xregion", deletesnpoutname);
-        }
+	  && cupt->physpos <= hi[j]) {
+	cupt->ignore = YES;
+	if (deletesnpoutname != NULL) {
+	  logdeletedsnp (cupt->ID, "xregion", deletesnpoutname);
+	}
       }
     }
   }
@@ -59,7 +59,7 @@ excluderegions (char *xregionname, SNP ** snps, int nsnps,
 
 void
 hwfilter (SNP ** snps, int nsnps, int nindiv, double nhwfilter,
-          char *deletesnpoutname)
+	  char *deletesnpoutname)
 {
 
   int i, k;
@@ -72,18 +72,18 @@ hwfilter (SNP ** snps, int nsnps, int nindiv, double nhwfilter,
     for (k = 0; k < nindiv; k++) {
       int g = getgtypes (cupt, k);
       if (g >= 0) {
-        num += g;
-        den += 2;
+	num += g;
+	den += 2;
       }
       if (g == 1) {
-        het++;
-        n1++;
+	het++;
+	n1++;
       }
       else if (g == 0) {
-        n0++;
+	n0++;
       }
       else if (g == 2) {
-        n2++;
+	n2++;
       }
     }
 
@@ -96,7 +96,7 @@ hwfilter (SNP ** snps, int nsnps, int nindiv, double nhwfilter,
       printf ("SNP %s removed by Hardy-Weinberg filter\n", cupt->ID);
       cupt->ignore = YES;
       if (deletesnpoutname != NULL) {
-        logdeletedsnp (cupt->ID, "hwfilt", deletesnpoutname);
+	logdeletedsnp (cupt->ID, "hwfilt", deletesnpoutname);
       }
     }
   }

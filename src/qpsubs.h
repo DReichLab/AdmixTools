@@ -93,7 +93,7 @@ double qcorr(double **zz, double *rho,
 void xcopy(int rp[4], int a , int b, int c, int d)  ;
 void settsc(int tpat[3][4], double tscore[3], int rpat[3][4], double rscore[3]) ;
 void printsc(int pat[3][4], double tscore[3], char **eglist, double ymin)  ;
-double dohzg(double *top, double *bot, SNP **xsnplist, int *xindex, int *xtypes, 
+void dohzg(double *top, double *bot, SNP **xsnplist, int *xindex, int *xtypes, 
    int nrows, int ncols, int numeg)  ; 
 
 void dohzgjack(double *fstest, double *fstsig, SNP **xsnplist, int *xindex, int *xtypes, 
@@ -199,6 +199,7 @@ double ff3val(double *ff3, int a, int b, int c, int n)  ;
 int loadgraph(char *readit, char ***peglist)   ;
 void dumpgraph(char *gname) ;
 void dumpdotgraph(char *gdotname) ;
+void dumpdotgraph_title(char *gdotname, char *title) ;
 int  grdof() ;
 void getgmix(double **vmix, int *lmix, int *nmix) ;
 void putgmix(double **vmix) ; 

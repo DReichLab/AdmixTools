@@ -94,10 +94,10 @@ void printfit (double *ww);
 
 void setsimp (double *ww, int n);
 void dumppars (char *dumpname, double *www, int nwts, double *xxans,
-               int nedge);
+	       int nedge);
 void dump1 (FILE * dumpfile, double *ww, int n);
 void loadpars (char *loadname, double *www, int nwts, double *xxans,
-               int nedge);
+	       int nedge);
 void read1 (FILE * loadfile, double *ww, int n);
 
 int

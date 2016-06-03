@@ -46,7 +46,7 @@ dofrankfix (int m, int n, int rank, int nfix)
   t += n * rank;
   t -= rank * (rank - nfix);
 
-  x = MAX (m * n - t, 0);       // m*n is saturated model
+  x = MAX (m * n - t, 0);	// m*n is saturated model
   return x;
 
 }
@@ -54,7 +54,7 @@ dofrankfix (int m, int n, int rank, int nfix)
 
 void
 doranktestfix (double *mean, double *var, int m, int n, int xrank,
-               F4INFO * f4pt, int *vfix)
+	       F4INFO * f4pt, int *vfix)
 {
 
   double y, tail = 1.0;
@@ -190,7 +190,7 @@ printf4info (F4INFO * f4pt)
 
 int
 solvitforcez (double *coeffs, double *rhs, int dim, double *ans, int *vl,
-              int nf)
+	      int nf)
 {
   int *vmap, *vmiss;
   int a, b, k, sdim, ta, tb, ret;
@@ -239,11 +239,13 @@ solvitforcez (double *coeffs, double *rhs, int dim, double *ans, int *vl,
   free (scoeffs);
   free (srhs);
   free (sans);
+
+  return ret ;
 }
 
 double
 ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
-             double *pB, int *vfix)
+	     double *pB, int *vfix)
 // vfix is m long
 {
   int d = m * n, dd;
@@ -272,12 +274,8 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
       continue;
     for (j = 0; j < m; ++j) {
       if (i == j)
-        continue;
-      l = vl[nf] = j * rank + k;        // column k
-// variables to force to zero
-      if (verbose)
-        printf ("zzvl %d %9.3f\n", nf, vl[nf], vfl[nf]);
-      ++nf;
+	continue;
+      l = vl[nf] = j * rank + k;	// column k
     }
     ++k;
   }
@@ -345,23 +343,23 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 
     for (i = 0; i < m; ++i) {
       for (s = 0; s < n; ++s) {
-        a = i * n + s;
-        for (j = 0; j < m; ++j) {
-          for (t = 0; t < n; ++t) {
-            b = j * n + t;
-            y = varinv[a * d + b];
-            for (r1 = 0; r1 < rank; ++r1) {
-              k1 = i * rank + r1;
-              u1 = r1 * n + s;
-              rhs[u1] += y * A[k1] * mean[b];
-              for (r2 = 0; r2 < rank; ++r2) {
-                k2 = j * rank + r2;
-                u2 = r2 * n + t;
-                coeffs[u1 * bdim + u2] += y * A[k1] * A[k2];
-              }
-            }
-          }
-        }
+	a = i * n + s;
+	for (j = 0; j < m; ++j) {
+	  for (t = 0; t < n; ++t) {
+	    b = j * n + t;
+	    y = varinv[a * d + b];
+	    for (r1 = 0; r1 < rank; ++r1) {
+	      k1 = i * rank + r1;
+	      u1 = r1 * n + s;
+	      rhs[u1] += y * A[k1] * mean[b];
+	      for (r2 = 0; r2 < rank; ++r2) {
+		k2 = j * rank + r2;
+		u2 = r2 * n + t;
+		coeffs[u1 * bdim + u2] += y * A[k1] * A[k2];
+	      }
+	    }
+	  }
+	}
       }
     }
     solvit (coeffs, rhs, bdim, ans);
@@ -377,23 +375,23 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
     vzero (rhs, tdim);
     for (i = 0; i < m; ++i) {
       for (s = 0; s < n; ++s) {
-        a = i * n + s;
-        for (j = 0; j < m; ++j) {
-          for (t = 0; t < n; ++t) {
-            b = j * n + t;
-            y = varinv[a * d + b];
-            for (r1 = 0; r1 < rank; ++r1) {
-              k1 = i * rank + r1;
-              u1 = r1 * n + s;
-              rhs[k1] += y * B[u1] * mean[b];
-              for (r2 = 0; r2 < rank; ++r2) {
-                k2 = j * rank + r2;
-                u2 = r2 * n + t;
-                coeffs[k1 * adim + k2] += y * B[u1] * B[u2];
-              }
-            }
-          }
-        }
+	a = i * n + s;
+	for (j = 0; j < m; ++j) {
+	  for (t = 0; t < n; ++t) {
+	    b = j * n + t;
+	    y = varinv[a * d + b];
+	    for (r1 = 0; r1 < rank; ++r1) {
+	      k1 = i * rank + r1;
+	      u1 = r1 * n + s;
+	      rhs[k1] += y * B[u1] * mean[b];
+	      for (r2 = 0; r2 < rank; ++r2) {
+		k2 = j * rank + r2;
+		u2 = r2 * n + t;
+		coeffs[k1 * adim + k2] += y * B[u1] * B[u2];
+	      }
+	    }
+	  }
+	}
       }
     }
     if (verbose) {
@@ -445,7 +443,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 
 double
 ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
-          double *pB)
+	  double *pB)
 {
   int d = m * n, dd;
   int i, j, a, b, s, t, r1, r2, k1, k2, u1, u2;
@@ -532,23 +530,23 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 
     for (i = 0; i < m; ++i) {
       for (s = 0; s < n; ++s) {
-        a = i * n + s;
-        for (j = 0; j < m; ++j) {
-          for (t = 0; t < n; ++t) {
-            b = j * n + t;
-            y = varinv[a * d + b];
-            for (r1 = 0; r1 < rank; ++r1) {
-              k1 = i * rank + r1;
-              u1 = r1 * n + s;
-              rhs[u1] += y * A[k1] * mean[b];
-              for (r2 = 0; r2 < rank; ++r2) {
-                k2 = j * rank + r2;
-                u2 = r2 * n + t;
-                coeffs[u1 * bdim + u2] += y * A[k1] * A[k2];
-              }
-            }
-          }
-        }
+	a = i * n + s;
+	for (j = 0; j < m; ++j) {
+	  for (t = 0; t < n; ++t) {
+	    b = j * n + t;
+	    y = varinv[a * d + b];
+	    for (r1 = 0; r1 < rank; ++r1) {
+	      k1 = i * rank + r1;
+	      u1 = r1 * n + s;
+	      rhs[u1] += y * A[k1] * mean[b];
+	      for (r2 = 0; r2 < rank; ++r2) {
+		k2 = j * rank + r2;
+		u2 = r2 * n + t;
+		coeffs[u1 * bdim + u2] += y * A[k1] * A[k2];
+	      }
+	    }
+	  }
+	}
       }
     }
     solvit (coeffs, rhs, bdim, ans);
@@ -564,23 +562,23 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
     vzero (rhs, tdim);
     for (i = 0; i < m; ++i) {
       for (s = 0; s < n; ++s) {
-        a = i * n + s;
-        for (j = 0; j < m; ++j) {
-          for (t = 0; t < n; ++t) {
-            b = j * n + t;
-            y = varinv[a * d + b];
-            for (r1 = 0; r1 < rank; ++r1) {
-              k1 = i * rank + r1;
-              u1 = r1 * n + s;
-              rhs[k1] += y * B[u1] * mean[b];
-              for (r2 = 0; r2 < rank; ++r2) {
-                k2 = j * rank + r2;
-                u2 = r2 * n + t;
-                coeffs[k1 * adim + k2] += y * B[u1] * B[u2];
-              }
-            }
-          }
-        }
+	a = i * n + s;
+	for (j = 0; j < m; ++j) {
+	  for (t = 0; t < n; ++t) {
+	    b = j * n + t;
+	    y = varinv[a * d + b];
+	    for (r1 = 0; r1 < rank; ++r1) {
+	      k1 = i * rank + r1;
+	      u1 = r1 * n + s;
+	      rhs[k1] += y * B[u1] * mean[b];
+	      for (r2 = 0; r2 < rank; ++r2) {
+		k2 = j * rank + r2;
+		u2 = r2 * n + t;
+		coeffs[k1 * adim + k2] += y * B[u1] * B[u2];
+	      }
+	    }
+	  }
+	}
       }
     }
     solvit (coeffs, rhs, adim, ans);
@@ -638,7 +636,7 @@ normab (double *A, double *B, int m, int n, int rank)
 
 void
 f4info_init (F4INFO * f4pt, int nl, int nr, char **popllist, char **poprlist,
-             int rank)
+	     int rank)
 {
 
   if (rank == 0) {

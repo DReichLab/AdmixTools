@@ -26,31 +26,31 @@ typedef long int __CLPK_integer;
 typedef double __CLPK_doublereal;
 
 int dspev_ (char *jobz, char *uplo, __CLPK_integer * n,
-            __CLPK_doublereal * ap, __CLPK_doublereal * w,
-            __CLPK_doublereal * z__, __CLPK_integer * ldz,
-            __CLPK_doublereal * work, __CLPK_integer * info);
+	    __CLPK_doublereal * ap, __CLPK_doublereal * w,
+	    __CLPK_doublereal * z__, __CLPK_integer * ldz,
+	    __CLPK_doublereal * work, __CLPK_integer * info);
 
 int dpotrf_ (char *uplo, __CLPK_integer * n, __CLPK_doublereal * a,
-             __CLPK_integer * lda, __CLPK_integer * info);
+	     __CLPK_integer * lda, __CLPK_integer * info);
 
 int dgetrf_ (__CLPK_integer * m, __CLPK_integer * n, __CLPK_doublereal * a,
-             __CLPK_integer * lda, __CLPK_integer * ipiv,
-             __CLPK_integer * info);
+	     __CLPK_integer * lda, __CLPK_integer * ipiv,
+	     __CLPK_integer * info);
 
 int dgetri_ (__CLPK_integer * n, __CLPK_doublereal * a, __CLPK_integer * lda,
-             __CLPK_integer * ipiv, __CLPK_doublereal * work,
-             __CLPK_integer * lwork, __CLPK_integer * info);
+	     __CLPK_integer * ipiv, __CLPK_doublereal * work,
+	     __CLPK_integer * lwork, __CLPK_integer * info);
 
 int dgetrs_ (char *trans, __CLPK_integer * n, __CLPK_integer * nrhs,
-             __CLPK_doublereal * a, __CLPK_integer * lda,
-             __CLPK_integer * ipiv, __CLPK_doublereal * b,
-             __CLPK_integer * ldb, __CLPK_integer * info);
+	     __CLPK_doublereal * a, __CLPK_integer * lda,
+	     __CLPK_integer * ipiv, __CLPK_doublereal * b,
+	     __CLPK_integer * ldb, __CLPK_integer * info);
 
 int dsygv_ (__CLPK_integer * itype, char *jobz, char *uplo,
-            __CLPK_integer * n, __CLPK_doublereal * a, __CLPK_integer * lda,
-            __CLPK_doublereal * b, __CLPK_integer * ldb,
-            __CLPK_doublereal * w, __CLPK_doublereal * work,
-            __CLPK_integer * lwork, __CLPK_integer * info);
+	    __CLPK_integer * n, __CLPK_doublereal * a, __CLPK_integer * lda,
+	    __CLPK_doublereal * b, __CLPK_integer * ldb,
+	    __CLPK_doublereal * w, __CLPK_doublereal * work,
+	    __CLPK_integer * lwork, __CLPK_integer * info);
 #endif // end !_WIN32
 #endif // end !__APPLE__
 
@@ -147,7 +147,7 @@ cdc_ (double *pmat, __CLPK_integer * n)
       fprintf (stderr, "error (CDC): minor not positive definite %d\n", info);
 #else
       fprintf (stderr, "error (CDC): minor not positive definite %ld\n",
-               info);
+	       info);
 #endif
     }
     exit (1);
@@ -222,13 +222,13 @@ geneigsolve_ (double *pmat, double *qmat, double *eval, __CLPK_integer * n)
 {
   __CLPK_integer lwork = (*n) * (*n);
   double *work = (double *) malloc (lwork * sizeof (double));
-  __CLPK_integer wood_elf = 1;  // Sameer Merchant memorial temporary variable
+  __CLPK_integer wood_elf = 1;	// Sameer Merchant memorial temporary variable
   __CLPK_integer info;
   if (!work) {
     mem_error ();
   }
   dsygv_ (&wood_elf, "V", "U", n, pmat, n, qmat, n, eval, work, &lwork,
-          &info);
+	  &info);
   free (work);
   if (info && (info <= 2 * (*n))) {
     if (info < 0) {
@@ -243,16 +243,16 @@ geneigsolve_ (double *pmat, double *qmat, double *eval, __CLPK_integer * n)
       fprintf (stderr, "error (GENEIGSOLVE): failure to converge %d\n", info);
 #else
       fprintf (stderr, "error (GENEIGSOLVE): failure to converge %ld\n",
-               info);
+	       info);
 #endif
     }
     else {
 #if __LP64__ || _WIN32
       fprintf (stderr, "error (GENEIGSOLVE): not positive definite %d\n",
-               info);
+	       info);
 #else
       fprintf (stderr, "error (GENEIGSOLVE): not positive definite %ld\n",
-               info);
+	       info);
 #endif
     }
     exit (1);

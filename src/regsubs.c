@@ -2,7 +2,7 @@
 
 extern int verbose;
 void squishx (double *xmat, double *mat, int nrow, int oldc, int *cols,
-              int newc);
+	      int newc);
 
 double
 regressit (double *ans, double *eq, double *rhs, int m, int n)
@@ -22,7 +22,7 @@ regressit (double *ans, double *eq, double *rhs, int m, int n)
     for (j = 0; j < n; j++) {
       rr[j] += eq[i * n + j] * rhs[i];
       for (k = j; k < n; k++) {
-        co[j * n + k] = co[k * n + j] += eq[i * n + j] * eq[i * n + k];
+	co[j * n + k] = co[k * n + j] += eq[i * n + j] * eq[i * n + k];
       }
     }
   }
@@ -102,21 +102,21 @@ regressitall (char **vname, double *eq, double *rhs, int m, int n)
     printf ("weight: %d\n", wt);
     for (k = 0; k < npow; ++k) {
       if (tweight[k] != wt)
-        continue;
+	continue;
       for (i = 0, j = 0; i < n; i++) {
-        if (tab[k][i] == 0)
-          continue;
-        cols[j] = i;
-        ++j;
+	if (tab[k][i] == 0)
+	  continue;
+	cols[j] = i;
+	++j;
       }
       squishx (teq, eq, m, n, cols, wt);
       yscore = regressit (ans, teq, rhs, m, wt);
       printf ("chisq: %9.3f\n", yscore);
       for (i = 0, j = 0; i < n; i++) {
-        if (tab[k][i] == 0)
-          continue;
-        printf ("%15s %9.3f\n", vname[i], ans[j]);
-        ++j;
+	if (tab[k][i] == 0)
+	  continue;
+	printf ("%15s %9.3f\n", vname[i], ans[j]);
+	++j;
       }
       printf ("\n");
     }
@@ -248,7 +248,6 @@ logregressit (double *ans, double *eq, double **rhs, int neq, int nv)
       z[j] = vdot (eq + j * nv, ans, nv);
     }
     ylike = zlike (eq, n0, n1, ans, neq, nv);
-
 /**
   if (verbose)  {
    printf("iter: %3d  llike: %15.9f incr: %15.9f\n", iter, ylike, ylike-ybase) ;
@@ -281,7 +280,7 @@ ptoz (double *p, double *z, int n)
   ZALLOC (w2, n, double);
 
   vst (w2, p, -1.0, n);
-  vsp (w2, w2, 1.0, n);         // q 
+  vsp (w2, w2, 1.0, n);		// q 
   vvd (w1, p, w2, n);
   vlog (z, w1, n);
   free (w1);
@@ -297,8 +296,8 @@ ztop (double *p, double *z, int n)
   ZALLOC (w1, n, double);
 
   vexp (ww, z, n);
-  vsp (w1, ww, 1.0, n);         // 1 + e^z 
-  vvd (p, ww, w1, n);           // p 
+  vsp (w1, ww, 1.0, n);		// 1 + e^z 
+  vvd (p, ww, w1, n);		// p 
 
   free (ww);
   free (w1);
@@ -306,7 +305,7 @@ ztop (double *p, double *z, int n)
 
 void
 calcgh (double *grad, double *hess, double *eq, double *z,
-        double *n0, double *n1, int neq, int nv)
+	double *n0, double *n1, int neq, int nv)
 {
 
 
@@ -337,7 +336,7 @@ calcgh (double *grad, double *hess, double *eq, double *z,
     vst (ww, eq + j * nv, x0[j], nv);
     vvm (grad, grad, ww, nv);
     vst (ww, eq + j * nv, sqrt (x1[j]), nv);
-    addouter (hess, ww, nv);    // actually -hess 
+    addouter (hess, ww, nv);	// actually -hess 
   }
   free (ww);
   free (w1);
@@ -458,7 +457,6 @@ squishx (double *xmat, double *mat, int nrow, int oldc, int *cols, int newc)
 
 void
 calcres (double *res, double *ans, double *eq, double *rhs, int neq, int nv)
-
 /**   
  calculate residual
 */
@@ -509,7 +507,7 @@ qwmax1 (double *co, double *ans, int n, int col)
     a = 0;
     for (t = 0; t < n; ++t) {
       if (t == col)
-        continue;
+	continue;
       cc[a] = t;
       ++a;
     }
@@ -523,7 +521,7 @@ qwmax1 (double *co, double *ans, int n, int col)
     ans[col] = 0.0;
     for (t = 0; t < n; ++t) {
       if (t == col)
-        continue;
+	continue;
       ans[t] = aa[a];
       ++a;
     }
@@ -551,122 +549,106 @@ qwmax (double *co, double *ans, int n)
   return qwmax1 (co, ans, n, -1);
 }
 
-static void
-setx (double *xout, double *xin, int n, int *svec, double step)
+static void setx(double *xout, double *xin, int n, int *svec, double step) 
 {
-  double *ww;
-  ZALLOC (ww, n, double);
-  floatit (ww, svec, n);
-  vst (ww, ww, step, n);
-  vvp (xout, xin, ww, n);
-  free (ww);
+ double *ww ; 
+ ZALLOC(ww, n, double) ;
+ floatit(ww, svec, n) ; 
+ vst(ww, ww, step, n) ; 
+ vvp(xout, xin, ww, n) ; 
+ free(ww) ; 
 }
+static void setco(double *f0, double *f1, double *f2, double *xb, double *xa, int n) 
 
-static void
-setco (double *f0, double *f1, double *f2, double *xb, double *xa, int n)
 {
-  double *ww;
-  ZALLOC (ww, n, double);
-  vvm (ww, xb, xa, n);
-  *f0 = 1;
-  copyarr (ww, f1, n);
-  vzero (f2, n * n);
-  addouter (f2, ww, n);
-  free (ww);
+ double *ww ;
+ ZALLOC(ww, n, double) ;
+ vvm(ww, xb, xa, n) ;
+ *f0 = 1 ; 
+ copyarr(ww, f1, n) ; 
+ vzero(f2, n*n) ; 
+ addouter(f2, ww, n) ; 
+ free(ww) ;
 }
-
-static int
-setcc (double *cc, double f0, double *f1, double *f2, int n)
+static int setcc(double *cc, double f0, double *f1, double *f2, int n) 
 {
-  int i, j, a;
-  double y;
+  int i, j, a ; 
+  double y ; 
 
-  a = 0;
-  cc[a] = f0;
-  ++a;
-  copyarr (f1, cc + a, n);
-  a += n;
-  for (i = 0; i < n; ++i) {
-    for (j = i; j < n; ++j) {
-      y = f2[i * n + j] + f2[j * n + i];
-      cc[a] = 0.5 * y;
-      ++a;
-    }
+  a = 0 ; 
+  cc[a] = f0; ++a ; 
+  copyarr(f1, cc+a, n) ;  a += n ; 
+  for (i=0; i<n; ++i) {  
+   for (j=i; j<n; ++j) {  
+    y = f2[i*n+j] +f2[j*n+i] ;
+    cc[a] = 0.5*y ; 
+    ++a ; 
+   }
   }
-  return a;
+  return a ; 
 }
-
-static int
-unsetcc (double *cc, double *f0, double *f1, double *f2, int n)
+static int unsetcc(double *cc, double *f0, double *f1, double *f2, int n) 
 {
-  int i, j, a;
-  double y;
+  int i, j, a ; 
+  double y ; 
 
-  a = 0;
-  *f0 = cc[a];
-  ++a;
-  copyarr (cc + a, f1, n);
-  a += n;
-  for (i = 0; i < n; ++i) {
-    for (j = i; j < n; ++j) {
-      y = cc[a];
-      f2[i * n + j] = f2[j * n + i] = y;
-      ++a;
-    }
+  a = 0 ; 
+  *f0 = cc[a] ;  ++a ; 
+  copyarr(cc+a, f1,  n) ;  a += n ; 
+  for (i=0; i<n; ++i) {  
+   for (j=i; j<n; ++j) {  
+    y = cc[a] ; 
+    f2[i*n+j] = f2[j*n+i]  = y ; 
+    ++a ; 
+   }
   }
-  return a;
+  return a ; 
 }
-
-void
-hgrad (double ff (double *xx, int nn), double *x, int n, double step,
-       double *fval, double *grad, double *hess)
+void hgrad(double ff(double *xx, int nn), double *x, int n, double step, double *fval, double *grad, double *hess)  
 {
 // evaluates ff at 3^n points and solves least squares
-  int **tab;
-  int neval, dim, ddim;
-  double *co, *rhs, *cc, *xx, *ww;
-  double y;
-  double f0, *f1, *f2;
-  int k;
+   int **tab ; 
+   int neval, dim, ddim ; 
+   double *co, *rhs, *cc, *xx, *ww ;  
+   double y ; 
+   double f0, *f1, *f2 ; 
+   int k ; 
 
 
-  neval = pow (3, n);
-  tab = initarray_2Dint (neval, n, 0);
-  ZALLOC (f1, n, double);
-  ZALLOC (xx, n, double);
-  ZALLOC (f2, n * n, double);
-  dim = n * (n - 1);
-  dim = dim / 2;
-  dim += (2 * n + 1);
-  ZALLOC (co, dim * neval, double);
-  ZALLOC (rhs, neval, double);
-  ZALLOC (cc, dim, double);
-  for (k = 0; k < neval; ++k) {
-    dekodeitb (tab[k], k, n, 3);
-    ivsp (tab[k], tab[k], -1, n);
-  }
-  for (k = 0; k < neval; ++k) {
-    setx (xx, x, n, tab[k], step);
-    y = ff (xx, n);
-    setco (&f0, f1, f2, xx, x, n);
-    ddim = setcc (cc, f0, f1, f2, n);
-    if (ddim != dim)
-      fatalx ("(hgrad) bad bug\n");
-    rhs[k] = y;
-    copyarr (cc, co + k * dim, dim);
-  }
+   neval = pow(3, n) ;  
+   tab = initarray_2Dint(neval, n, 0) ;
+   ZALLOC(f1, n, double) ; 
+   ZALLOC(xx, n, double) ; 
+   ZALLOC(f2, n*n, double) ; 
+   dim = n*(n-1) ; dim = dim/2 ; dim += (2*n+1) ;
+   ZALLOC(co, dim*neval, double) ; 
+   ZALLOC(rhs, neval, double) ; 
+   ZALLOC(cc, dim, double) ; 
+   for (k=0; k<neval; ++k) { 
+    dekodeitb(tab[k], k, n, 3) ; 
+    ivsp(tab[k], tab[k], -1, n) ;
+   }
+   for (k=0; k<neval; ++k) { 
+     setx(xx, x, n, tab[k], step) ; 
+     y = ff(xx,n) ;  
+     setco(&f0, f1, f2, xx, x, n)  ; 
+     ddim = setcc(cc, f0, f1, f2, n) ;
+     if (ddim != dim) fatalx("(hgrad) bad bug\n") ;
+     rhs[k] = y ; 
+     copyarr(cc, co+k*dim, dim) ;
+   }
 
-  regressit (cc, co, rhs, neval, dim);
+   regressit(cc, co, rhs, neval, dim) ;   
 
 
-  ddim = unsetcc (cc, fval, grad, hess, n);
+   ddim = unsetcc(cc, fval, grad, hess, n) ;
 
-  free2Dint (&tab, neval);
-  free (f1);
-  free (f2);
-  free (co);
-  free (rhs);
-  free (cc);
-  free (xx);
+   free2Dint(&tab, neval) ;
+   free(f1) ;
+   free(f2) ;
+   free(co) ; 
+   free(rhs) ; 
+   free(cc) ; 
+   free(xx) ; 
 
 }

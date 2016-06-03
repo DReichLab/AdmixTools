@@ -164,6 +164,15 @@ cclear (unsigned char *a, unsigned char c, long n)
 }
 
 void
+charclear (char *a, unsigned char c, long n)
+// fussy compiler warnigns about unsigned char conversions avoided
+{
+
+ cclear( (unsigned char *) a, c, n) ; 
+
+}
+
+void
 ivvp (int *a, int *b, int *c, int n)
 {
   int i;
@@ -1178,7 +1187,7 @@ printstringf (char *ss, int w, FILE * fff)
   char *sx;
 
   ZALLOC (sss, w + 1, char);
-  cclear (sss, CNULL, w + 1);
+  cclear ((unsigned char *) sss, CNULL, w + 1);
 
   sx = ss;
   for (;;) {
@@ -1201,7 +1210,7 @@ printstringbasepos (char *ss, int w, int basepos)
   int pos = basepos;
 
   ZALLOC (sss, w + 1, char);
-  cclear (sss, CNULL, w + 1);
+  cclear ((unsigned char *) sss, CNULL, w + 1);
 
   sx = ss;
   for (;;) {
@@ -1474,7 +1483,7 @@ pow10 (double x)
 }
 
 
-double
+void
 vpow10 (double *a, double *b, int n)
 {
   int i;
@@ -1482,7 +1491,7 @@ vpow10 (double *a, double *b, int n)
     a[i] = exp (b[i] * log (10.0));
 }
 
-double
+void
 vlog10 (double *a, double *b, int n)
 {
   int i;
@@ -2346,3 +2355,17 @@ mkfull (double *out, double *in, int n)
   }
   return x;
 }
+void vswap(double *a, double *b, int n) 
+{
+  double *w ; 
+
+  ZALLOC(w, n, double) ;
+
+  copyarr(a, w, n) ; 
+  copyarr(b, a, n) ; 
+  copyarr(w, b, n) ;
+
+  free(w) ;
+
+}
+

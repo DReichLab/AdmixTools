@@ -52,22 +52,22 @@ SNP **snpmarkers;
 int numsnps, numindivs;
 int seed = 0;
 int missingmode = NO;
-int noxdata = YES;              /* default as pop structure dubious if Males and females */
+int noxdata = YES;		/* default as pop structure dubious if Males and females */
 int nostatslim = 10;
 int znval = -1;
 int popsizelimit = -1;
-int gfromp = NO;                // genetic distance from physical 
+int gfromp = NO;		// genetic distance from physical 
 int jackweight = YES;
 int pubjack = NO;
 
-double blgsize = 0.05;          // block size in Morgans */ double *chitot ;
+double blgsize = 0.05;		// block size in Morgans */ double *chitot ;
 int xchrom = -1;
 int zchrom = -1;
 int *xpopsize;
 int dzeromode = YES;
 
 int isinit = NO;
-double f2weight = 1.0;          // lsqmode only
+double f2weight = 1.0;		// lsqmode only
 
 char *genotypename = NULL;
 char *snpname = NULL;
@@ -100,7 +100,7 @@ int *lmix, nmix;
 int nh2, numeg;
 int *ezero = NULL;
 double wtmin = .0001;
-double minvar = 0.0;            // minvalue for variance term
+double minvar = 0.0;		// minvalue for variance term
 int quartet = NO;
 int inbreed = NO;
 int xnumeg;
@@ -121,13 +121,13 @@ char *getshort (char *ss, int n);
 void dopop3 (char **eglist, SNP ** xsnplist, int ncols, int nblocks);
 int readpopx (char *pname, char ***plists, int n);
 int dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist,
-               int *xindex, int *xtypes, int nrows, int ncols, int numeg,
-               int nblocks);
+	       int *xindex, int *xtypes, int nrows, int ncols, int numeg,
+	       int nblocks);
 void dof2score (double *f3score, double *f3scoresig, SNP ** xsnplist,
-                int *xindex, int *xtypes, int nrows, int ncols, int numeg,
-                int nblocks);
+		int *xindex, int *xtypes, int nrows, int ncols, int numeg,
+		int nblocks);
 void estjackq (double *pjest, double *pjsig, double *btop, double *bbot,
-               double *wjack, int nblocks);
+	       double *wjack, int nblocks);
 
 int
 main (int argc, char **argv)
@@ -144,7 +144,7 @@ main (int argc, char **argv)
   double y1, y2, y, sig, tail, yy1, yy2;
   char ss[11];
   int *blstart, *blsize, nblocks;
-  int xnblocks;                 /* for xsnplist */
+  int xnblocks;			/* for xsnplist */
   int *bcols;
   int **subsets;
   double maxgendis;
@@ -193,7 +193,7 @@ main (int argc, char **argv)
   numindivs = getindivs (indivname, &indivmarkers);
   setindm (indivmarkers);
   k = getgenos (genotypename, snpmarkers, indivmarkers,
-                numsnps, numindivs, nignore);
+		numsnps, numindivs, nignore);
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -225,8 +225,8 @@ main (int argc, char **argv)
     for (k = 0; k < 3; ++k) {
       t = indxindex (eglist, numeg, plists[trun][k]);
       if (t < 0) {
-        eglist[numeg] = strdup (plists[trun][k]);
-        ++numeg;
+	eglist[numeg] = strdup (plists[trun][k]);
+	++numeg;
       }
     }
   }
@@ -311,7 +311,7 @@ dopop3 (char **eglist, SNP ** xsnplist, int ncols, int nblocks)
   }
 
   nsnp = dof3score (&f3score, &f3scoresig, xsnplist, xindex, xtypes,
-                    nrows, ncols, numeg, nblocks);
+		    nrows, ncols, numeg, nblocks);
 
   if (nsnp < 0)
     printf ("%9s ", "no data");
@@ -436,7 +436,7 @@ readcommands (int argc, char **argv)
 
   getint (ph, "nostatslim:", &nostatslim);
   getint (ph, "popsizelimit:", &popsizelimit);
-  getint (ph, "gfromp:", &gfromp);      // gen dis from phys
+  getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "seed:", &seed);
   getint (ph, "details:", &details);
   getdbl (ph, "baseval:", &baseval);
@@ -535,7 +535,7 @@ readpopx (char *pname, char ***plists, int npops)
     if (nsplit < npops)
       fatalx ("length mismatch %s\n", line);
     ZALLOC (plists[num], npops + 1, char *);
-    plists[num][npops] == NULL;
+    plists[num][npops] = NULL;
     pp = plists[num];
     for (t = 0; t < npops; ++t) {
       pp[t] = strdup (spt[t]);
@@ -549,7 +549,7 @@ readpopx (char *pname, char ***plists, int npops)
 
 void
 dof2score (double *f2score, double *f2scoresig, SNP ** xsnplist, int *xindex,
-           int *xtypes, int nrows, int ncols, int numeg, int nblocks)
+	   int *xtypes, int nrows, int ncols, int numeg, int nblocks)
 {
 
   int t1, t2;
@@ -618,7 +618,7 @@ dof2score (double *f2score, double *f2scoresig, SNP ** xsnplist, int *xindex,
     wtop[k] = gtop - top;
     wbot[k] = gbot - bot;
     wbot[k] += 1.0e-10;
-    djack[k] = wtop[k] / wbot[k];       // delete-block estimate
+    djack[k] = wtop[k] / wbot[k];	// delete-block estimate
   }
 
   wjackest (&jest, &jsig, mean, djack, wjack, nblocks);
@@ -641,7 +641,7 @@ dof2score (double *f2score, double *f2scoresig, SNP ** xsnplist, int *xindex,
 
 int
 dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
-           int *xtypes, int nrows, int ncols, int numeg, int nblocks)
+	   int *xtypes, int nrows, int ncols, int numeg, int nblocks)
 {
 // returns number of snps
 
@@ -660,7 +660,7 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
   int bnum, totnum;
   FILE *fff;
   double xn[3], xmean[3], xh[3];
-  int ret;
+  int ret ;  
 
   *f3score = 0;
   *f3scoresig = -1;
@@ -696,28 +696,26 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
     if (bnum >= nblocks)
       fatalx ("logic bug\n");
 
-    ret =
-      f3sc (&ytop, &ybot, cupt, indivmarkers, xindex, xtypes, nrows, 2, 0, 1);
+    ret = f3sc (&ytop, &ybot, cupt, indivmarkers, xindex, xtypes, nrows, 2, 0, 1);
 // -1 => no good, 0 => mon 
     if (isnan (ytop))
       fatalx ("zznan\n");
     if (ybot < -0.5)
       continue;
-    if (ret < 0)
-      continue;
+    if (ret<0) continue ;
     if ((dzeromode == NO) && (ybot <= 0.001))
       continue;
     if (snpdetailsname != NULL) {
 
       finfo (xn + 0, xmean + 0, xh + 0, 0);
       finfo (xn + 1, xmean + 1, xh + 1, 1);
-      finfo (xn + 2, xmean + 2, xh + 2, 2);     // Sardin Karit CEU
+      finfo (xn + 2, xmean + 2, xh + 2, 2);	// Sardin Karit CEU
 
       fprintf (fff, "%20s ", cupt->ID);
       for (a = 0; a <= 2; ++a) {
-        fprintf (fff, "  %6.0f", xn[a]);
-        fprintf (fff, " %9.3f", xmean[a]);
-        fprintf (fff, " %9.3f", xh[a]);
+	fprintf (fff, "  %6.0f", xn[a]);
+	fprintf (fff, " %9.3f", xmean[a]);
+	fprintf (fff, " %9.3f", xh[a]);
       }
       fprintf (fff, "  %9.3f ", ytop);
       //   fprintf(fff, "%9.3f ", ybot/2.0) ;         
@@ -731,14 +729,12 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
     btop[bnum] += ytop;
     bbot[bnum] += ybot;
     ++wjack[bnum];
-    if (ret > 0)
-      ++totnum;                 // monomorphic snps not counted
+    if (ret>0) ++totnum;			// monomorphic snps not counted
 
   }
 
   if (totnum <= 1)
     return -1;
-
 /**
    printf("totnum: %d ", totnum) ;
    printmat(wjack, 1, 10) ;
@@ -757,7 +753,7 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
     wtop[k] = gtop - top;
     wbot[k] = gbot - bot;
     wbot[k] += 1.0e-10;
-    djack[k] = wtop[k] / wbot[k];       // delete-block estimate
+    djack[k] = wtop[k] / wbot[k];	// delete-block estimate
   }
 
   estjackq (&jest, &jsig, btop, bbot, wjack, nblocks);

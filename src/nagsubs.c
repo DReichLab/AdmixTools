@@ -126,7 +126,7 @@ eigxsym (double *evec, double *eval, double *mat, int *nval, int n)
   }
 
   f02abc (n, (double *) amat, (Integer) TDA, r,
-          (double *) v, (Integer) TDV, &fail);
+	  (double *) v, (Integer) TDV, &fail);
 
   copyarr (r, eval, n);
 
@@ -139,8 +139,8 @@ eigxsym (double *evec, double *eval, double *mat, int *nval, int n)
     for (k = 0; k < nv; ++k) {
       j = ind[k];
       for (l = 0; l < n; ++l) {
-        if (evec != NULL)
-          evec[k * n + l] = v[l][j];
+	if (evec != NULL)
+	  evec[k * n + l] = v[l][j];
       }
     }
   }
@@ -184,7 +184,7 @@ eigx (double *evec, double *eval, double *mat, int *nval, int n)
   }
 
   f02agc (n, (double *) amat, (Integer) TDA, r,
-          (Complex *) v, (Integer) TDV, iter, &fail);
+	  (Complex *) v, (Integer) TDV, iter, &fail);
   j = 0;
 
   for (k = 0; k < n; k++) {
@@ -204,7 +204,7 @@ eigx (double *evec, double *eval, double *mat, int *nval, int n)
     j = ind[k];
     for (l = 0; l < n; ++l) {
       if (evec != NULL)
-        evec[k * n + l] = REAL (v[l][j]);
+	evec[k * n + l] = REAL (v[l][j]);
     }
   }
   free (ind);
@@ -244,10 +244,10 @@ svdx (double *X, int m, int n, double *U, double *S, double *VT, int *nval)
     copyarr (X + k * n, aX[k], n);
 
   f02wec (m, n, (double *) aX, (Integer) TDA, 0,
-          (double *) dummyaB, (Integer) TDB, (Boolean) TRUE,
-          (double *) dummyaU, (Integer) TDQ, (double *) S, (Boolean) TRUE,
-          (double *) aVT, (Integer) TDPT, iter, (double *) dummyE, &failinfo,
-          &fail);
+	  (double *) dummyaB, (Integer) TDB, (Boolean) TRUE,
+	  (double *) dummyaU, (Integer) TDQ, (double *) S, (Boolean) TRUE,
+	  (double *) aVT, (Integer) TDPT, iter, (double *) dummyE, &failinfo,
+	  &fail);
 
   printf ("f02wec ran and produced fail parameter %d\n", fail);
 
