@@ -8,6 +8,8 @@ PERLDIR=$(HOMEL)/perlsrc
 
 NLIB=$(HOMEL)/admixlib/nicklib.a
 IDIR=$(HOMEL)/admixinclude
+#Path to gfortran libs
+GFLIB=/usr/local/gfortran/lib/
 
 VPATH=.:nicksrc
 DEBUG_OPTIONS= -g 
@@ -21,7 +23,7 @@ OBJ=strsubs.o sortit.o vsubs.o statsubs.o linsubs.o getpars.o xsearch.o gauss.o	
 statsubs.o:     tables	nicksrc/statsubs.c
 	$(CC)  $(CFLAGS) -o statsubs.o nicksrc/statsubs.c
 
-QCC =  -lgsl  -lblas -llapack  -lgfortran  -lm  
+QCC =  -lgsl  -lblas -llapack  -lgfortran  -lm -L${GFLIB}
 
 T2=dowtjack
 T20=dowtjack.o
