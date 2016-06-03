@@ -28,12 +28,14 @@ We also provide a makefile for Mac (tested for El Capitan: gsl needed).
 make -f Makefile.mac install
 
 If you have trouble compiling and running our code, try compiling and
-running the examples in the examples/ directory. 
+running the examples in the examples/ directory.
+
+"cd examples"
+"./mklog"
 
 If you are unable to run the examples successfully, please contact
 your system administrator for help, as this is probably systems issue which is
 beyond our scope. 
-
 
 Nick Patterson
 <nickp@broadinstitute.org>

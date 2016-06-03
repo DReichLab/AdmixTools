@@ -2,7 +2,7 @@ ADMIXTOOOLS version 4.1  5/15/16 (for Linux and Mac)
 
 Best is to recompile on your system. 
 
-You will need to be able to link GNU Scientific library(gsl) , BLAS and pprpbably lapack.  
+You will need to be able to link GNU Scientific library(gsl) , BLAS, gfortran, and prpbably lapack.  
 This Makefile expects opeenblas but other versions of BLAS should be OK.  Edit the Makefile 
 appropriately.
 
