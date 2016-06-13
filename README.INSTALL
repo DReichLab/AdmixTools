@@ -7,8 +7,6 @@ This Makefile expects opeenblas but other versions of BLAS should be OK.  Edit t
 appropriately.
 
 cd src;  make clobber; make all; make install.  Eexcutables will be in ../bin
-A copy of executables made at Harvard (HMS) is in ../harvardbin, but these are dynamically loaded
-and likely will fail to execute on tour system.  
 
 A Makefile that worked for a Mac (El Capitan) is in src/Makefile.mac
 

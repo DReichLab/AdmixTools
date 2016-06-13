@@ -192,57 +192,20 @@ int
 solvitforcez (double *coeffs, double *rhs, int dim, double *ans, int *vl,
 	      int nf)
 {
-  int *vmap, *vmiss;
-  int a, b, k, sdim, ta, tb, ret;
-  double *scoeffs, *srhs, *sans;
+  int ret ; 
+  double *vals;
 
-  ZALLOC (vmap, dim, int);
-  ZALLOC (vmiss, dim, int);
+  ZALLOC (vals, dim, double);
 
-  for (a = 0; a < nf; ++a) {
-    b = vl[a];
-    vmiss[b] = 1;
-  }
-  k = 0;
-  for (a = 0; a < dim; ++a) {
-    if (vmiss[a] == 1)
-      continue;
-    vmap[k] = a;
-    ++k;
-  }
-  sdim = k;
+  ret = solvitfix(coeffs, rhs, dim, ans, vl, vals, nf) ; 
+  if (ret<0) fatalx("bad solvitforcez\n") ; 
+  free(vals) ; 
 
-  ZALLOC (scoeffs, sdim * sdim, double);
-  ZALLOC (srhs, sdim, double);
-  ZALLOC (sans, sdim, double);
+  return ret ; 
+  
 
-  for (a = 0; a < sdim; ++a) {
-    ta = vmap[a];
-    srhs[a] = rhs[ta];
-    for (b = 0; b < sdim; ++b) {
-      tb = vmap[b];
-      scoeffs[a * sdim + b] = coeffs[ta * dim + tb];
-    }
-  }
-  ret = solvit (scoeffs, srhs, sdim, sans);
-  if (ret < 0)
-    fatalx ("bad solvitforcez\n");
-  vzero (ans, dim);
-  for (a = 0; a < sdim; ++a) {
-    ta = vmap[a];
-    ans[ta] = sans[a];
-  }
-
-
-  free (vmap);
-  free (vmiss);
-  free (scoeffs);
-  free (srhs);
-  free (sans);
-
-  return ret ;
 }
-
+ 
 double
 ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 	     double *pB, int *vfix)
@@ -276,6 +239,8 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
       if (i == j)
 	continue;
       l = vl[nf] = j * rank + k;	// column k
+// variables to force to zero
+      ++nf;
     }
     ++k;
   }
@@ -401,7 +366,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
     }
 
     vzero (ans, adim);
-    ret = solvitforcez (coeffs, rhs, adim, ans, vl, nf);
+    solvitforcez (coeffs, rhs, adim, ans, vl, nf);
 // ret = solvitfix(coeffs, rhs, adim, ans, vl, vfl, nf) ; 
 
     copyarr (ans, A, adim);

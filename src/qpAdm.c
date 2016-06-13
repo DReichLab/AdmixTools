@@ -20,12 +20,15 @@
 #include "f4rank.h"
 
 
-#define WVERSION   "352"
+#define WVERSION   "401"
 // best analysis added
 // hires added
 // chrom: 23 added
 // allsnps option added
 // more hires output added
+// nochrom added 
+// detail = YES default
+// summ: line added
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -49,6 +52,7 @@ int noxdata = YES;		/* default as pop structure dubious if Males and females */
 int popsizelimit = -1;
 int gfromp = NO;		// genetic distance from physical 
 int xchrom = -1;
+int zchrom = -1;
 // if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
 
 int allsnps = NO;
@@ -79,7 +83,8 @@ FILE *ofile;
 
 double **btop, **bbot, *gtop, *gbot;
 int bnblocks, bdim = 0;
-int details = NO;
+int details = YES;
+
 int *ktable = NULL;
 
 void readcommands (int argc, char **argv);
@@ -112,7 +117,7 @@ main (int argc, char **argv)
   int i, j, k, k1, k2, k3, k4, kk;
   SNP *cupt, *cupt1, *cupt2, *cupt3;
   Indiv *indx;
-  double zscore, y1, y2, y, ysig, tail, yy1, yy2, yy;
+  double zscore, y1, y2, y, ysig, tail, ttail, yy1, yy2, yy;
   int *blstart, *blsize, nblocks;
   int xnblocks;			/* for xsnplist */
   int *bcols;
@@ -148,6 +153,7 @@ main (int argc, char **argv)
   double *w0, *w1, *w2;
   double *wbest;
   int dim;
+  double pval ;
 
 
   F4INFO **f4info, *f4pt, *f4pt2, **g4info, *ggpt;
@@ -176,6 +182,8 @@ main (int argc, char **argv)
     cupt = snpmarkers[i];
     chrom = cupt->chrom;
     if ((xchrom > 0) && (chrom != xchrom))
+      cupt->ignore = YES;
+    if ((zchrom > 0) && (chrom == zchrom))
       cupt->ignore = YES;
     if (chrom == 0)
       cupt->ignore = YES;
@@ -379,6 +387,7 @@ main (int argc, char **argv)
       printf ("full rank\n");
     f4pt = f4info[x];
     printf4info (f4pt);
+    pval = rtlchsq (f4pt->dofdiff, f4pt->chisqdiff) ; 
     printnl ();
   }
 
@@ -432,6 +441,19 @@ main (int argc, char **argv)
   printnl ();
   printnl ();
 
+  printf("summ: %s ", popllist[0]) ; 
+  printf(" %3d ", nl) ; 
+  printf(" %12.6f ", pval) ; 
+  printmatx(jmean, 1, nl) ; 
+  t = mktriang (ww, var, nl);
+  vst (ww, ww, 1.0e6, t);
+  fixit (wkprint, ww, t);
+  printimatx (wkprint, 1, t);
+  printnl ();
+  printnl ();
+  
+
+
 //  we now loop over fix patterns.  
   xmax = pow (2, nl) - 1;
   ZALLOC (g4info, xmax + 2, F4INFO *);
@@ -465,21 +487,23 @@ main (int argc, char **argv)
       calcadm (ww, f4pt->A, nl);
       vmaxmin (ww, nl, NULL, &y);
       dof = nnint (f4pt->dof);
-      if (dof > 0)
-	tail = rtlchsq (dof, f4pt->chisq);
-      else
-	tail = 0;
+      if (dof > 0) {
+	ttail = tail = rtlchsq (dof, f4pt->chisq);
+      }
+      else {
+	ttail = tail = 0;
+      }
       if (y < -0.001)
 	tail = 0;		// not feasible
-      if (tail < 1.0e-30)
-	tail = 0;
+      if (ttail < 1.0e-30)
+	ttail =  0;
       if (tail > yscbest[wt]) {
 	yscbest[wt] = tail;
 	sbest[wt] = k;
 	ychi[wt] = f4pt->chisq;
       }
       printf (" %12s  %1d   %3d %9.3f %15.6g ", binary_string (k, nl), wt,
-	      dof, f4pt->chisq, tail);
+	      dof, f4pt->chisq, ttail);
       printmatx (ww, 1, nl);
       if (y < -.001)
 	printf (" infeasible");
@@ -567,6 +591,15 @@ calcadm (double *ans, double *A, int n)
 
   linsolv (n, coeff, rhs, ans);
 
+/**
+  printf("zzcalcadm\n") ;
+  vst(coeff, coeff, 1000, n*n) ;
+  printmat(coeff, n, n) ;
+  printmat(rhs, 1, n) ;
+  printmat(ans, 1, n) ;
+*/ 
+
+
 
 
   free (coeff);
@@ -634,6 +667,7 @@ readcommands (int argc, char **argv)
   getint (ph, "popsizelimit:", &popsizelimit);
   getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "chrom:", &xchrom);
+  getint (ph, "nochrom:", &zchrom);
   getint (ph, "maxrank:", &maxrank);
   getint (ph, "hires:", &hires);
   getint (ph, "allsnps:", &allsnps);

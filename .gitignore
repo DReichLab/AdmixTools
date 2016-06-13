@@ -38,6 +38,10 @@ src/qpWave
 src/qpreroot
 src/rolloff
 src/tables
+pdoc.aux
+pdoc.dvi
+pdoc.log
+pdoc.ps
 
 #Examples
 examples.qpGraph/*:log
