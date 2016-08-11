@@ -43,7 +43,7 @@ indivname:   input indiv file    (in eigenstrat format)
 poplistname:  list_qpDstat (contains list of poulations- one population on each line). Program will run the method for all quadrapules.
 popfilename:   list_qpDstat1 (Enter a list of tests you want to perform - 4 populations on each line. <pop1> <pop2> <pop3> <pop4>). Program will run the method for each quadrapule (included on each line). 
 ## optional parameter  
-f4stats:   YES      
+f4mode:   YES      
 ## default NO 
 ## f4 statistics not D-stats are computed
 
