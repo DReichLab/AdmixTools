@@ -29,7 +29,7 @@ make -f Makefile.mac install
 
 If you have trouble compiling and running our code, try compiling and
 running the examples in the examples/ directory. Download the example
-datasets from https://genetics.med.harvard.edu/reich/Reich_Lab/Software_files/AdmixTools_Example_Data.tar.gz 
+datasets from https://reich.hms.harvard.edu/sites/reich.hms.harvard.edu/files/inline-files/AdmixTools_Example_Data.tar_.gz
 and untar in the root AdmixTools directory, creating a subdirectory called ./data. 
 
 "cd examples"
