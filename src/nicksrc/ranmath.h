@@ -29,6 +29,7 @@ void pick2(int n, int *k1, int *k2) ;  // pick 2 elements from 0..n-1
 int ranmod(int n)  ;  // random mod n 
 double ranbeta(double a, double b) ;  //  beta 
 int ranbinom(int n, double p) ;   // binomial  
+void setrand(double *vv, int n) ;  // filll vv with U[0,1]
 int ewens(int *a, int n, double theta) ;  // ewens sampling formula  
 void genmultgauss(double *rvec, int num, int n, double *covar) ;  // multivariate 
 double drand2() ;  

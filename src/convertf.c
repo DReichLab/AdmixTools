@@ -16,7 +16,7 @@
 #include "egsubs.h"
 #include "exclude.h"
 
-#define WVERSION   "4510"
+#define WVERSION   "4511"
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -86,7 +86,7 @@
  familypopnames (use egroup for family in .fam output
  dupcheck contains iter number
 
- minvalpop :: every pop must have at least this number of valids (defualt not set) 
+ minvalpop :: every pop must have at least this number of valids (default not set) 
 */
 
 

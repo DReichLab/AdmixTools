@@ -123,7 +123,6 @@ rangam (double a)
   return (randev1 (a));
 }
 
-#define PI 3.14159265358979
 
 double
 ranpoiss (double xm)
@@ -189,7 +188,6 @@ poidev (double xm)
   return em;
 }
 
-#undef PI
 
 int
 randis (double *a, int n)
@@ -843,3 +841,14 @@ ranhprob (int n, int a, int m)
   return zans;
 
 }
+void setrand (double *ww, int n)
+// fill array with uniform
+{
+  int k;
+
+  for (k = 0; k < n; ++k) {
+    ww[k] = DRAND ();
+  }
+}
+
+

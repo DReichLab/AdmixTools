@@ -15,6 +15,8 @@ static double mk4from9 (double *xd, double *xc, double *p);
 
 static int zdipmode = 0;
 static int zdphasedmode = 0;
+static int numwarn = 0 ; 
+int maxwarnprint = 1000 ; 
 
 void
 setzdipmode (int mode)
@@ -57,7 +59,11 @@ lddip (double *xc)
   y = asum (xc, 9);
 
   if (y < 2.5) {
-    printf ("*** zzwarning... small counts\n");
+    ++numwarn ; 
+    if (numwarn < maxwarnprint)  { 
+     printf ("(lddip) *** zzwarning... small counts\n");
+     printmat(xc, 3, 3) ; 
+    }
     return -1.0;
   }
 
@@ -136,8 +142,12 @@ lddipx (double *xc, double *xd)
   y = asum (xc, 9);
 
   if (y < 2.5) {
-    printf ("*** zzwarning... small counts\n");
-    return 0.0;
+     ++numwarn ; 
+    if (numwarn < maxwarnprint)  { 
+     printf ("(lddipx) *** zzwarning... small counts\n");
+     printmat(xc, 3, 3) ; 
+    }
+    return -1.0;
   }
 
   for (iter = 1; iter <= 10; ++iter) {
@@ -431,7 +441,11 @@ zdip0 (double *xc)
   y = asum (xc, 9);
 
   if (y < 2.5) {
-    printf ("*** zzwarning... small counts\n");
+     ++numwarn ; 
+    if (numwarn < maxwarnprint)  { 
+     printf ("(zdip0) *** zzwarning... small counts\n");
+     printmat(xc, 3, 3) ; 
+    }
     return -1.0;
   }
 

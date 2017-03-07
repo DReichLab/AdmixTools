@@ -1314,9 +1314,6 @@ critchi (int df, double p)
 */
 
 
-#ifndef	I_PI			/* 1 / pi */
-#define	I_PI        0.3183098861837906715377675
-#endif
 #define	F_EPSILON     0.000001	/* accuracy of critf approximation */
 #define	F_MAX      9999.0	/* maximum F ratio */
 
@@ -1707,7 +1704,7 @@ jfgtx (int *tab, int lo, int hi, int val)
 }
 
 int
-jfirstgtx (int val, int *tab, int n)
+firstgtjfirstgtx (int val, int *tab, int n)
 // tab sorted in ascending order 
 // return first index with tab[x] >= val
 {
@@ -1913,20 +1910,24 @@ static double
 betacf (double a, double b, double x)
 /* Used by betai: Evaluates continued fraction for incomplete beta function 
    by modified Lentz's method.   */
+/** 
+ modified by NJP to do extended precision and more iterations  
+ Seems to work ofr (a+b < 1000000) 
+*/
 {
-#define MAXIT 100
+#define MAXIT 1000
 #define EPS 3.0e-7
 #define FPMIN 1.0e-30
 
   int m, m2;
-  double aa, c, d, del, h, qab, qam, qap;
+  long double aa, c, d, del, h, qab, qam, qap;
 
   qab = a + b;
   qap = a + 1.0;
   qam = a - 1.0;
   c = 1.0;			/* First step of Lentz's method.  */
   d = 1.0 - qab * x / qap;
-  if (fabs (d) < FPMIN)
+  if (fabsl (d) < FPMIN)
     d = FPMIN;
   d = 1.0 / d;
   h = d;
@@ -1935,28 +1936,28 @@ betacf (double a, double b, double x)
       m2 = 2 * m;
       aa = m * (b - m) * x / ((qam + m2) * (a + m2));
       d = 1.0 + aa * d;		/* One step (the even one) of the recurrence. */
-      if (fabs (d) < FPMIN)
+      if (fabsl (d) < FPMIN)
 	d = FPMIN;
       c = 1.0 + aa / c;
-      if (fabs (c) < FPMIN)
+      if (fabsl (c) < FPMIN)
 	c = FPMIN;
       d = 1.0 / d;
       h *= d * c;
       aa = -(a + m) * (qab + m) * x / ((a + m2) * (qap + m2));
       d = 1.0 + aa * d;		/* Next step of the recurence the odd one) */
-      if (fabs (d) < FPMIN)
+      if (fabsl (d) < FPMIN)
 	d = FPMIN;
       c = 1.0 + aa / c;
-      if (fabs (c) < FPMIN)
+      if (fabsl (c) < FPMIN)
 	c = FPMIN;
       d = 1.0 / d;
       del = d * c;
       h *= del;
-      if (fabs (del - 1.0) < EPS)
+      if (fabsl (del - 1.0) < EPS)
 	break;			/* Are we done? */
     }
   if (m > MAXIT)
-    fatalx ("a or b too big, or MAXIT too small in betacf\n");
+    fatalx ("a or b too big, or MAXIT too small in betacf: %9.3f %9.3f %12.6f\n", a, b, x);
   return h;
 }
 
@@ -2276,6 +2277,7 @@ circconv (double *jp, double *c, double *jmean, int g)
 double
 bino (int a, int b)
 {
+  if (bcosize < 0) setbino(50) ;
   if (b > a)
     return 0.0;
   if (a < 0)
@@ -2447,3 +2449,301 @@ ubias (int a, int n, int k)
   return y;
 }
 
+double pi() 
+{
+  return 2.0*acos(0.0) ; 
+}
+
+void bjasympt(double *ptail, double *mtail, double *tail, double mplus, double mminus, int n) 
+{  
+ double xplus, xminus, bjstat, y ;  
+
+ *ptail = *mtail = *tail = 1.0 ; 
+ if (n<=2) return ;  
+ 
+ y = 2*log(n)*log(log(n)) ;  
+
+ xplus = mplus*y ;  // x/scale = mstat
+ xminus = mminus*y ;  
+
+ *ptail = 1.0 -exp(-xplus) ;
+ *mtail = 1.0 -exp(-xminus) ;
+ bjstat = MIN(xplus, xminus) ;
+ *tail = 1.0-exp(-2*bjstat) ;
+
+
+
+}
+double bjugauss(double *p, double *u, double *a, int n) 
+// calculate u stats and p stats with gaussian null  
+{
+ double *w ; 
+ int i, k ; 
+ double pmax, pmin, x ;
+
+ ZALLOC(w, n, double) ;  
+ copyarr(a, w, n) ; 
+
+ sortit(w, NULL, n) ;
+  for (k=0; k<n; ++k) { 
+   i = 1 + k ;  
+   u[k] = 1.0 - ntail(w[k]) ;  //  think about roundoff
+   p[k] = betai(i, n-i+1, u[k]) ; 
+  }
+  vmaxmin(p, n, &pmax, &pmin) ; 
+  free(w) ;
+  x  =  MIN(pmin, 1.0-pmax) ;
+  return x ;
+}
+// 2-sample Berk-Jones (new??) 
+
+void bj2(double *aa, double *bb, int a, int b,  double *plpv, double *prpv, double *ppv) 
+{
+ int j, k, t , r  ; 
+ double *u, *p,  *xx  ; 
+ int *cat, *ind, *type ;  
+ int n =  a + b   ;  
+ double lpv, rpv, pv, y ;
+
+ ZALLOC(xx, n, double) ; 
+
+ ZALLOC(cat, n, int) ; 
+ ZALLOC(ind, n, int) ; 
+ ZALLOC(type, n, int) ; 
+
+ copyarr(aa, xx, a) ; 
+ copyarr(bb, xx+a, b) ;
+
+ ivclear(cat, 1, a) ; 
+ ivclear(cat+a, 2, b) ; 
+
+ sortit(xx, ind, n) ;  
+ for (k=0; k<n; ++k) { 
+  j = ind[k] ; 
+  type[k] = cat[j] ; 
+ }
+
+ bj2x(type, a, b, &lpv, &rpv, &pv) ;   
+
+ *plpv = lpv ;
+ *prpv = rpv ;
+ *ppv = pv ;
+
+ free(xx) ; 
+ free(cat) ; 
+ free(ind) ; 
+ free(type) ; 
+ 
+
+
+
+
+}
+ 
+void bj2x(int *type, int a, int b, double *plpv, double *prpv, double *ppv) 
+{
+
+ int j, k, t , r  ; 
+ double *u, *p, *aa, *bb, *xx  ; 
+ int  *ind, *rcount ;  
+ int n =  a + b   ;  
+ double **hp, **ltail, **rtail ; 
+ double *pl, *pr ; 
+ double lstat, rstat, stat ;                              
+ double lpv, rpv, pv, y ;
+ int *lthresh, *rthresh ; 
+
+ t = n + 2 ;
+ hp = initarray_2Ddouble(t, t, 0) ; 
+ ZALLOC(rcount, n, int) ; 
+
+ ltail = initarray_2Ddouble(t, t, 0) ; 
+ rtail = initarray_2Ddouble(t, t, 0) ; 
+
+ ZALLOC(pl, n, double) ; 
+ ZALLOC(pr, n, double) ; 
+
+ y = genhp(hp, a, b) ; 
+// printf("%d %d %15.9f\n", a, b, y) ;
+ gentail(ltail, rtail, hp, a, b) ;  
+
+ pl[0] = pr[0] = 1 ; 
+ for (k=1; k<n; ++k)  { 
+   rcount[k] = rcount[k-1] ; 
+   if (type[k] == 1) ++rcount[k]  ;  
+   r = rcount[k] ; 
+   pl[k] = ltail[k][r] ; 
+   pr[k] = rtail[k][r] ; 
+//   printf("%3d %3d %12.6f %12.6f\n", k, r, pl[k], pr[k]) ;  
+ }
+
+ ZALLOC(lthresh, n+1, int) ;
+ ZALLOC(rthresh, n+1, int) ;
+ vmaxmin(pl, n, NULL, &lstat) ;
+ vmaxmin(pr, n, NULL, &rstat) ;
+ stat = MIN(lstat, rstat) ;   
+ setthresh(lthresh,  ltail, a, b, lstat, 1) ;
+ ivclear(rthresh, n+99, n+1) ; 
+ lpv = genhpt(a, b, lthresh, rthresh) ; 
+//  printf("lstat: %9.3f lpv: %12.6f\n", lstat, lpv) ; 
+ 
+ setthresh(rthresh,  rtail, a, b, rstat, 2) ;
+ ivclear(lthresh, 0, n+1) ; 
+ rpv = genhpt(a, b, lthresh, rthresh) ; 
+//  printf("rstat: %9.3f rpv: %12.6f\n", rstat, rpv) ; 
+ setthresh(lthresh,  ltail, a, b, stat, 1) ;
+ setthresh(rthresh,  rtail, a, b, stat, 2) ;
+ pv = genhpt(a, b, lthresh, rthresh) ; 
+//  printf("stat: %9.3f pv: %12.6f\n", stat, pv) ; 
+
+ free(lthresh) ; 
+ free(rthresh) ; 
+ free(rcount) ; 
+ free2D(&hp, t) ;
+ free(pl) ; 
+ free(pr) ; 
+
+ *plpv = lpv ;
+ *prpv = rpv ;
+ *ppv = pv ;
+ 
+}
+void setthresh(int *thresh, double **tail, int a, int b, double stat, int mode) 
+{
+  int t, n, m, r, k   ; 
+
+  n = a + b ;  
+  t = n + 2 ; 
+
+  thresh[0] = 0 ;  
+  
+  if (mode==1) { 
+   thresh[n] = 0 ;
+   for (k=1; k<n; ++k) { 
+     for (r=0; r<=a; ++r) { 
+       if (tail[k][r] >= stat) break ; 
+     }
+     thresh[k] = r ; 
+   }
+   return ;
+  }
+
+   thresh[n] = n + 99 ; 
+   for (k=1; k<n; ++k) { 
+     for (r=a; r>=0; --r) { 
+       if (tail[k][r] >= stat) break ; 
+     }
+     thresh[k] = r ; 
+   }
+   return ;
+
+
+
+
+}
+
+void gentail(double **ltail, double **rtail, double **hp, int a, int b) 
+{
+
+  int t, n, m, r   ; 
+  double yl, yr ;  
+
+  n = a + b ;  
+  t = n + 2 ; 
+  clear2D(&ltail, t, t, 1) ;
+  clear2D(&rtail, t, t, 1) ;
+
+  
+  for (m=1;  m <= n ; ++ m)  {  
+
+   yl =  yr = 0 ; 
+   for (r=0; r <=a ; ++r) {  
+    yl += hp[m][r] ; 
+    ltail[m][r] = yl ; 
+   }
+
+   for (r=a; r >= 0; --r) {  
+    yr += hp[m][r] ;  
+    rtail[m][r] = yr ; 
+   }
+  }
+}
+
+double genhp(double **hp, int a, int b) 
+{
+
+  int n, t ; 
+  int m, r, mm, rx, nx ;  
+  double p, q, y ; 
+
+  if ((a==0) || (b==0)) fatalx("(genhp): set with size 0: %d %d\n", a, b) ;
+  
+  n = a + b ;  
+  t = n + 2 ; 
+  clear2D(&hp, t, t, 0) ;
+  hp[0][0] = 1 ;    
+  for (m=0; m<n; ++m) { 
+   mm = m + 1 ; 
+   for (r = 0; r <= a; ++r)  {  
+    y = hp[m][r] ;  
+    if (y==0.0) continue ;  
+    rx = a - r  ;  nx = n - m ;  
+    p = (double) rx / (double) nx ;  // prob of picking A
+    q = 1-p ;  
+    hp[mm][r] += q*y ;  
+    hp[mm][r+1] += p*y ;  
+   }
+  }
+  y = asum(hp[n], t) ; 
+  return y ;  
+} 
+long double ldsum(long double *a, int n) 
+{
+ long double y = 0 ; 
+ int k ;  
+ for (k=0; k<n; ++k) { 
+  y += a[k] ; 
+ }
+ return y ; 
+}
+double genhpt(int a, int b, int *lt, int *rt) 
+{
+
+  int n, t, i, j  ; 
+  int m, r, mm, rx, nx ;  
+  int lo, hi ; 
+  long double p, q, y ; 
+  long double **hp ; 
+
+  if ((a==0) || (b==0)) fatalx("(genhp): set with size 0: %d %d\n", a, b) ;
+  
+  n = a + b ;  
+  t = n + 2 ; 
+  hp = initarray_2Dlongdouble(t, t, 0) ;
+  hp[0][0] = 1 ;    
+  for (m=0; m<n; ++m) { 
+   mm = m + 1 ; 
+   lo = lt[mm] ; 
+   hi = rt[mm] ;
+   for (r = 0; r <= a; ++r)  {  
+    y = hp[m][r] ;  
+    if (y==0.0) continue ;  
+    rx = a - r  ;  nx = n - m ;  
+    p = (double) rx / (double) nx ;  // prob of picking A
+    q = 1-p ;  
+    hp[mm][r] += q*y ;  
+    hp[mm][r+1] += p*y ;  
+   }
+   for (r=0; r<lo; ++r) { 
+    hp[mm][r] = 0 ; 
+   }
+   for (r=a; r>hi; --r) { 
+    hp[mm][r] = 0 ; 
+   }
+// y = asum(hp[mm], t) ;  
+// printf("zz %d %9.3f  %d  %d\n", mm, y, lo, hi) ; 
+  }
+  y = ldsum(hp[n], t) ; 
+  free2Dlongdouble(&hp, t) ;
+  return 1.0-y ;  
+}

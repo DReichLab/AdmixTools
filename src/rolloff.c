@@ -18,7 +18,7 @@
 #include "egsubs.h"
 #include "ldsubs.h"
 
-#define WVERSION   "1100"
+#define WVERSION   "1110"
 /** an attempt to 
  1) threshold for LD in parentals 
  2) Use a weighted Z-score

@@ -1,0 +1,57 @@
+HOMEL=/home/np29
+DEBUG_OPTIONS= -g -pg
+
+IDIR=$(HOMEL)/include
+NLIB=$(HOMEL)/lib/nicklib.a
+TWTAB=\"$(HOMEL)/tables/twtable\"
+## this MUST be set
+
+CFLAGS= -c -g -p -Wimplicit -I$(IDIR)
+
+OBJ=strsubs.o sortit.o vsubs.o statsubs.o linsubs.o getpars.o xsearch.o gauss.o	gds.o
+
+P4=twstats
+P4O=twstats.o  
+
+T1=ttt
+T1O=ttt.o
+
+statsubs.o:	statsubs.c
+	cc $(CFLAGS) -DTWTAB=$(TWTAB) -o statsubs.o statsubs.c
+
+$(P1):      $(P1O)
+	gcc $(DEBUG_OPTIONS) -I $(IDIR) -lm -o $(P1) $(P1O)  $(NLIB) 
+
+$(P2):      $(P2O)
+	gcc $(DEBUG_OPTIONS) -I $(IDIR) -lm -o $(P2) $(P2O)  $(NLIB) 
+
+
+$(P3): 		$(P3O)
+	gcc $(DEBUG_OPTIONS) -I$(IDIR) -lm -o $(P3) $(P3O) $(NLIB)
+
+$(P4): 	$(P4O)
+	gcc $(DEBUG_OPTIONS) -I$(IDIR) -lm -o $(P4) $(P4O) $(NLIB)
+
+$(T1): 	$(T1O)
+	gcc $(DEBUG_OPTIONS) -I$(IDIR) -lm -o $(T1) $(T1O) $(NLIB)
+
+##libnick.a:	$(OBJ)
+libnick.a:	$(OBJ)
+	ar -r libnick.a $(OBJ)
+
+nicklib:	dirs libnick.a 
+	cp  *.h  $(IDIR)
+	cp libnick.a  $(NLIB)
+
+dirs:	
+	mkdir -p  $(HOMEL)/lib
+	mkdir -p  $(HOMEL)/tables
+	mkdir -p  $(HOMEL)/include
+
+clean:  
+	rm -f *.o
+	rm -f core
+
+clobber:   clean
+	rm  libnick.a 
+

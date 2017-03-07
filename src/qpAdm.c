@@ -20,7 +20,7 @@
 #include "f4rank.h"
 
 
-#define WVERSION   "401"
+#define WVERSION   "610" 
 // best analysis added
 // hires added
 // chrom: 23 added
@@ -29,6 +29,8 @@
 // nochrom added 
 // detail = YES default
 // summ: line added
+// gendstat added.  Generalized D-stat
+// bug in doq4vecb fixed  denominator sometimes wrong... 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -103,6 +105,8 @@ calcevar (double *var, double *yvar, int nl, int nr,
 int getf4 (int **xx, int *indx, double *ans);
 void calcadm (double *ans, double *A, int n);
 void printss (double *mean, double *wt, int nl, int nr);
+double scorel(double *d, double *V, double *lam, int n)  ;
+double gendstat(double *ca, int b1, int b2, int nr, int nl, double *mean, double *var, int *ktable) ;
 
 int
 main (int argc, char **argv)
@@ -152,8 +156,9 @@ main (int argc, char **argv)
   int *jvar;
   double *w0, *w1, *w2;
   double *wbest;
-  int dim;
+  int dim, b1, b2;
   double pval ;
+  double lfudge ; 
 
 
   F4INFO **f4info, *f4pt, *f4pt2, **g4info, *ggpt;
@@ -161,6 +166,8 @@ main (int argc, char **argv)
 
   readcommands (argc, argv);
   printf ("## qpAdm version: %s\n", WVERSION);
+  if (seed==0) seed = seednum() ; 
+  printf("seed: %d\n", seed) ;
   if (parname == NULL)
     return 0;
 
@@ -389,6 +396,11 @@ main (int argc, char **argv)
     printf4info (f4pt);
     pval = rtlchsq (f4pt->dofdiff, f4pt->chisqdiff) ; 
     printnl ();
+/**
+    if (x==maxrank) continue ;
+    printf("++++++++ %d\n", maxrank-x)  ; 
+    scorel(f4pt -> resid, yvar, &lfudge, nl*nr) ; // eigenanalysis  
+*/
   }
 
   f4pt = f4info[rank];
@@ -435,7 +447,7 @@ main (int argc, char **argv)
     fixit (wkprint, ww, t);
     printimatx (wkprint, 1, t);
     printnl ();
-    printf ("[mean *1.0e6, var *1.0e8\n");
+    printf ("[mean *1.0e6, var *1.0e8]\n");
   }
 
   printnl ();
@@ -537,7 +549,6 @@ main (int argc, char **argv)
   printnl ();
   fflush (stdout);
   if (details) {
-
     printf ("coeffs: ");
     printmat (wbest, 1, nl);
     dim = nl * nr;
@@ -566,8 +577,18 @@ main (int argc, char **argv)
       printf ("f4: %12.6f Z: %12.6f\n", y1, ysig);
       printnl ();
     }
+    for (b1 = -1; b1 < nr; ++b1) { 
+     for (b2=b1+1; b2 < nr; ++b2) { 
+      y1 =  gendstat(wbest, b1, b2, nl, nr, ymean, yvar, ktable)  ;  
+      printf("gendstat: ") ; 
+      printf("%20s ", poprlist[b1+1]) ;
+      printf("%20s ", poprlist[b2+1]) ;
+      printf("%9.3f", y1) ;
+      printnl() ; 
+     }
+    }
+    printnl() ;
   }
-
 
   printf ("## end of run\n");
   return 0;
@@ -673,144 +694,148 @@ readcommands (int argc, char **argv)
   getint (ph, "allsnps:", &allsnps);
   getint (ph, "useallsnps:", &allsnps);
   getint (ph, "details:", &details);
+  getint (ph, "seed:", &seed) ; 
 
 
-  printf ("### THE INPUT PARAMETERS\n");
-  printf ("##PARAMETER NAME: VALUE\n");
-  writepars (ph);
+
+printf ("### THE INPUT PARAMETERS\n");
+printf ("##PARAMETER NAME: VALUE\n");
+writepars (ph);
 
 }
 
 
 double
 doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
-	  int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
-	  int *rlist, int nr, int nblocks)
+  int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
+  int *rlist, int nr, int nblocks)
 // return dof estimate
 {
 
-  int a, b, c, d;
-  int k, g, i, col, j;
-  double ya, yb, y;
-  double *top, *bot, *wjack, *wbot, *wtop, **bjtop;
-  double *bwt;
-  double ytop, ybot;
-  double y1, y2, yscal;
-  double *w1, *w2, *ww, m1, m2;
-  double *mean;
+int a, b, c, d;
+int k, g, i, col, j;
+double ya, yb, y;
+double *top, *bot, *wjack, *wbot, *wtop, **bjtop;
+double *bwt;
+double ytop, ybot;
+double y1, y2, yscal;
+double *w1, *w2, *ww, m1, m2;
+double *mean;
 
-  int bnum, totnum;
-  int ret;
-  double *f4;
-  int **xtop, *xt;
-  int dim = nl * nr;
-  int isok;
+int bnum, totnum;
+int ret;
+double *f4, *f4bot;
+int dim = nl * nr;
+int isok;
+int **xtop, *xt ;  
 
-  if (nrows == 0)
-    fatalx ("badbug\n");
-
-
-  ZALLOC (f4, dim, double);
-  ZALLOC (mean, dim, double);
-  ZALLOC (wjack, nblocks, double);
-  ZALLOC (wtop, dim, double);
-  ZALLOC (wbot, dim, double);
-
-  ZALLOC (gtop, dim, double);
-  ZALLOC (gbot, dim, double);
-
-  btop = initarray_2Ddouble (nblocks, dim, 0);
-  bbot = initarray_2Ddouble (nblocks, dim, 0);
-
-  bjtop = initarray_2Ddouble (nblocks, dim, 0);
-  xtop = initarray_2Dint (dim, 4, 0);
-
-  k = 0;
-  for (a = 0; a < nl; ++a) {
-    for (b = 0; b < nr; ++b) {
-      xt = xtop[k];
-      xt[0] = lbase;
-      xt[1] = llist[a];
-      xt[2] = rbase;
-      xt[3] = rlist[b];
-      ktable[a * nr + b] = k;
-      ++k;
-    }
-  }
-
-  totnum = 0;
-  for (col = 0; col < ncols; ++col) {
-    bnum = bcols[col];
-    if (bnum < 0)
-      continue;
-    if (bnum >= nblocks)
-      fatalx ("logic bug\n");
-    vzero (f4, dim);
-    isok = YES;
-    if (allsnps)
-      isok = NO;
-    for (a = 0; a < dim; ++a) {
-      ret = getf4 (counts[col], xtop[a], &y);
-      if ((allsnps == NO) && (ret < 0)) {
-	isok = NO;
-	break;
-      }
-      if ((allsnps == YES) && (ret < 0))
-	continue;
-      if (allsnps == YES)
-	isok = YES;
-      bbot[bnum][a] += 1;
-      if (ret == 2)
-	fatalx ("bad pop in numerator\n");
-      f4[a] = y;
-    }
-    if (isok == NO)
-      continue;
-    vvp (btop[bnum], btop[bnum], f4, dim);
-    ++wjack[bnum];
-    ++totnum;
-  }
-
-  sum2D (gtop, btop, nblocks, dim);
-  sum2D (gbot, bbot, nblocks, dim);
-
-  vsp (gbot, gbot, 1.0e-20, dim);
-  vvd (mean, gtop, gbot, dim);
-
-  for (k = 0; k < nblocks; k++) {
-    top = btop[k];
-    bot = bbot[k];
-    vvm (wtop, gtop, top, dim);
-    vvm (wbot, gbot, bot, dim);
-    vvd (bjtop[k], wtop, wbot, dim);
-  }
+if (nrows == 0)
+fatalx ("badbug\n");
 
 
-  free (f4);
-  free2Dint (&xtop, dim);
-  free (wtop);
-  free (wbot);
+ZALLOC (f4, dim, double);
+ZALLOC (f4bot, dim, double);
+ZALLOC (mean, dim, double);
+ZALLOC (wjack, nblocks, double);
+ZALLOC (wtop, dim, double);
+ZALLOC (wbot, dim, double);
 
-  for (k = 0; k < nblocks; ++k) {
-    if (allsnps == NO)
-      break;
-    wjack[k] = asum (bbot[k], dim);
-  }
+ZALLOC (gtop, dim, double);
+ZALLOC (gbot, dim, double);
 
-  wjackvest (ymean, yvar, dim, mean, bjtop, wjack, nblocks);
+btop = initarray_2Ddouble (nblocks, dim, 0);
+bbot = initarray_2Ddouble (nblocks, dim, 0);
 
-  bnblocks = nblocks;
-  bdim = dim;
+bjtop = initarray_2Ddouble (nblocks, dim, 0);
+xtop = initarray_2Dint (dim, 4, 0);
 
-  y1 = asum (wjack, nblocks);
-  y2 = asum2 (wjack, nblocks);
+k = 0;
+for (a = 0; a < nl; ++a) {
+for (b = 0; b < nr; ++b) {
+xt = xtop[k];
+xt[0] = lbase;
+xt[1] = llist[a];
+xt[2] = rbase;
+xt[3] = rlist[b];
+ktable[a * nr + b] = k;
+++k;
+// printf("xtk: %3d ", k) ; printimat(xt, 1, 4) ;
+}
+}
 
-  free (wjack);
-  free (mean);
-  free2D (&bjtop, nblocks);
+totnum = 0;
+for (col = 0; col < ncols; ++col) {
+bnum = bcols[col];
+if (bnum < 0)
+continue;
+if (bnum >= nblocks)
+fatalx ("lobotgic bug\n");
 
-  nsnpused = totnum;
-  return (y1 * y1) / y2;	// a natural estimate for degrees of freedom in F-test. 
+vzero (f4, dim);
+vzero (f4bot, dim);
+
+isok = YES;
+for (a = 0; a < dim; ++a) {
+ret = getf4 (counts[col], xtop[a], &y);
+if (ret==2) {
+ printf("bad quad: "); printimat(xtop[1], 1, 4) ;
+ fatalx("bad quad\n") ;
+}
+f4[a] = y ;  
+f4bot[a] = 1 ; 
+if (ret<0) {
+ f4[a] = f4bot[a] =  0 ;
+}
+ if ((allsnps == NO) && (ret < 0))  isok = NO;
+}
+if (allsnps == YES) isok = YES;
+if (isok == NO) continue;
+vvp (btop[bnum], btop[bnum], f4, dim);
+vvp (bbot[bnum], bbot[bnum], f4bot, dim);
+++wjack[bnum];
+++totnum;
+}
+
+sum2D (gtop, btop, nblocks, dim);
+sum2D (gbot, bbot, nblocks, dim);
+
+vsp (gbot, gbot, 1.0e-20, dim);
+vvd (mean, gtop, gbot, dim);
+
+for (k = 0; k < nblocks; k++) {
+top = btop[k];
+bot = bbot[k];
+vvm (wtop, gtop, top, dim);
+vvm (wbot, gbot, bot, dim);
+vvd (bjtop[k], wtop, wbot, dim);
+}
+
+
+free (f4);
+free (f4bot);
+free (wtop);
+free (wbot);
+
+for (k = 0; k < nblocks; ++k) {
+if (allsnps == NO) break;
+wjack[k] = asum (bbot[k], dim);
+}
+
+wjackvest (ymean, yvar, dim, mean, bjtop, wjack, nblocks);
+
+bnblocks = nblocks;
+bdim = dim;
+
+y1 = asum (wjack, nblocks);
+y2 = asum2 (wjack, nblocks);
+
+free (wjack);
+free (mean);
+free2D (&bjtop, nblocks);
+free2Dint (&xtop, dim);
+
+nsnpused = totnum;
+return (y1 * y1) / y2;	// a natural estimate for degrees of freedom in F-test. 
 
 }
 
@@ -819,114 +844,142 @@ double
 hfix (int *x)
 {
 // correction factor counts in x
-  double ya, yb, yt, h;
-  ya = (double) x[0];
-  yb = (double) x[1];
-  yt = ya + yb;
-  if (yt <= 1.5)
-    fatalx ("(hfix)\n");
-  h = ya * yb / (yt * (yt - 1.0));
-  return h / yt;
+double ya, yb, yt, h;
+ya = (double) x[0];
+yb = (double) x[1];
+yt = ya + yb;
+if (yt <= 1.5)
+fatalx ("(hfix)\n");
+h = ya * yb / (yt * (yt - 1.0));
+return h / yt;
 }
 
 int
 getf4 (int **xx, int *indx, double *ans)
 {
 
-  int a, i;
-  double y0, y1, ytot, ff[4];
-  double h0, h1;
+int a, i;
+double ya, yb,  y0, y1, ytot, ff[4];
+double h0, h1;
+int isok, f4mode ;
+// f4mode == NO => f2, or f3
 
-  *ans = 0.0;
-  if (indx == NULL) {
-    *ans = 1.0;
-    return 2;
-  }
+*ans = 0.0;
+if (indx == NULL) {
+*ans = 1.0;
+return 2;
+}
 
-  for (i = 0; i < 4; ++i) {
-    a = indx[i];
-    if (a < 0) {
-      *ans = 1.0;
-      return 2;
-    }
-    y0 = (double) xx[a][0];
-    y1 = (double) xx[a][1];
-    ytot = y0 + y1;
-    if (ytot <= 0.0)
-      return -1;
-    ff[i] = y0 / ytot;
-  }
-  *ans = (ff[0] - ff[1]) * (ff[2] - ff[3]);
-  a = indx[0];
-  h0 = hfix (xx[a]);
-  a = indx[1];
-  h1 = hfix (xx[a]);
-  if (indx[0] == indx[2])
-    *ans -= h0;
-  if (indx[0] == indx[3])
-    *ans += h0;
-  if (indx[1] == indx[3])
-    *ans -= h1;
-  if (indx[1] == indx[2])
-    *ans += h1;
-  return 1;
+isok = f4mode = YES ; 
+
+ if (indx[0] == indx[2]) f4mode = NO ;
+ if (indx[0] == indx[3]) f4mode = NO ;
+ if (indx[1] == indx[2]) f4mode = NO ;
+ if (indx[1] == indx[3]) f4mode = NO ;
+
+for (i = 0; i < 4; ++i) {
+ ff[i] = -10*(i+1) ;  // silly value ;
+ a = indx[i];
+ if (a < 0) {
+  *ans = 1.0;
+  return 2;
+ }
+
+
+ *ans - 0 ;
+ y0 = (double) xx[a][0];
+ y1 = (double) xx[a][1];
+ ytot = y0 + y1;
+ if (ytot <= 0.0) {
+  isok = NO ;
+  continue ;
+ }
+ ff[i] = y0 / ytot;
+}
+
+if ((isok == NO) && (f4mode == NO)) return -1 ;
+
+ya = fabs(ff[0]-ff[1])  ;  
+yb = fabs(ff[2]-ff[3])  ;  
+
+if (f4mode && (MIN(ya, yb) < .00001)) { 
+ return 1 ; 
+}
+
+if (isok == NO) return -1 ;
+
+*ans = (ff[0] - ff[1]) * (ff[2] - ff[3]);
+if (f4mode == YES) return 1 ;
+
+a = indx[0];
+h0 = hfix (xx[a]);
+a = indx[1];
+h1 = hfix (xx[a]);
+if (indx[0] == indx[2])
+*ans -= h0;
+if (indx[0] == indx[3])
+*ans += h0;
+if (indx[1] == indx[3])
+*ans -= h1;
+if (indx[1] == indx[2])
+*ans += h1;
+return 1;
 
 }
 
 void
 calcevar (double *var, double *yvar, int nl, int nr, double **btop,
-	  double **bbot, double *gtop, double *gbot, int nblocks, int dim)
+  double **bbot, double *gtop, double *gbot, int nblocks, int dim)
 {
-  double *ymean, *mean, *wtop, *wbot, *totmean, **tmean, *wjack;
-  F4INFO *f4wk, f4tt;
-  int k;
+double *ymean, *mean, *wtop, *wbot, *totmean, **tmean, *wjack;
+F4INFO *f4wk, f4tt;
+int k;
 
-  if (dim <= 0)
-    fatalx ("(calcevar) dimension unset\n");
+if (dim <= 0)
+fatalx ("(calcevar) dimension unset\n");
 
-  ZALLOC (mean, dim, double);
-  ZALLOC (ymean, dim, double);
-  ZALLOC (wtop, dim, double);
-  ZALLOC (wbot, dim, double);
+ZALLOC (mean, dim, double);
+ZALLOC (ymean, dim, double);
+ZALLOC (wtop, dim, double);
+ZALLOC (wbot, dim, double);
 
-  ZALLOC (totmean, nl, double);
-  tmean = initarray_2Ddouble (nblocks, nl, 0);
+ZALLOC (totmean, nl, double);
+tmean = initarray_2Ddouble (nblocks, nl, 0);
 
-  f4wk = &f4tt;
-  f4info_init (f4wk, nl, nr, popllist, poprlist, nl - 1);
+f4wk = &f4tt;
+f4info_init (f4wk, nl, nr, popllist, poprlist, nl - 1);
 
-  vvd (mean, gtop, gbot, dim);
-  doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
-  calcadm (totmean, f4wk->A, nl);
-
-//  printf("zzmean:  ") ;  printmatl(totmean, 1, nl) ;
-
-  for (k = 0; k < nblocks; ++k) {
-    vvm (wtop, gtop, btop[k], dim);
-    vvm (wbot, gbot, bbot[k], dim);
-    vvd (mean, wtop, wbot, dim);
-    doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
-    calcadm (tmean[k], f4wk->A, nl);
-  }
-
-  ZALLOC (wjack, nblocks, double);
-  for (k = 0; k < nblocks; ++k) {
-    wjack[k] = asum (bbot[k], dim);
-  }
-  wjackvest (jmean, var, nl, totmean, tmean, wjack, nblocks);
-  printf ("Jackknife mean:  ");
-  printmatl (jmean, 1, nl);
+vvd (mean, gtop, gbot, dim);
+doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
+calcadm (totmean, f4wk->A, nl);
 
 
-  free (wjack);
-  free (mean);
-  free (ymean);
-  free (wtop);
-  free (wbot);
-  free (totmean);
-  free2D (&tmean, nblocks);
+for (k = 0; k < nblocks; ++k) {
+vvm (wtop, gtop, btop[k], dim);
+vvm (wbot, gbot, bbot[k], dim);
+vvd (mean, wtop, wbot, dim);
+doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
+calcadm (tmean[k], f4wk->A, nl);
+}
 
-  return;
+ZALLOC (wjack, nblocks, double);
+for (k = 0; k < nblocks; ++k) {
+wjack[k] = asum (bbot[k], dim);
+}
+wjackvest (jmean, var, nl, totmean, tmean, wjack, nblocks);
+printf ("Jackknife mean:  ");
+printmatl (jmean, 1, nl);
+
+
+free (wjack);
+free (mean);
+free (ymean);
+free (wtop);
+free (wbot);
+free (totmean);
+free2D (&tmean, nblocks);
+
+return;
 
 
 }
@@ -935,28 +988,205 @@ void
 printss (double *mean, double *wt, int nl, int nr)
 // experimental 
 {
-  double *wa, *wb, *pt;
-  int a;
-  double y2;
+double *wa, *wb, *pt;
+int a;
+double y2;
 
-  ZALLOC (wa, nr, double);
-  ZALLOC (wb, nr, double);
+ZALLOC (wa, nr, double);
+ZALLOC (wb, nr, double);
 
-  for (a = 0; a < nl; ++a) {
-    pt = mean + a * nr;
-    vst (wb, pt, wt[a], nr);
-    vvp (wa, wa, wb, nr);
+for (a = 0; a < nl; ++a) {
+pt = mean + a * nr;
+vst (wb, pt, wt[a], nr);
+vvp (wa, wa, wb, nr);
+}
+
+y2 = asum2 (wa, nr) / (double) nr;
+vst (wb, wa, 1.0 / sqrt (y2), nr);
+
+printf ("ssres:\n");
+printmatwl (wa, 1, nr, nr);
+printmatwl (wb, 1, nr, nr);
+printf ("\n");
+
+free (wa);
+free (wb);
+
+}
+
+double sderiv1(double u, double theta, double *ff)  
+// 2 * log likeighood
+{
+double t2, t3 ; 
+
+t2 = theta*theta ; 
+t3 = t2*theta ;
+ff[0] = -log(theta) - u/theta ; 
+ff[1] = -(1/theta) + (u/t2) ; 
+ff[2] = (1/t2) - (2*u)/t3 ; 
+
+}
+
+
+
+double sderiv(double *u, double *theta, int n, double *ff)  
+{
+double ww[3] ;
+int k ; 
+
+vzero(ff, 3) ; 
+
+for (k=0; k<n; ++k) { 
+sderiv1(u[k], theta[k], ww) ;   
+vvp(ff, ff, ww, 3) ;
+}
+}
+
+double scorel(double *d, double *V, double *lam, int n) 
+{
+
+double *evecs, *evals, *uvals, *u1, *w1 ; 
+int iter, k, a, b ;  
+double *theta, base, step, *ff ; 
+double  ymin, ymax, yinc, y, tmax, tmin, ynext ;  
+double y1, y2, ylast ;
+
+ZALLOC(evecs, n*n, double) ; 
+ZALLOC(evals, n, double) ; 
+ZALLOC(uvals, n, double) ;
+ZALLOC(u1, n, double) ;
+ZALLOC(theta, n, double) ;
+ZALLOC(ff, n, double) ;
+
+eigvecs(V, evals, evecs, n) ; 
+mulmat(u1, evecs, d, n, n, 1) ; 
+
+vst(u1, u1, 1000, n) ;
+vst(evals, evals, 1000*1000, n) ;  
+copyarr(evals, theta, n) ; 
+
+//printf("unorms: %12.6f %12.6f\n", asum2(u1, n), 1000*1000*asum2(d, n)) ;
+vvt(uvals, u1, u1, n) ;   
+vmaxmin(theta, n, &tmax, &tmin) ;  
+vmaxmin(evals, n, &ymax, &ymin) ;  
+ymin =  -tmin ;
+yinc = 0.001 ; 
+
+printf("input: \n") ; 
+printmatl(uvals, 1, n) ;  
+printmatl(theta, 1, n) ;  
+printnl() ;
+
+y2 = 0.0 ; 
+for (k=0; k<n; ++k) { 
+printf("eig %3d ", k) ; 
+printf("%12.6f ", u1[k]) ; 
+y1 = sqrt(evals[k]) ; 
+y = u1[k]/y1 ; 
+printf("%12.6f %9.3f", y1, y) ; 
+y2 += y*y ; 
+printnl() ;
+}
+printf("chisq: %9.3f\n", y2) ;
+
+base = 0 ; 
+
+ylast = -1.0e20 ;
+for (iter = 1; iter <= 100; ++iter) {  
+vsp(theta, evals, base, n) ; 
+sderiv(uvals, theta, n, ff) ;
+if (ff[1] > 0) {  
+ymin = base ; 
+}
+else  {  
+ymax = base ; 
+}
+
+y = 0.5*(ymin+ymax) ; 
+step = -ff[1]/ff[2] ; 
+ynext = base + step ;  
+printf("newton: %12.6f %12.6f %12.6f", ynext, y, step) ;
+printf(" %12.6f %12.6f", ymin, ymax) ;
+if (ynext<ymin)  ynext = y  ; 
+if (ynext>ymax)  ynext = y ; 
+if (ff[2]>0) ynext = y ; 
+printf(" %12.6f ", ynext) ;
+printnl() ; 
+
+printf("iter: %3d base: %15.9f val: %15.9f", iter, base, ff[0]) ;
+printf(" minmax: %12.6f %12.6f", ymin, ymax) ;
+printmat(ff, 1, 3) ;
+base = ynext ;
+y = ff[0] - ylast ; 
+if (fabs(y) < 1.e-8) break ;  
+ylast = ff[0] ;
+}
+vsp(theta, evals, base, n) ; 
+sderiv(uvals, theta, n, ff) ;
+*lam = base ;
+
+y = ff[0] ; 
+
+
+
+free(evecs) ; 
+free(evals) ; 
+free(uvals) ;
+free(u1) ;
+free(theta) ;
+free(ff) ;
+
+return y ;
+
+}
+
+double gendstat(double *ca, int b1, int b2, int nl, int nr, double *mean, double *var, int *ktable) 
+// compute Z-score for generalized D-stat 
+// sum_i ca[i] f_4(l0, i; b1, b2) 
+// convention  b1 = -1 => r0 
+{
+
+ double *va, *vb, *vv, *ww ;
+ int a, b, k, dim ; 
+ double ym, yvar, ysig ;
+
+ dim = nl*nr ;
+ ZALLOC(va, nl, double) ;
+ ZALLOC(vb, nr, double) ;
+
+ ZALLOC(vv, dim, double) ; 
+
+ copyarr(ca, va, nl) ; 
+
+ if (b2<0) fatalx("bad qqsig") ; 
+ vb[b2] = 1 ; 
+ if (b1>=0) vb[b1] = -1 ; // b1 = -1 => base
+ // now make tensor
+ for (a=0; a<nl; ++a) { 
+  for (b=0; b<nr; ++b) { 
+   k = a*nr + b ;
+   if (ktable != NULL) k = ktable[a*nr+b] ; 
+   if (k<0)  fatalx("bad1\n") ;
+   if (k>=dim) fatalx("bad2\n") ;
+   vv[k] = va[a]*vb[b] ;  
+/**
+   if (vv[k] !=0)  {  
+    printf("zzgd %d %d %9.3f ", a,  b, vv[k]) ; 
+    printf(" %9.3f ", mean[k]) ;  
+    printnl() ;
+   }
+*/
   }
+ }
+ ym = vdot(vv, mean, dim) ;
+ yvar = scx(var, NULL, vv, dim) ;
+ ysig = sqrt(yvar) ;
+// printf("zzm %12.6f %12.6f %12.6f\n", ym, ysig, ym/ysig) ;
+ return ym/ysig ; 
 
-  y2 = asum2 (wa, nr) / (double) nr;
-  vst (wb, wa, 1.0 / sqrt (y2), nr);
+ free(va) ;
+ free(vb) ;
+ free(vv) ;  
 
-  printf ("ssres:\n");
-  printmatwl (wa, 1, nr, nr);
-  printmatwl (wb, 1, nr, nr);
-  printf ("\n");
-
-  free (wa);
-  free (wb);
 
 }

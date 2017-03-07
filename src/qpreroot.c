@@ -24,9 +24,11 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "210"
+#define WVERSION   "510"
 
 // gsimplify option added
+// calctime added  
+// calctime NOT YET WORKING
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -43,6 +45,7 @@ int inbreed = NO;
 int isinit = NO;
 
 int seed = 0;
+int calctime = NO ;
 
 char *graphname = NULL;
 char *graphoutname = NULL;
@@ -105,7 +108,7 @@ main (int argc, char **argv)
 {
 
   int nedge, t;
-  char *psname;
+  char *psname, *pdfname;
   char sss[MAXSTR];
 
   readcommands (argc, argv);
@@ -134,6 +137,7 @@ main (int argc, char **argv)
     gsimplify (0);
   }
 
+  if (calctime) settime() ;
   dumpgraph (graphoutname);
   dumpdotgraph (graphdotname);
   t = 0;
@@ -144,6 +148,8 @@ main (int argc, char **argv)
   if (t > 0) {
     sprintf (sss, "dot -T ps < %s  > %s", graphdotname, psname);
     system (sss);
+    sprintf(sss, "ps2pdf %s", psname) ;
+    system(sss) ;
   }
   printf ("## end of qpreroot\n");
 
@@ -218,7 +224,7 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "p:r:g:o:d:x:hvVs")) != -1) {
+  while ((i = getopt (argc, argv, "p:r:g:o:d:x:hvVst")) != -1) {
 
     switch (i) {
 
@@ -253,6 +259,11 @@ readcommands (int argc, char **argv)
     case 's':
       gsimp = YES;
       break;
+
+    case 't':
+      calctime = YES;
+      break;
+
 
     case 'v':
       printf ("version: %s\n", WVERSION);
@@ -290,6 +301,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "newnode:", &newnodename);
   getstring (ph, "edgename:", &edgename);
   getdbl (ph, "valbreak:", &valbreak);
+  getint(ph, "calctime:", &calctime) ;
 
   writepars (ph);
 

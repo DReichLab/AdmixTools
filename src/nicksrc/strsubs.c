@@ -8,6 +8,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <xsearch.h>   
 
 
 #define MAXSTR 10000
@@ -1786,3 +1787,24 @@ fgetstrap (char *buff, int maxlen, FILE * fff, int *ret)
   return buff;
 
 }
+int filehash(char *name) 
+{
+#define MAXKL 256   
+  FILE *fff;
+  char line[MAXKL];
+  int num = 0;
+  int hash = 0, thash ; 
+
+  num = 0;
+  if (name == NULL)
+    fatalx ("(filehash)  no name");
+  openit (name, &fff, "r");
+  while (fgets (line, MAXKL, fff) != NULL) {
+    thash = stringhash(line) ; 
+    hash += xhash1(thash ^ num) ;
+    ++num ; 
+  }
+  fclose (fff);
+  return abs(hash) ;
+}
+

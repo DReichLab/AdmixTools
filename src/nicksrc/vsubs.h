@@ -94,6 +94,7 @@ void rndit(double  *a, double *b, int n) ;
 void printimatw(int *a, int m, int n, int w) ;
 void printimatx(int *a, int m, int n) ;
 void printimat1(int *a, int m, int n) ;
+void printimat1x(int *a, int m, int n) ;
 void printimat(int *a, int m, int n) ;
 void printimatl(int *a, int m, int n) ;
 void printimatlfile(int *a, int m, int n, FILE *fff) ;
@@ -135,7 +136,7 @@ int mkfull(double *out, double *in, int n) ;
 
 /* storage allocation */
 int **initarray_2Dint(int numrows, int numcolumns, int initval);
-long **initarray_2Dlong(int numrows, int numcolumns, int initval);
+long **initarray_2Dlong(int numrows, int numcolumns, long initval);
 void free2Dint(int ***xx, int numrows) ;
 void free2Dlong(long ***xx, int numrows) ;
 double **initarray_2Ddouble(int numrows, int numcolumns, double initval);
@@ -185,11 +186,14 @@ int ldekodeitbb(int *xx, long kode, int len, int *baselist) ;
 int kodeitbb(int *xx, int len, int *baselist)  ;
 int dekodeitbb(int *xx, int kode, int len, int *baselist) ;
 
+long expmod(long a, long b, long n) ;
 int isprime(long num) ;
 long nextprime(long num) ;
+
 int irevcomp (int xx, int stringlen) ;
 long lrevcomp (long xx, int stringlen) ;
 void ismatch(int *a, int *b, int n, int val) ;
 int pmult(double *a, double *b, double *c, int na, int nb) ;
 void pdiff(double *a, double *b, int deg) ;
 void vswap(double *a, double *b, int n)  ;
+void setlong(long *pplen, long a, long b)   ;

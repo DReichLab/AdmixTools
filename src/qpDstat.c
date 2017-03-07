@@ -1,4 +1,4 @@
-#include <stdio.h>
+ #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -25,7 +25,7 @@
 */
 
 
-#define WVERSION   "701"
+#define WVERSION   "711"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -234,6 +234,8 @@ main (int argc, char **argv)
   if ((poplistname == NULL) && (popfilename == NULL))
     fatalx ("poplistname, popfilename both null\n");
 
+  if (xchrom == (numchrom + 1)) noxdata = NO;
+
   if (!bankermode)
     forceclade = NO;
 //if (fancynorm) printf("fancynorm used\n") ;
@@ -258,14 +260,6 @@ main (int argc, char **argv)
 
   k = getgenos (genotypename, snpmarkers, indivmarkers,
                 numsnps, numindivs, nignore);
-
-  for (i = 0; i < numsnps; i++) {
-    cupt = snpmarkers[i];
-    if (cupt->chrom >= (numchrom + 1))
-      cupt->ignore = YES;
-    if (cupt->chrom == zchrom)
-      cupt->ignore = YES;
-  }
 
   ZALLOC (eglist, numindivs, char *);
   ZALLOC (ztypes, numindivs, int);
@@ -337,21 +331,22 @@ main (int argc, char **argv)
   outpop = strdup ("NONE");
   outnum = 999;
 
+// copied from qp3Pop.c 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
     chrom = cupt->chrom;
-    if (cupt->chrom == (numchrom + 1))
-      cupt->ignore = YES;
     if ((xchrom > 0) && (chrom != xchrom))
       cupt->ignore = YES;
-
-    if (cupt->ignore)
-      continue;
-    if (numvalidgtx (indivmarkers, cupt, YES) <= 1) {
-      printf ("nodata: %20s\n", cupt->ID);
+    if ((noxdata) && (chrom == (numchrom + 1)))
       cupt->ignore = YES;
-    }
+    if (chrom == 0)
+      cupt->ignore = YES;
+    if (chrom > (numchrom + 1))
+      cupt->ignore = YES;
+    if (chrom == zchrom)
+      cupt->ignore = YES;
   }
+
 
   ZALLOC (xindex, numindivs, int);
   ZALLOC (xindlist, numindivs, Indiv *);
@@ -543,7 +538,7 @@ main (int argc, char **argv)
               printf (" %12.6f", serr[k]);
             }
 
-            printf (" %9.3f", rscore[k]);
+            printf (" %9.3f ", rscore[k]);
             if (dotree) {
               gettreelen (tlenz, tlen, f2, abx, bax, ncols, rpat[k],
                           numeg, bcols, nblocks);
@@ -625,7 +620,7 @@ main (int argc, char **argv)
     if (printsd) {
       printf (" %12.6f", serr[k]);
     }
-    printf (" %9.3f", rscore[k]);
+    printf (" %9.3f ", rscore[k]);
 
     if (dotree) {
       gettreelen (tlenz, tlen, f2, abx, bax, ncols, rpat[k],

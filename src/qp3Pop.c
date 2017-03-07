@@ -182,8 +182,7 @@ main (int argc, char **argv)
   printf ("## qp3Pop version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
-  if (xchrom == (numchrom + 1))
-    noxdata = NO;
+  if (xchrom == (numchrom + 1)) noxdata = NO;
   setjquart (pubjack, jackweight, jackquart);
   setinbreed (inbreed);
 

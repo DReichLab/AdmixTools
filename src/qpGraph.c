@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "5052 "
+#define WVERSION   "6040"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -51,6 +51,8 @@
 // worstz added for outliers 
 // weigntname added 
 // dottitle added
+// big new feature.  Multiple ancestors
+// initverbose added
 
 
 #define MAXFL  50
@@ -84,6 +86,7 @@ int hires = NO;
 int allsnpsmode = NO;
 int inbreed = NO;
 int initmixnum = -1;
+int initverbose = NO ;
 
 double blgsize = 0.05;          // block size in Morgans */ double *chitot ;
 double diag = 0.0;
@@ -164,9 +167,9 @@ void getmv (int a, int b, int c, int d, double *mean, double *var,
             double *xest, double *xvar);
 void bumpm (double *y, int a, int c, double val, double *xest);
 void bumpw (double *w, int a, int c, double val);
-void loadppwts (double *ppwts, double *pwts, int n);
+void lncoadppwts (double *ppwts, double *pwts, int n, double *awts, int nanc);
 double calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
-               int nrow, int ncol);
+               int nrow, int nedge, int nanc);
 void setwww (double **tmix, double *www, int n);
 void getwww (double **tmix, double *www, int n);
 double scorit (double *www, int n, double *pfix, double *ans);
@@ -194,6 +197,7 @@ int loadbad2 (int *bad2arr, char **eglist, int numeg, char *fname);
 int nbad2 (int a, int b, int c, int d);
 void wtov (double *vv, double **ww, int n);
 void vtow (double *vv, double **ww, int n);
+void loadppwts (double *ppwts, double *pwts, int n, double *awts, int nanc) ; 
 
 int
 main (int argc, char **argv)
@@ -227,7 +231,7 @@ main (int argc, char **argv)
   int *tagnums;
   Indiv **xindlist;
   int *xindex, *xtypes;
-  int nrows, ncols, nedge, m, nc;
+  int nrows, ncols, nedge, nanc, m, nc, nvar;
   double zn, zvar;
   int weightmode = NO;
   double chisq, ynrows;
@@ -268,7 +272,9 @@ main (int argc, char **argv)
   double *f3, *f4, *f3sig, *f4sig, *www, *ww2;
   int ng2, ng3, ng4;
   double *pwts;
-  double *ppwts;
+  double *ppwts, *awts;
+  int na2 ;
+  
   char **cnames;
   char **vnames;
   double yscore;
@@ -355,6 +361,8 @@ main (int argc, char **argv)
     if (rootname != NULL)
       reroot (rootname);
     nedge = getnumedge ();
+    nanc = getnumanc ();
+    printf("numedge: %d  numancestor: %d\n", nedge, nanc) ;
     ZALLOC (enames, nedge, char *);
     getenames (enames);
     ZALLOC (edgelock, nedge, int);
@@ -680,8 +688,7 @@ outpop:    (not present)
     y = vvar[u * nh2 + u];
     xvvar[u * nh2 + u] += y * f2diag;
   }
-  copyarr (vvar, xvvinv, nh2 * nh2);
-// wipe out diagonal
+// wipe out off diagonal
   for (u = 0; u < nh2; ++u) {
     for (v = 0; v < nh2; ++v) {
       if (u == v)
@@ -772,12 +779,23 @@ outpop:    (not present)
 */
 
   ZALLOC (pwts, numeg * MAXG, double);
+  ZALLOC (awts, numeg * MAXG, double);
 // initialization of weights done in loadgraph
   getgmix (vmix, lmix, &nmix);
 
   nwts = intsum (lmix, nmix);
-  getpwts (pwts, &nrows, &nedge);
-  ZALLOC (xxans, nedge, double);
+
+//  verbose = YES ; 
+  getpwts (pwts, awts, &nrows, &nedge, &nanc);
+  na2 = nanc*(nanc-1)/2 ;
+  nvar = nedge + na2 ;  
+  if (verbose) {
+   printf("zzmain: %d %d\n", nedge, nvar) ;
+   printmat(pwts, nrows, nvar) ;
+  }
+//  verbose = NO ;
+
+  ZALLOC (xxans, nvar, double);
   ZALLOC (wwtemp, nwts + 1, double);
   ZALLOC (vgsl, nmix + 1, double);
 
@@ -788,11 +806,11 @@ outpop:    (not present)
 
   if (initmixnum < 0)
     t = (int) pow (2, nmix);
-  initmixnum = MAX (100 * nmix, 10 * t);
+  initmixnum = MAX (100 * nmix, 20 * t);
 
   if (loadname == NULL) {
     y = initvmix (wwtemp, nwts, initmixnum);    // side effect sets vmix
-    printf ("initial admix wts:  score: %9.3f\n", y);
+//  printf ("initial admix wts:  score: %9.3f\n", y);
     getwww (vmix, wwtemp, nwts);
     putgmix (vmix);
   }
@@ -826,9 +844,10 @@ outpop:    (not present)
   printnl ();
   printnl ();
 
+  ZALLOC (ppwts, nh2 *nvar, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
+  loadppwts (ppwts, pwts, nedge, awts, nanc);
+  nvar = nedge + nanc*(nanc-1)/2 ;
 
-  ZALLOC (ppwts, nh2 * nedge, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
-  loadppwts (ppwts, pwts, nedge);
 
 /**
   for (k=0; k<nedge; ++k) { 
@@ -841,7 +860,7 @@ outpop:    (not present)
 */
 
 
-
+  getgmix(vmix, lmix, &nmix) ;
   setwww (vmix, wwtemp, 2 * nmix);
   y = scorit (wwtemp, nwts, &y1, ww2);
   printf ("initial score: %9.3f\n", y);
@@ -866,14 +885,16 @@ outpop:    (not present)
     verbose = YES;
   y = scorit (wwtemp, nwts, &y1, ww2);
 
-  dof = nh2 - nedge + intsum (ezero, nedge);
+  dof = nh2 -nvar  + intsum (ezero, nedge);
   dof -= (nwts - nmix);
+  
   ytail = rtlchsq (dof, y);
-  printf (" score: %12.3f  dof: %d nominal p-val %12.6f constraint: %12.6f\n",
-          y, dof, ytail, y1);
+  printf (" final score: %12.3f  dof: %d nominal p-val %12.6f\n",
+          y, dof, ytail);
 
 
   calcfit (ff3fit, ww2, numeg);
+
 // now print answers  
   printf ("ff3fit:\n");
   printmatz (ff3fit, egshort, numeg);
@@ -899,35 +920,52 @@ outpop:    (not present)
 void
 calcfit (double *ff3fit, double *ww, int numeg)
 {
-  double *pwts, *ppwts, *bestf;
+  double *pwts, *awts, *ppwts, *bestf;
   double *xwts;
   int u, x;
   int a, b, c, d;
-  int nrows, nedge, ng2;
+  int nrows, nedge, nanc, nvar, ng2;
   double y1, y2, x1, x2, diff, sig, z;
   double *zz;
 
   ZALLOC (pwts, numeg * MAXG, double);
-  getpwts (pwts, &nrows, &nedge);
-  ZALLOC (ppwts, nh2 * nedge, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
-  loadppwts (ppwts, pwts, nedge);
+  ZALLOC (awts, numeg * MAXG, double);
+  getpwts (pwts, awts, &nrows, &nedge, &nanc);
+  nvar = nedge + nanc*(nanc-1)/2 ; 
+
+  ZALLOC (ppwts, nh2 * nvar, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
+  loadppwts (ppwts, pwts, nedge, awts, nanc);
   ZALLOC (bestf, nh2, double);
 
   xwts = ppwts;
   ng2 = numeg + numeg;
   vzero (ff3fit, ng2);
   for (u = 0; u < nh2; ++u) {
-    y1 = bestf[u] = vdot (xwts, ww, nedge);
+    y1 = bestf[u] = vdot (xwts, ww, nvar);
     x = ind2f[u];
     b = x / numeg;
     c = x % numeg;
     ff3fit[b * numeg + c] = y1;
     ff3fit[c * numeg + b] = y1;
-    xwts += nedge;
+    xwts += nvar;
   }
 
+   if (verbose) {
+    printf("calcfit: %d %d\n", nedge, nanc) ;  
+    printf("pwts:\n") ;
+    printmat(pwts, nrows, nedge) ;
+    printnl() ;
+    printf("awts:\n") ;
+    printmat(awts, nrows, nanc) ;
+    printnl() ;
+    printmat(ppwts, nh2, nvar) ; 
+    printnl() ;
+    printmat(ww, 1, nvar) ;  
+    printnl() ;
+   }
 
   free (pwts);
+  free (awts);
   free (ppwts);
   free (bestf);
 
@@ -936,28 +974,31 @@ calcfit (double *ff3fit, double *ww, int numeg)
 void
 printfit (double *ww)
 {
-  double *pwts, *ppwts, *bestf;
+  double *pwts, *awts, *ppwts, *bestf;
   double *xwts;
   int u;
-  int x, a, b, c, d, t;
+  int x, a, b, c, d, t, f;
   int xa, xb, xc, xd;
-  int nrows, nedge;
+  int nrows, nedge, nanc, nvar ; 
   double y, worstz, y1, y2, x1, x2, diff, sig, z;
-  double *zz;
+  double *ffaa ; 
   FILE *outff;
   char ss[MAXSTR], ssworst[MAXSTR], *ssx ;
   int isworst ;
+  char **ancnames ;
 
   ZALLOC (pwts, numeg * MAXG, double);
-  getpwts (pwts, &nrows, &nedge);
-  ZALLOC (ppwts, nh2 * nedge, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
-  loadppwts (ppwts, pwts, nedge);
+  ZALLOC (awts, numeg * MAXG, double);
+  getpwts (pwts, awts, &nrows, &nedge, &nanc);
+  nvar = nedge + nanc*(nanc-1)/2 ; 
+  ZALLOC (ppwts, nh2 * nvar, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
+  loadppwts (ppwts, pwts, nedge, awts, nanc);
   ZALLOC (bestf, nh2, double);
 
   xwts = ppwts;
   for (u = 0; u < nh2; ++u) {
-    bestf[u] = vdot (xwts, ww, nedge);
-    xwts += nedge;
+    bestf[u] = vdot (xwts, ww, nvar);
+    xwts += nvar;
   }
   if (outliername != NULL)
     openit (outliername, &outff, "w");
@@ -969,6 +1010,41 @@ printfit (double *ww)
     if (badpop2name == NULL)
       break;
     vvar[u * nh2 + u] = vvdiag[u];
+  }
+
+  if (nanc>1) { 
+    printf("ancestor f-stats (estimated):\n") ;
+    ZALLOC(ancnames, nanc, char *) ; 
+    getancnames(ancnames) ;
+    c = 0;  
+    ffaa = ww + nedge ;
+    f = 0 ;
+    for (a=1; a<nanc; ++a) { 
+     for (b=a; b<nanc; ++b) { 
+      y = ffaa[f] ;
+      if (a==b) { 
+        printf("f2: %10s %10s %10s ", ancnames[c], ancnames[a], "") ;
+        printf("%12.6f", y) ;
+        printnl() ;
+      }
+      ++f ;
+     }
+    }
+    f = 0 ;
+    for (a=1; a<nanc; ++a) { 
+     for (b=a; b<nanc; ++b) { 
+      y = ffaa[f] ;
+      if (a!=b) { 
+        printf("f3:   %8s ; %8s %10s ", ancnames[c], ancnames[a], ancnames[b]) ;
+        printf("%12.6f", y) ;
+        printnl() ;
+      }
+      ++f ;
+     }
+    }
+    printnl() ;
+    printnl() ;
+    freeup(ancnames, nanc) ;
   }
 
   printf ("%10s %10s ", "", "");
@@ -1082,6 +1158,7 @@ printfit (double *ww)
 
   printnl ();
   free (pwts);
+  free (awts);
   free (ppwts);
   free (bestf);
   if (outliername != NULL)
@@ -1307,25 +1384,21 @@ scorit (double *www, int n, double *pfix, double *ans)
 {
 
   double **tmix;
-  double *pwts, *ppwts, *xxans;
-  double yfix, yscore, y, yy;
+  double *awts, *pwts, *aawts, *ppwts, *xxans;
+  double yfix, yscore, y, yy ; 
 
   int k, l, j;
   double *ppinv;
-  int nrows, nedge;
+  int nrows, nedge, nanc, na2, nvar;
   static int ncall = 0;
+  double tt[MAXG] ;
 
   ++ncall;
   if (n != intsum (lmix, nmix))
     fatalx ("dimension bug\n");
+
   tmix = initarray_2Ddouble (MAXG, MAXW, 0.0);
   getwww (tmix, www, n);
-
-  if (ncall < -1) {
-    printf ("zzzsc\n");
-    printmat (www, 1, n);
-    printmat (tmix[0], 1, lmix[0]);
-  }
 
   yfix = 0.0;
   for (k = 0; k < nmix; ++k) {
@@ -1342,27 +1415,52 @@ scorit (double *www, int n, double *pfix, double *ans)
 
     bal1 (tmix[k], l);
     yfix += (y - 1.0) * (y - 1.0);
+    tt[k] = tmix[k][0] ;
   }
 
   putgmix (tmix);
   ZALLOC (pwts, numeg * MAXG, double);
-  getpwts (pwts, &nrows, &nedge);
-  ZALLOC (xxans, nedge, double);
-  ZALLOC (ppwts, nh2 * nedge, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
-  loadppwts (ppwts, pwts, nedge);
+  ZALLOC (awts, numeg * MAXG, double);
+
+  getpwts (pwts, awts, &nrows, &nedge, &nanc);
+  na2 = nanc*(nanc-1)/2 ;  
+  nvar = nedge + na2 ;
+  ZALLOC (xxans, nvar, double);
+  ZALLOC (ppwts, nh2 * nvar, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
+  loadppwts (ppwts, pwts, nedge, awts, nanc);
 
 
   ppinv = vvinv;
   if (lsqmode)
     ppinv = xvvinv;
-  yscore = calcxx (xxans, ppinv, ppwts, vest, nh2, nedge);
+
+  yscore = calcxx (xxans, ppinv, ppwts, vest, nh2, nedge, nanc);
+
+  if (ncall == -1)  {
+    printf("init score: %9.3f\n", yscore) ;
+    printf("zzinit: %d %d ", nedge, nvar) ; 
+    if (nmix!=0) printmat(tt, 1, nmix) ;
+    else printnl()  ;
+    printf("pwts:\n") ;
+    printmat(pwts, nrows, nedge) ;
+    printnl() ;
+    printf("awts:\n") ;
+    printmat(awts, nrows, nanc) ;
+    printnl() ;
+    printmat(ppwts, nh2, nvar) ; 
+    printnl() ;
+    printmat(xxans, 1, nvar) ;  
+    printnl() ;
+    printfit(xxans) ;
+  }
 
   if (pfix != NULL)
     *pfix = yfix;
   if (ans != NULL)
-    copyarr (xxans, ans, nedge);
+    copyarr (xxans, ans, nvar);
   free2D (&tmix, MAXG);
   free (pwts);
+  free (awts);
   free (ppwts);
 
   return yscore;
@@ -1371,7 +1469,7 @@ scorit (double *www, int n, double *pfix, double *ans)
 
 double
 calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
-        int nrow, int ncol)
+        int nrow, int nedge,int nanc)
 
 /** 
  Set L(a) = P(a, *) * X(*) 
@@ -1382,10 +1480,30 @@ calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
 
   double *cc, *rr, *ll, *w1, *w2;
   double *pa, *pb;
-  int a, b, i, j, kret, u, x, c;
+  int a, b, i, j, kret, u, x, c, f=0;
+  int ncol, na2 ;
   double y;
   double ttans[100];
   double *q1, *q2;
+  int *constraint, *cpt ; 
+
+  na2 = nanc*(nanc-1)/2 ;
+  ncol = nedge + na2 ;
+
+  ZALLOC(constraint, ncol, int) ;
+  ivclear(constraint, 1, ncol) ;
+
+  cpt = constraint + nedge ; 
+
+  f = 0 ;
+  for (a=1; a< nanc; ++a) { 
+   for (b=a; b<nanc; ++b) { 
+    if (a != b) cpt[f] = 0 ;
+    ++f ;
+   }
+  }
+
+
 
   if (ezero == NULL) {
     ZALLOC (ezero, ncol, int);
@@ -1424,7 +1542,7 @@ calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
   }
 
   vst (q1, rr, -2, ncol);
-  qminposfix (q2, cc, q1, ncol, edgelock, lockvals, nedgelock);
+  qminposfixc (q2, cc, q1, ncol, edgelock, lockvals, nedgelock, constraint);
 
   copyarr (q2, xxans, ncol);
 
@@ -1443,21 +1561,48 @@ calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
   free (ll);
   free (w1);
   free (w2);
+  free(constraint) ;
 
   return y;
 }
 
-void
-loadppwts (double *ppwts, double *pwts, int n)
+void loadppwts (double *ppwts, double *pwts, int n, double *awts, int nanc)
 {
-  int u, x, b, c;
+  int u, x, b, c, d, e, f;
+  int na2, nam, nvar ; 
+  double *wa, *wb, *ww, *zwts ; 
+
+  na2 = nanc*(nanc-1)/2 ;
+  if (awts == NULL) na2 = 0 ;   
+  nam = nanc-1 ; 
+  nvar  = n + na2 ; 
+
+  zwts = ppwts ; 
   for (u = 0; u < nh2; u++) {
     x = ind2f[u];
     b = x / numeg;
     c = x % numeg;
     --b;
     --c;
-    vvt (ppwts + u * n, pwts + b * n, pwts + c * n, n);
+    vvt (zwts, pwts + b * n, pwts + c * n, n);
+    zwts += n ; 
+
+    if (na2==0) continue ;
+
+
+    wa = awts + b*nanc  ; 
+    wb = awts + c*nanc  ; 
+
+    f = 0 ;
+    for (d=1; d<=nanc-1; ++d) { 
+     for (e=d; e<=nanc-1; ++e) { 
+      zwts[f] = wa[d] * wb[e] ;   
+      if (d<e) zwts[f] += wa[e] * wb[d] ; 
+      ++f ;
+     }
+    }
+    zwts += na2 ; 
+   if (f != na2) fatalx("(loadppwts) logic bug %d %d\n", f, na2) ;
   }
 }
 
@@ -1668,8 +1813,8 @@ readcommands (int argc, char **argv)
   getint (ph, "inbreed:", &inbreed);
   getint (ph, "useallsnps:", &allsnpsmode);
   getint (ph, "numchrom:", &numchrom);
-  getint (ph, "inbreed:", &inbreed);
   getint (ph, "initmix:", &initmixnum);
+  getint (ph, "initverbose:", &initverbose);
   getint (ph, "fulloutlier:", &fulloutlier);
   getint (ph, "gsldetails:", &gsldetails);
   getint (ph, "terse:", &tersemode);
@@ -1937,21 +2082,24 @@ initvmix (double *wwinit, int nwts, int numiter)
 {
   double *ww, yold, ybest;
   double *ww2;
-  int iter, k;
+  int iter, k, a, b;
   int xniter;
   double y;
-  int nedge, ng2;
+  int nedge, ng2, nanc, nvar;
   double *ff3fit;
+  int ntrials = 0 ;
 
   if (nwts == 0)
     return 0 ;
   nedge = getnumedge ();
+  nanc =  getnumanc() ;
+  nvar = nedge + nanc*(nanc-1)/2 ;
   ng2 = numeg * numeg;
 
   ZALLOC (ff3fit, ng2, double);
 
   ZALLOC (ww, nwts, double);
-  ZALLOC (ww2, nedge, double);
+  ZALLOC (ww2, nvar, double);
 
   getgmix (vmix, lmix, &nmix);
   setwww (vmix, wwinit, nwts);
@@ -1961,28 +2109,22 @@ initvmix (double *wwinit, int nwts, int numiter)
   ybest = scorit (ww, nwts, NULL, ww2);
   if (verbose)
     printf ("initv: %4d %9.3f\n", -1, ybest);
-  calcfit (ff3fit, ww2, numeg);
+    calcfit (ff3fit, ww2, numeg);
 // now print answers  
 
-/**
-  if (verbose) {
-	  printf("ff3fit:\n") ;
-	  printmatz(ff3fit, egshort, numeg) ;
-	  printnl() ;
-	  printvals(vmix, ww2, nedge) ;
-	  printfit(ww2) ;
-   }
-*/
-
-
-
-  for (iter = 1; iter <= numiter; ++iter) {
+  xniter = numiter/nmix ;
+  xniter /= 2   ;
+  for (iter = 1; iter <= xniter; ++iter) {
     setrand (ww, nwts);
     y = scorit (ww, nwts, NULL, NULL);
-// printf("inititer: %3d %12.3f\n", iter, y) ;
+    ++ntrials ;
     if (y < ybest) {
       ybest = y;
       copyarr (ww, wwinit, nwts);
+      if (initverbose) {
+       printf("initmixiter: %4d %9.3f\n", iter, ybest) ;
+       fflush(stdout) ; 
+      }
     }
   }
   getwww (vmix, wwinit, nwts);
@@ -1990,24 +2132,49 @@ initvmix (double *wwinit, int nwts, int numiter)
   getgmix (vmix, lmix, &nmix);
   setwww (vmix, wwinit, nwts);
 
-  xniter = numiter / nwts;
-  if (verbose) {
-    printf ("initv: %4d %9.3f\n", 0, ybest);
-  }
+  xniter = numiter / nmix ;
+  xniter /= 2 ; 
   for (iter = 1; iter <= xniter; ++iter) {
     for (k = 0; k < nmix; ++k) {
       getwww (vmix, wwinit, nwts);
       setsimp (vmix[k], lmix[k]);
       setwww (vmix, ww, nwts);
       y = scorit (ww, nwts, NULL, NULL);
+      ++ntrials ;
       if (y < ybest) {
         ybest = y;
         copyarr (ww, wwinit, nwts);
-        printf ("initv: %4d %9.3f\n", iter, ybest);
+        if (initverbose) {
+         printf("initmixiter (setsimp): %4d : %d %9.3f\n", iter,  k,  ybest) ;
+         fflush(stdout) ; 
+        }
       }
     }
+    if (nmix<=1) continue ;
+    for (k=0; k<nmix; ++k) { 
+    pick2(nmix, &a, &b) ; 
+    getwww (vmix, wwinit, nwts);
+    setsimp (vmix[a], lmix[a]);
+    setsimp (vmix[b], lmix[b]);
+    setwww (vmix, ww, nwts);
+// shrink back towards current
+    vst(ww, ww, 0.5, nwts) ;   
+    vst(ww2, wwinit, 0.5, nwts) ;  
+    vvp(ww, ww, ww2, nwts) ;
 
-  }
+      y = scorit (ww, nwts, NULL, NULL);
+      ++ntrials ;
+      if (y < ybest) {
+        ybest = y;
+        copyarr (ww, wwinit, nwts);
+        if (initverbose) {
+         printf("initmixiter (setsimp2): %4d : %d %d  %9.3f\n", iter,  a, b,   ybest) ;
+         fflush(stdout) ; 
+        }
+      }
+     }
+    }
+  printf("number of initial random trials: %d\n", ntrials) ;
   getwww (vmix, wwinit, nwts);
   putgmix (vmix);
   getgmix (vmix, lmix, &nmix);

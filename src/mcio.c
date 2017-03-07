@@ -1050,8 +1050,10 @@ readindpeddata (Indiv ** indivmarkers, char *fname)
       if (nsplit < 6)
 	fatalx ("%s bad line: %s", fname, line);
       indx = indivmarkers[num];
+/**
       if (strlen (sx) >= IDSIZE)
 	fatalx ("ID too long: %s\n", sx);
+*/
       maxnsplit = MAX (maxnsplit, nsplit);
 
       sx = spt[1];

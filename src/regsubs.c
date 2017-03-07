@@ -49,8 +49,10 @@ regressit (double *ans, double *eq, double *rhs, int m, int n)
 
 
   ret = solvit (co, rr, n, ans);
-  if (ret < 0)
+  if (ret < 0) {
+    printf("*** warning bad regress\n") ;
     return -1000.0;
+  }
   for (i = 0; i < m; i++) {
     ww[i] = rhs[i] - vdot (ans, eq + i * n, n);
   }

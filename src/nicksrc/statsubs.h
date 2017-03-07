@@ -10,6 +10,8 @@
 
 #define	LOG_SQRT_PI     0.5723649429247000870717135 /* log (sqrt (pi)) */
 #define	I_SQRT_PI       0.5641895835477562869480795 /* 1 / sqrt (pi) */
+#define	I_PI            0.3183098861837906715377675 /* 1 / pi  */
+#define PI              3.1415926535897932384626434  
 #define	BIGX           20.0         /* max value to represent exp (x) */
 #define	ex(x)             (((x) < -BIGX) ? 0.0 : exp (x))
 #define	SQRT_PI       (1.0/I_SQRT_PI)  /* sqrt (pi) */
@@ -27,6 +29,7 @@ double z2x2(double *a) ;
 double conchi(double *a, int m, int n)  ;
 double conchiv(double *a, int m, int n)  ;
 double chitest(double *a, double *p, int n) ;
+double pi() ;
 
 double xlgamma(double x) ;
 double psi(double x) ;
@@ -100,3 +103,13 @@ double ubias(int a, int n, int k) ;
 double scx(double *W, double *mean, double *x, int d)  ; // maybe should be in vsubs  
 void dither(double *xout, double *xin, int n)  ;
 void probit(double *xout, double *xin, int n)  ;
+// Berk-Jones 
+double bjugauss(double *p, double *u, double *a, int n)  ; // return M_n  (Berk-Jones) 
+void bjasympt(double *ptail, double *mtail, double *tail, double mplus, double mminus, int n)  ; 
+void bj2(double *aa, double *bb, int a, int b,  double *plpv, double *prpv, double *ppv)  ;
+double genhp(double **hp, int a, int b) ; 
+double genhpt(int a, int b, int *lt, int *rt)  ; 
+void gentail(double **ltail, double **rtail, double **hp, int a, int b)  ;
+void setthresh(int *thresh, double **tail, int a, int b, double stat, int mode)  ; 
+void bj2x(int *type, int a, int b, double *plpv, double *prpv, double *ppv)  ; 
+

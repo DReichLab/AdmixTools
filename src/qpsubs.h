@@ -41,6 +41,7 @@ void putewts(double *ewts)  ;
 void getewts(double *ewts)  ;
 void getezero(int *zpat)  ;
 int  getrootlabel(char *sss) ;
+void getancnames(char **names) ;
 
 void setallsnpsmode(int mode)  ;
 void loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg) ;
@@ -203,7 +204,7 @@ void dumpdotgraph_title(char *gdotname, char *title) ;
 int  grdof() ;
 void getgmix(double **vmix, int *lmix, int *nmix) ;
 void putgmix(double **vmix) ; 
-void getpwts(double *pwts, int *nrows, int *nedge) ;
+void getpwts(double *pwts, double *awts, int *nrows, int *nedge, int *nanc) ;
 void getpwtsx(double *pwts, int *nrows, int *nedge) ;
 int getedgelock(int *lock, double *vals) ;
 void getenames(char **enames) ; 
@@ -221,6 +222,7 @@ int dellabel(char *label) ;
 int gsimplify(int n) ;
 int findlabel(char *label) ;               
 
+int getnumanc() ; 
 int getnumedge() ; 
 void reroot(char *nodename)  ;
 

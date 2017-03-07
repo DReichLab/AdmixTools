@@ -240,6 +240,8 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 	continue;
       l = vl[nf] = j * rank + k;	// column k
 // variables to force to zero
+      if (verbose)
+	printf ("zzvl %d %9.3f\n", nf, vl[nf], vfl[nf]);
       ++nf;
     }
     ++k;

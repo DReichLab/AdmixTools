@@ -23,10 +23,11 @@
 /** 
  // like qp4wave but all left pops analyzed together
  // chrom: 23 now supported
+ // bugrix in doq4vecb (same as qpAdm)
 */
 
 
-#define WVERSION   "310"
+#define WVERSION   "400"
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -420,135 +421,136 @@ readcommands (int argc, char **argv)
 
 double
 doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
-	  int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
-	  int *rlist, int nr, int nblocks)
+  int nrows, int ncols, int lbase, int *llist, int nl, int rbase,
+  int *rlist, int nr, int nblocks)
 // return dof estimate
 {
 
-  int a, b, c, d;
-  int k, g, i, col, j;
-  double ya, yb, y;
-  double *top, *bot, *wjack, *wbot, *wtop, **bjtop;
-  double *bwt;
-  double ytop, ybot;
-  double y1, y2, yscal;
-  double *w1, *w2, *ww, m1, m2;
-  double *mean;
+int a, b, c, d;
+int k, g, i, col, j;
+double ya, yb, y;
+double *top, *bot, *wjack, *wbot, *wtop, **bjtop;
+double *bwt;
+double ytop, ybot;
+double y1, y2, yscal;
+double *w1, *w2, *ww, m1, m2;
+double *mean;
 
-  int bnum, totnum;
-  int ret;
-  double *f4;
-  int **xtop, *xt;
-  int dim = nl * nr;
-  int isok;
+int bnum, totnum;
+int ret;
+double *f4, *f4bot;
+int dim = nl * nr;
+int isok;
+int **xtop, *xt ;  
 
-  if (nrows == 0)
-    fatalx ("badbug\n");
-
-
-  ZALLOC (f4, dim, double);
-  ZALLOC (mean, dim, double);
-  ZALLOC (wjack, nblocks, double);
-  ZALLOC (wtop, dim, double);
-  ZALLOC (wbot, dim, double);
-
-  ZALLOC (gtop, dim, double);
-  ZALLOC (gbot, dim, double);
-
-  btop = initarray_2Ddouble (nblocks, dim, 0);
-  bbot = initarray_2Ddouble (nblocks, dim, 0);
-
-  bjtop = initarray_2Ddouble (nblocks, dim, 0);
-  xtop = initarray_2Dint (dim, 4, 0);
-
-  k = 0;
-  for (a = 0; a < nl; ++a) {
-    for (b = 0; b < nr; ++b) {
-      xt = xtop[k];
-      xt[0] = lbase;
-      xt[1] = llist[a];
-      xt[2] = rbase;
-      xt[3] = rlist[b];
-      ++k;
-    }
-  }
-
-  totnum = 0;
-  for (col = 0; col < ncols; ++col) {
-    bnum = bcols[col];
-    if (bnum < 0)
-      continue;
-    if (bnum >= nblocks)
-      fatalx ("logic bug\n");
-    vzero (f4, dim);
-    isok = YES;
-    if (allsnps)
-      isok = NO;
-    for (a = 0; a < dim; ++a) {
-      ret = getf4 (counts[col], xtop[a], &y);
-      if ((allsnps == NO) && (ret < 0)) {
-	isok = NO;
-	break;
-      }
-      if ((allsnps == YES) && (ret < 0))
-	continue;
-      if (allsnps == YES)
-	isok = YES;
-      bbot[bnum][a] += 1;
-      if (ret == 2)
-	fatalx ("bad pop in numerator\n");
-      f4[a] = y;
-    }
-    if (isok == NO)
-      continue;
-    vvp (btop[bnum], btop[bnum], f4, dim);
-    ++wjack[bnum];
-    ++totnum;
-  }
-
-  sum2D (gtop, btop, nblocks, dim);
-  sum2D (gbot, bbot, nblocks, dim);
-
-  vsp (gbot, gbot, 1.0e-20, dim);
-  vvd (mean, gtop, gbot, dim);
-
-  for (k = 0; k < nblocks; k++) {
-    top = btop[k];
-    bot = bbot[k];
-    vvm (wtop, gtop, top, dim);
-    vvm (wbot, gbot, bot, dim);
-    vvd (bjtop[k], wtop, wbot, dim);
-  }
+if (nrows == 0)
+fatalx ("badbug\n");
 
 
-  free (f4);
-  free2Dint (&xtop, dim);
-  free (wtop);
-  free (wbot);
+ZALLOC (f4, dim, double);
+ZALLOC (f4bot, dim, double);
+ZALLOC (mean, dim, double);
+ZALLOC (wjack, nblocks, double);
+ZALLOC (wtop, dim, double);
+ZALLOC (wbot, dim, double);
 
-  for (k = 0; k < nblocks; ++k) {
-    if (allsnps == NO)
-      break;
-    wjack[k] = asum (bbot[k], dim);
-  }
+ZALLOC (gtop, dim, double);
+ZALLOC (gbot, dim, double);
 
-  wjackvest (ymean, yvar, dim, mean, bjtop, wjack, nblocks);
+btop = initarray_2Ddouble (nblocks, dim, 0);
+bbot = initarray_2Ddouble (nblocks, dim, 0);
 
-  bnblocks = nblocks;
-  bdim = dim;
+bjtop = initarray_2Ddouble (nblocks, dim, 0);
+xtop = initarray_2Dint (dim, 4, 0);
 
-  y1 = asum (wjack, nblocks);
-  y2 = asum2 (wjack, nblocks);
-
-  free (wjack);
-  free (mean);
-  free2D (&bjtop, nblocks);
-
-  nsnpused = totnum;
-  return (y1 * y1) / y2;	// a natural estimate for degrees of freedom in F-test. 
-
+k = 0;
+for (a = 0; a < nl; ++a) {
+for (b = 0; b < nr; ++b) {
+xt = xtop[k];
+xt[0] = lbase;
+xt[1] = llist[a];
+xt[2] = rbase;
+xt[3] = rlist[b];
+++k;
+// printf("xtk: %3d ", k) ; printimat(xt, 1, 4) ;
+}
 }
 
+totnum = 0;
+for (col = 0; col < ncols; ++col) {
+bnum = bcols[col];
+if (bnum < 0)
+continue;
+if (bnum >= nblocks)
+fatalx ("lobotgic bug\n");
+
+vzero (f4, dim);
+vzero (f4bot, dim);
+
+isok = YES;
+for (a = 0; a < dim; ++a) {
+ret = getf4 (counts[col], xtop[a], &y);
+if (ret==2) {
+ printf("bad quad: "); printimat(xtop[1], 1, 4) ;
+ fatalx("bad quad\n") ;
+}
+f4[a] = y ;  
+f4bot[a] = 1 ; 
+if (ret<0) {
+ f4[a] = f4bot[a] =  0 ;
+}
+ if ((allsnps == NO) && (ret < 0))  isok = NO;
+}
+if (allsnps == YES) isok = YES;
+if (isok == NO) continue;
+vvp (btop[bnum], btop[bnum], f4, dim);
+vvp (bbot[bnum], bbot[bnum], f4bot, dim);
+++wjack[bnum];
+++totnum;
+}
+
+sum2D (gtop, btop, nblocks, dim);
+sum2D (gbot, bbot, nblocks, dim);
+
+vsp (gbot, gbot, 1.0e-20, dim);
+vvd (mean, gtop, gbot, dim);
+
+for (k = 0; k < nblocks; k++) {
+top = btop[k];
+bot = bbot[k];
+vvm (wtop, gtop, top, dim);
+vvm (wbot, gbot, bot, dim);
+vvd (bjtop[k], wtop, wbot, dim);
+}
+
+
+free (f4);
+free (f4bot);
+free (wtop);
+free (wbot);
+
+for (k = 0; k < nblocks; ++k) {
+if (allsnps == NO) break;
+wjack[k] = asum (bbot[k], dim);
+}
+
+wjackvest (ymean, yvar, dim, mean, bjtop, wjack, nblocks);
+
+bnblocks = nblocks;
+bdim = dim;
+
+y1 = asum (wjack, nblocks);
+y2 = asum2 (wjack, nblocks);
+
+free (wjack);
+free (mean);
+free2D (&bjtop, nblocks);
+free2Dint (&xtop, dim);
+
+nsnpused = totnum;
+return (y1 * y1) / y2;	// a natural estimate for degrees of freedom in F-test. 
+
+}
 
 
 double
@@ -565,46 +567,75 @@ hfix (int *x)
   return h / yt;
 }
 
+
 int
 getf4 (int **xx, int *indx, double *ans)
 {
 
-  int a, i;
-  double y0, y1, ytot, ff[4];
-  double h0, h1;
+int a, i;
+double ya, yb,  y0, y1, ytot, ff[4];
+double h0, h1;
+int isok, f4mode ;
+// f4mode == NO => f2, or f3
 
-  *ans = 0.0;
-  if (indx == NULL) {
-    *ans = 1.0;
-    return 2;
-  }
+*ans = 0.0;
+if (indx == NULL) {
+*ans = 1.0;
+return 2;
+}
 
-  for (i = 0; i < 4; ++i) {
-    a = indx[i];
-    if (a < 0) {
-      *ans = 1.0;
-      return 2;
-    }
-    y0 = (double) xx[a][0];
-    y1 = (double) xx[a][1];
-    ytot = y0 + y1;
-    if (ytot <= 0.0)
-      return -1;
-    ff[i] = y0 / ytot;
-  }
-  *ans = (ff[0] - ff[1]) * (ff[2] - ff[3]);
-  a = indx[0];
-  h0 = hfix (xx[a]);
-  a = indx[1];
-  h1 = hfix (xx[a]);
-  if (indx[0] == indx[2])
-    *ans -= h0;
-  if (indx[0] == indx[3])
-    *ans += h0;
-  if (indx[1] == indx[3])
-    *ans -= h1;
-  if (indx[1] == indx[2])
-    *ans += h1;
-  return 1;
+isok = f4mode = YES ; 
+
+ if (indx[0] == indx[2]) f4mode = NO ;
+ if (indx[0] == indx[3]) f4mode = NO ;
+ if (indx[1] == indx[2]) f4mode = NO ;
+ if (indx[1] == indx[3]) f4mode = NO ;
+
+for (i = 0; i < 4; ++i) {
+ ff[i] = -10*(i+1) ;  // silly value ;
+ a = indx[i];
+ if (a < 0) {
+  *ans = 1.0;
+  return 2;
+ }
+
+
+ *ans - 0 ;
+ y0 = (double) xx[a][0];
+ y1 = (double) xx[a][1];
+ ytot = y0 + y1;
+ if (ytot <= 0.0) {
+  isok = NO ;
+  continue ;
+ }
+ ff[i] = y0 / ytot;
+}
+if ((isok == NO) && (f4mode == NO)) return -1 ;
+
+ya = fabs(ff[0]-ff[1])  ;  
+yb = fabs(ff[2]-ff[3])  ;  
+
+if (f4mode && (MIN(ya, yb) < .00001)) { 
+ return 1 ; 
+}
+if (isok == NO) return -1 ;
+
+*ans = (ff[0] - ff[1]) * (ff[2] - ff[3]);
+if (f4mode == YES) return 1 ;
+
+a = indx[0];
+h0 = hfix (xx[a]);
+a = indx[1];
+h1 = hfix (xx[a]);
+if (indx[0] == indx[2])
+*ans -= h0;
+if (indx[0] == indx[3])
+*ans += h0;
+if (indx[1] == indx[3])
+*ans -= h1;
+if (indx[1] == indx[2])
+*ans += h1;
+return 1;
 
 }
+

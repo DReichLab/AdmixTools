@@ -75,12 +75,13 @@ char *strnotchar(char *s, char c) ;
 char *findupper(char *s) ;
 char *fgetstrap(char *buff, int maxlen, FILE *fff, int *ret)  ;
 char readtonl(FILE *fff) ; 
+int  filehash(char *name) ;
 
 
 
 
 #define ZALLOC(item,n,type)      if ((item = (type *)calloc((n),sizeof(type))) == NULL) \
-                                        fatalx("Unable to allocate %d unit(s) for item \n",n)
+                                        fatalx("Unable to allocate %ld unit(s) for item \n", (long) n)
 
 #undef MAX
 #undef MIN

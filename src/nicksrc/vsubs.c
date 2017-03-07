@@ -1,6 +1,7 @@
 #include  <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <math.h>
 #include "strsubs.h"
 #include "vsubs.h"
@@ -877,7 +878,7 @@ void
 printmatx (double *a, int m, int n)
 
 /** 
- print a matrix n wide m rows  
+ print a matrix n wide m rows   no final nl
 */
 {
   printmatwx (a, m, n, 5);
@@ -1177,6 +1178,28 @@ printimatl (int *a, int m, int n)
       }
     }
     printf ("\n");
+  }
+}
+
+void
+printimatlx (int *a, int m, int n)
+
+/** 
+ print a matrix n wide m rows  %10d format
+ no final newline  
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      printf ("%10d ", a[i * n + j]);
+      jmod = (j + 1) % 10;
+      if ((jmod == 0) && (j < (n - 1))) {
+        printf ("  ...\n");
+      }
+    }
+    if (i < (m - 1))
+      printf ("\n");
   }
 }
 
@@ -1536,7 +1559,6 @@ initarray_2Dint (int numrows, int numcolumns, int initval)
   int i, j;
   int **array;
 
-
   ZALLOC (array, numrows, int *);
   for (i = 0; i < numrows; i++) {
     ZALLOC (array[i], numcolumns, int);
@@ -1547,7 +1569,7 @@ initarray_2Dint (int numrows, int numcolumns, int initval)
 }
 
 long **
-initarray_2Dlong (int numrows, int numcolumns, int initval)
+initarray_2Dlong (int numrows, int numcolumns, long initval)
 {
   int i, j;
   long **array;
@@ -2195,14 +2217,33 @@ dekodeitbb (int *xx, int kode, int len, int *baselist)
 
 }
 
+
+long expmod(long a, long b, long n) 
+{ 
+ int t ; 
+ long ax=1, bx, z, z2 ; 
+ t = b % 2 ;  
+ if (t==1) ax = a ; 
+ bx = b/2; 
+ if (bx == 0) return ax % n ; 
+ z = expmod(a, bx, n) ; 
+ z2 = (z*z) % n ; 
+ z2 = (ax*z2) % n ; 
+ 
+ return z2 ; 
+
+}
+
 long
 nextprime (long num)
-// return nextprime >= num 
+// return nextprime >= num
 {
-  long x;
+  long x, q;
   int t;
 
   for (x = num;; ++x) {
+    q = expmod(2, x-1, x) ;  
+    if (q != 1 ) continue ; 
     t = isprime (x);
     if (t == YES)
       return x;
@@ -2221,7 +2262,10 @@ isprime (long num)
     return YES;
   top = nnint (sqrt (num));
 
-  for (x = 2; x <= top; ++x) {
+  t = num % 2 ; 
+  if (t==0) return NO ;  
+
+  for (x = 3; x <= top; x += 2) {
     t = num % x;
     if (t == 0)
       return NO;
@@ -2230,6 +2274,7 @@ isprime (long num)
   return YES;
 
 }
+
 
 int
 irevcomp (int xx, int stringlen)
@@ -2366,6 +2411,18 @@ void vswap(double *a, double *b, int n)
   copyarr(w, b, n) ;
 
   free(w) ;
+}
+
+void setlong(long *pplen, long a, long b)  
+// *pplen is a*b with check for overflow
+{
+  long long int xx ; 
+
+  xx = a*b ;  
+  if (xx > LONG_MAX) fatalx("overflow:   Are you on a 32 bit machine?\n") ;
+  *pplen = xx ;
+
 
 }
+
 

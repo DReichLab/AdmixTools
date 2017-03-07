@@ -13,6 +13,7 @@
 #include "admutils.h"
 
 #define WVERSION "2000"
+#define MAXA  10
 
 extern int verbose;
 extern int isinit;
@@ -22,7 +23,8 @@ static int *ispath = NULL;
 static int ispathlen = 0;
 // ispath [x*numvertex=y] = 1 iff path from x -> y
 
-#define HUGEDIS (1 << 29)
+char *bugstring ; 
+#define HUGEDIS 999999    
 
 
 typedef struct
@@ -49,14 +51,16 @@ typedef struct
   struct EDGE *eleft;
   struct EDGE *eright;
   struct EDGE *eparent;
+  struct NODE *adaughter[10] ; 
+  int numadaughter ;
   double time;
   int popsize;
   int numwind;
   int windex[MAXW];
   double wmix[MAXW];
-  int supernum;
   int isdead;
   int eglistnum;
+  int ancestornumber ;
 } NODE;
 
 typedef struct
@@ -82,6 +86,7 @@ static char **forcenames;	// edgenames forced to zero
 static int nforce = 0;
 
 static int numedge = -1, numvertex = -1, numadmix, numpops;
+static int numancestor = 0 ;
 int ncall;
 
 void initelist (EDGE * elist, int n);
@@ -89,7 +94,7 @@ void initvlist (NODE * vlist, int n);
 int readit (char *cname);
 int qreadit (char *cname);
 int vindex (char *vname, NODE * vlist, int n);
-void addwts (double *vv, NODE * node, double weight);
+void addwts (double *vv, double *aa, NODE * node, double weight);
 void addadmix (char *vertname, char **avnames, double *ww, int nt);
 int getadwts (char **spt, char **ssx, double *ww, int nsplit, int *n);
 int getextlabel (NODE * node, char *sss);
@@ -100,9 +105,11 @@ void fixnode (NODE * node);
 void fixedge (EDGE * edge);
 NODE *root ();
 NODE *vert (char *nodename);
-void setdistances (NODE * node);
+void setdistances ();
 void cleardis ();
 void setdis (NODE * node, int dis);
+void setdisq(NODE *node, int dis)  ;
+void setdisqq(NODE *node, int dis)  ;
 int setxx (NODE * node, NODE ** xx);
 void reroot (char *nodename);
 void settime ();
@@ -330,6 +337,11 @@ getvmind (int ind, int *adind, int *wind)
 }
 
 int
+getnumanc ()
+{
+  return numancestor ;
+}
+int
 getnumadmix ()
 {
   if (numadmix < 0)
@@ -384,30 +396,6 @@ putewts (double *ewts)
   }
 }
 
-void
-getvwts (double *pwts, int *nrows, int *nedge)
-// pwts preallocated like getpwts but for all vertices
-{
-  double *vv;
-  int i, k;
-  NODE *node;
-  double *wts;
-
-  wts = pwts;
-  ZALLOC (vv, numedge, double);
-  for (k = 0; k < numvertex; ++k) {
-    node = &vlist[k];
-    ncall = 0;
-    vzero (vv, numedge);
-    addwts (vv, node, 1.0);
-    copyarr (vv, wts, numedge);
-    wts += numedge;
-  }
-  free (vv);
-  *nrows = numvertex;
-  *nedge = numedge;
-}
-
 int
 getpopinfo (char *name, int *popsize, int num)
 {
@@ -424,84 +412,54 @@ getpopinfo (char *name, int *popsize, int num)
 }
 
 void
-getpwtsx (double *pwts, int *nrows, int *nedge)
+getpwts (double *pwts, double *awts, int *nrows, int *nedge, int *nanc)
 // pwts preallocated
-// like getpwts but no special treatment of base
 {
-  double *vv;
+  double *vv, *aa, *vbase, *abase;
   int i, k;
   NODE *node;
-  double *wts;
+  double *wts, *xwts;
 
   wts = pwts;
+  xwts = awts;
   ZALLOC (vv, numedge, double);
+  ZALLOC (vbase, numedge, double);
+  ZALLOC (aa, numancestor+1, double);
+  ZALLOC (abase, numancestor+1, double);
+
   for (i = 0; i < numpops; ++i) {
-    k = egnum[i];
-    node = &vlist[k];
-    ncall = 0;
-    vzero (vv, numedge);
-    addwts (vv, node, 1.0);
-    copyarr (vv, wts, numedge);
-    wts += numedge;
-  }
-  free (vv);
-  *nrows = numpops;
-  *nedge = numedge;
-}
-
-void
-getpwts (double *pwts, int *nrows, int *nedge)
-// pwts preallocated
-{
-  double *vv;
-  int i, k;
-  NODE *node;
-  double *wts;
-
-  wts = pwts;
-  ZALLOC (vv, numedge, double);
-  for (i = 1; i < numpops; ++i) {
 // base population is zero
     k = egnum[i];
     node = &vlist[k];
+    bugstring = node -> name ;
     ncall = 0;
     vzero (vv, numedge);
-    addwts (vv, node, 1.0);
-    copyarr (vv, wts, numedge);
+    vzero (aa, numancestor+1);
+    addwts (vv, aa, node, 1.0);
+    if (i==0) { 
+     copyarr (vv, vbase, numedge);
+     copyarr (aa, abase, numancestor) ;  
+//   printmat(abase, 1, numancestor)  ;  
+     continue ;
+    }
+    vvm(wts, vv, vbase, numedge) ;
     wts += numedge;
+    if (xwts != NULL) {
+      vvm(xwts, aa, abase, numancestor) ;
+      xwts += numancestor;
+    }
   }
   free (vv);
-  *nrows = numpops - 1;
+  free (vbase);
+  free (aa);
+  free (abase);
+  *nrows = numpops - 1 ;
   *nedge = numedge;
+  *nanc  = numancestor ;
 }
 
 void
-getpnwts (double *pwts, int *nrows, int *nedge)
-// pwts preallocated.  Like pnwts but for all pops
-{
-  double *vv;
-  int i, k;
-  NODE *node;
-  double *wts;
-
-  wts = pwts;
-  ZALLOC (vv, numedge, double);
-  for (i = 0; i < numvertex; ++i) {
-// base population is zero
-    node = &vlist[i];
-    ncall = 0;
-    vzero (vv, numedge);
-    addwts (vv, node, 1.0);
-    copyarr (vv, wts, numedge);
-    wts += numedge;
-  }
-  free (vv);
-  *nrows = numvertex - 1;
-  *nedge = numedge;
-}
-
-void
-addwts (double *vv, NODE * node, double weight)
+addwts (double *vv, double *aa, NODE * node, double weight)
 // recursively fill in generalized path weights
 {
   NODE *tnode;
@@ -514,15 +472,24 @@ addwts (double *vv, NODE * node, double weight)
     fatalx ("looping\n");
   }
 
-  if (node->isroot)
+  if (verbose) {  
+   printf("zzaddw  %s %s %9.3f\n", bugstring, node -> name, weight) ;
+   printmat(vv, 1, numedge) ;
+   printnl() ;
+  }
+
+  if (node->ancestornumber>=0) {
+    t = node -> ancestornumber ; 
+    if (aa!= NULL) aa[t] += weight ;
     return;
+  }
   t = node->numwind;
   if (t > 0) {
     for (k = 0; k < t; ++k) {
       wt = node->wmix[k];
       vind = node->windex[k];
       tnode = &vlist[vind];
-      addwts (vv, tnode, weight * wt);
+      addwts (vv, aa, tnode, weight * wt);
     }
     return;
   }
@@ -533,7 +500,7 @@ addwts (double *vv, NODE * node, double weight)
   t = edge->edgenum;
   vv[t] += weight;
   tnode = (NODE *) edge->up;
-  addwts (vv, tnode, weight);
+  addwts (vv, aa, tnode, weight);
 }
 
 void
@@ -893,7 +860,6 @@ addlabel (char *label, char *vertname)
   node = &vlist[t];
   node->label = strdup (label);
   eglist[numpops] = strdup (label);
-//  printf("zz %d %s\n", numpops, label) ;
   ++numpops;
 }
 
@@ -1036,13 +1002,25 @@ loadeglist (char ***pxeglist, int xnumeg)
   return numpops;
 
 }
+void getancnames(char **names) 
+{
+  NODE *node  ;
+  int t, k ; 
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k];
+    if ((node -> isadmix == NO) && (node -> parent == NULL)) { 
+     t  = node -> ancestornumber ; 
+     names[t] = strdup(node -> name) ;
+    }
+  }
+}
 
 int
 loadgraph (char *rname, char ***peglist)
 {
   int maxnodes = MAXG;
-  int numeg, k;
-  NODE *node;
+  int numeg, k, j, numanc, t, vind, s;
+  NODE *node, *tnode;
   EDGE *ep;
 
   freegraph ();
@@ -1061,13 +1039,38 @@ loadgraph (char *rname, char ***peglist)
 
   node = root ();
   node->isroot = YES;
+  node->ancestornumber = 0 ;
+  node -> numadaughter = 0 ;
   // printf("numvertex: %d  root: %s\n", numvertex, node -> name) ;
-  numeg = 0;
+  numeg = numanc =  0;
   ZALLOC (eglist, MAXG, char *);
   for (k = 0; k < numvertex; ++k) {
     node = &vlist[k];
-    if (node->label == NULL)
-      continue;
+    if ((node -> isadmix == NO) && (node -> parent == NULL)) { 
+     if (node -> isroot == NO) { 
+      ++numanc ;
+      node -> ancestornumber = numanc ;
+     }
+    }
+
+     t = node->numwind;
+     if (t > 0) {
+     for (j = 0; j < t; ++j) {
+      vind = node->windex[j];
+      tnode = &vlist[vind];
+      s = tnode -> numadaughter ; 
+//    printf("zzad %d %d", j, s) ; 
+      if (s==MAXA) fatalx("ad overflow\n") ; 
+      tnode  -> adaughter[s] = (struct NODE *) node ; 
+/**
+      printf(" %s %s", node -> name, tnode ->name) ; 
+      printnl() ;
+*/
+      ++tnode -> numadaughter ;
+     }
+    }
+
+    if (node->label == NULL) continue;
     eglist[numeg] = strdup (node->label);
     egnum[numeg] = k;
     node->eglistnum = numeg;
@@ -1075,6 +1078,7 @@ loadgraph (char *rname, char ***peglist)
   }
 
   numpops = numeg;
+  numancestor = numanc + 1 ; 
 
   if (peglist != NULL) {
     ZALLOC (*peglist, numeg, char *);
@@ -1130,12 +1134,13 @@ initvlist (NODE * vlist, int n)
     node->numwind = 0;
     node->popsize = 0;
     node->time = 0.0;
-    node->supernum = -1;
     node->eglistnum = -1;
     node->isdead = NO;
+    node -> numadaughter = 0 ;
 
     ivclear (node->windex, -1, MAXW);
     node->left = node->right = node->parent = NULL;
+    node -> ancestornumber = -1 ;
   }
 }
 
@@ -1185,6 +1190,7 @@ readit (char *cname)
       node = &vlist[n];
       node->name = strdup (spt[1]);
       ++n;
+      if (nsplit>2) node -> time = atof(spt[2]) ;
       okline = YES;
     }
     kret = strcmp (sx, "label");
@@ -1219,6 +1225,8 @@ readit (char *cname)
       s1 = spt[2];
       s2 = spt[3];
       edge->name = strdup (sx);
+      if (nsplit < 4) 
+	  fatalx ("bad line %s\n", line);
       if (nsplit == 6) {
 	sx = spt[5];
 	t = strcmp (sx, "lock");
@@ -1268,6 +1276,8 @@ readit (char *cname)
 	  fatalx ("bad line %s\n", line);
 	edge->isfixed = YES;
       }
+      if (nsplit < 4) 
+	  fatalx ("bad line %s\n", line);
       if (nsplit >= 5) {
 	sx = spt[4];
 	t = strcmp (sx, "zero");
@@ -1336,7 +1346,7 @@ readit (char *cname)
       okline = YES;
     }
     if (okline == NO) {
-      printf ("*** warning bad line:\n, %s\n", line);
+      fatalx ("*** bad line:\n%s\n", line);
     }
     freeup (spt, nsplit);
     continue;
@@ -1378,7 +1388,7 @@ getadwts (char **spt, char **ssx, double *ww, int nsplit, int *n)
   }
 
   bal1 (ww, nt);		// balance weights
-  vclip (ww, ww, .001, 1.0, nt);
+  vclip (ww, ww, 0, 1.0, nt);
   bal1 (ww, nt);		// balance weights
   isinit = YES;
   *n = nt;
@@ -1423,16 +1433,6 @@ vindex (char *vname, NODE * vlist, int n)
   return -1;
 }
 
-void
-setrand (double *ww, int n)
-// fill array with uniform  
-{
-  int k;
-
-  for (k = 0; k < n; ++k) {
-    ww[k] = DRAND ();
-  }
-}
 
 void
 setsimp (double *ww, int n)
@@ -1465,6 +1465,19 @@ setpopsizes (int *sizes, char **eglist, int numeg)
     totpop += sizes[t];
   }
 }
+char *fixss(char *sss) 
+{
+    char *ttt ;    
+
+    ttt = strdup(sss) ;
+    substring (&ttt, ":", "_");
+    substring (&ttt, "-", "_");
+    substring (&ttt, ".", "_");
+
+
+    return ttt ;  
+
+}
 
 void
 dumpdotgraph_title (char *graphdotname, char *title)
@@ -1494,8 +1507,7 @@ dumpdotgraph_title (char *graphdotname, char *title)
 /** 
  we process vertices from the root 
 */
-  xroot = root ();
-  setdistances (xroot);
+  setdistances ();
   ZALLOC (dd, numvertex, int);
   ZALLOC (ind, numvertex, int);
   for (k = 0; k < numvertex; ++k) {
@@ -1505,17 +1517,6 @@ dumpdotgraph_title (char *graphdotname, char *title)
   isortit (dd, ind, numvertex);	// ind stores indices in distance order
 
   //1 dump vertex
-/**
-   for (k=0; k<numvertex; ++k) {  
-    kk = ind[k] ;
-    node = &vlist[kk] ;
-    freestring(&sss);  
-    sss=strdup(node -> name) ;  
-    substring(&sss, ":", "_") ;
-    substring(&sss, "-", "_") ;
-    fprintf(fff, "vertex %12s %9.0f\n", sss, node -> time) ;
-   }
-*/
   //2 dump label
   fprintf (fff, "digraph G { \n");
   fprintf (fff, "size = \"7.5,10\" ;\n");
@@ -1529,17 +1530,9 @@ dumpdotgraph_title (char *graphdotname, char *title)
     if (node->label == NULL)
       continue;
     freestring (&sss);
-    sss = strdup (node->name);
-    substring (&sss, ":", "_");
-    substring (&sss, "-", "_");
+    sss = fixss(strdup (node->name));
     fprintf (fff, "%12s ", sss);
-    fprintf (fff, " [ label = \"%s\" ] ; ", node->label);
-/**
-    t = node -> popsize ;
-    if ((totpop > 0) || (t>0)) {
-     fprintf(fff, " %5d", t) ;
-    }
-*/
+    fprintf (fff, " [ label = \"%s\" ] ; ", fixss(node->label));
     fprintf (fff, "\n");
   }
 // dump ledge, redge 
@@ -1593,6 +1586,7 @@ dumpdotgraph (char *graphdotname)
   char sform[10];
   double val, vmax;
   char *sss = NULL;
+  char ssx[1024], *sx ;
 
   if (graphdotname == NULL)
     return;
@@ -1603,8 +1597,7 @@ dumpdotgraph (char *graphdotname)
 /** 
  we process vertices from the root 
 */
-  xroot = root ();
-  setdistances (xroot);
+  setdistances ();
   ZALLOC (dd, numvertex, int);
   ZALLOC (ind, numvertex, int);
   for (k = 0; k < numvertex; ++k) {
@@ -1614,17 +1607,6 @@ dumpdotgraph (char *graphdotname)
   isortit (dd, ind, numvertex);	// ind stores indices in distance order
 
   //1 dump vertex
-/**
-   for (k=0; k<numvertex; ++k) {  
-    kk = ind[k] ;
-    node = &vlist[kk] ;
-    freestring(&sss);  
-    sss=strdup(node -> name) ;  
-    substring(&sss, ":", "_") ;
-    substring(&sss, "-", "_") ;
-    fprintf(fff, "vertex %12s %9.0f\n", sss, node -> time) ;
-   }
-*/
   //2 dump label
   fprintf (fff, "digraph G { \n");
   fprintf (fff, "size = \"7.5,10\" ;\n");
@@ -1635,11 +1617,9 @@ dumpdotgraph (char *graphdotname)
     if (node->label == NULL)
       continue;
     freestring (&sss);
-    sss = strdup (node->name);
-    substring (&sss, ":", "_");
-    substring (&sss, "-", "_");
+    sss = fixss(strdup (node->name));
     fprintf (fff, "%12s ", sss);
-    fprintf (fff, " [ label = \"%s\" ] ; ", node->label);
+    fprintf (fff, " [ label = \"%s\" ] ; ", fixss(node->label));
 /**
     t = node -> popsize ;
     if ((totpop > 0) || (t>0)) {
@@ -1709,18 +1689,16 @@ pedge (FILE * fff, NODE * anode, NODE * bnode, double val, int mode)
   }
 
   if (val > 0) {
-    sprintf (s2, "label = \"%s\"", s3);
+    sprintf (s2, "label = \"%s\"", fixss(s3));
   }
 
   freestring (&ss2);
   ss2 = strdup (anode->name);
-  substring (&ss2, ":", "_");
-  substring (&ss2, "-", "_");
+  ss2 = fixss(ss2) ;
   fprintf (fff, "%s -> ", ss2);
   freestring (&ss3);
   ss3 = strdup (bnode->name);
-  substring (&ss3, ":", "_");
-  substring (&ss3, "-", "_");
+  ss3 = fixss(ss3) ;
   fprintf (fff, "%s ", ss3);
   fprintf (fff, "[ %s %s ] ; ", s1, s2);
   fprintf (fff, "\n");
@@ -1751,8 +1729,7 @@ dumpgraph (char *graphname)
 /** 
  we process vertices from the root 
 */
-  xroot = root ();
-  setdistances (xroot);
+  setdistances ();
   ZALLOC (dd, numvertex, int);
   ZALLOC (ind, numvertex, int);
   for (k = 0; k < numvertex; ++k) {
@@ -2080,7 +2057,7 @@ reroot (char *nodename)
   NODE *node, *oldroot, *tnode, *nn[4], *ttnode, *xx[3];
   EDGE *edge, *newedge, ee[3];
   int nee, nset, t, dd[4], nw, k, j, unset, dmin, jmin;
-  int numiter;
+  int numiter, dis;
 
   node = vert (nodename);
   if (node == NULL)
@@ -2091,22 +2068,77 @@ reroot (char *nodename)
   if (nee == 3)
     fatalx ("3 edges from new root: %s\n", nodename);
 /* set distances */
-  setdistances (node);
+  cleardis() ;
+  setdisqq(node, 0);
   oldroot->isroot = NO;
-  node->isroot = NO;
-  for (k = 0; k < numvertex; ++k) {
-    tnode = &vlist[k];
-    fixnode (tnode);
+  node->isroot = YES;
+
+  for (dis = 0; dis <= 20; ++dis)  {
+   for (k=0; k<numvertex; ++k) { 
+    tnode = &vlist[k] ;
+    if (tnode -> distance == dis) fixnode(tnode) ;
+   }
   }
+
   for (k = 0; k < numedge; ++k) {
     edge = &elist[k];
     fixedge (edge);
   }
   node->isroot = YES;
+  node -> ancestornumber = oldroot -> ancestornumber ;
+  oldroot -> ancestornumber = -1 ;  
+  node -> isleaf = isleaf(node) ;
+  oldroot -> isleaf = isleaf(oldroot) ;
+}
+
+void setdisq(NODE *node, int dis) 
+{ 
+
+ int t, x, i ; 
+ NODE *tnode ;
+
+ t = node -> distance ; 
+ if (t<dis) return ;  
+ node -> distance = dis ;  
+
+ tnode = (NODE *) node -> left ; 
+ if (tnode != NULL) setdisq(tnode, dis+1) ;
+ tnode = (NODE *) node -> right ; 
+ if (tnode != NULL) setdisq(tnode, dis+1) ;
+
+ x = node -> numadaughter ; 
+ for (i=0; i<x; ++i) { 
+  tnode = (NODE *) node -> adaughter[i] ; 
+  setdisq(tnode, dis+1) ;
+ }
+
+}
+
+void setdisqq(NODE *node, int dis) 
+// like setdisq but no admixture edges
+{ 
+
+ int t, x, i ; 
+ NODE *tnode ;
+
+ t = node -> distance ; 
+ if (t<dis) return ;  
+ node -> distance = dis ;  
+
+ tnode = (NODE *) node -> left ; 
+ if (tnode != NULL) setdisqq(tnode, dis+1) ;
+ tnode = (NODE *) node -> right ; 
+ if (tnode != NULL) setdisqq(tnode, dis+1) ;
+ tnode = (NODE *) node -> left ; 
+ if (tnode != NULL) setdisqq(tnode, dis+1) ;
+ tnode = (NODE *) node -> parent ; 
+ if (tnode != NULL) setdisqq(tnode, dis+1) ;
+
+
 }
 
 void
-setdistances (NODE * node)
+setdistances ()
 {
   NODE *oldroot, *tnode, *nn[4], *ttnode, *xx[3], *unode;
   EDGE *edge, *newedge, ee[3];
@@ -2114,45 +2146,13 @@ setdistances (NODE * node)
   int numiter;
 
   cleardis ();
-  oldroot = root ();
-  setdis (node, 0);
-  if (oldroot->distance > 1000)
-    fatalx ("%s must be in base tree\n", node->name);
-  numiter = 0;
-  for (;;) {
-    nset = 0;
-    ++numiter;
-    if (numiter > 20)
-      fatalx ("looping...\n");
-    unset = NO;			// vertex unset ??  
-    for (k = 0; k < numvertex; ++k) {
-      tnode = &vlist[k];
-      if (tnode->isdead)
-	continue;
-      nw = tnode->numwind;
-      if (nw == 0)
-	continue;
-      if (tnode->distance < HUGEDIS)
-	continue;
-      for (j = 0; j < nw; ++j) {
-	ttnode = nn[j] = &vlist[tnode->windex[j]];
-	dd[j] = ttnode->distance;
-      }
-      ivlmaxmin (dd, nw, NULL, &jmin);
-      dmin = dd[jmin];
-      if (dmin > 999999) {
-	unset = YES;
-	unode = nn[jmin];
-	continue;		// not set
-      }
-      setdis (tnode, dmin + 1000);	// next tree
-      ++nset;
-    }
-    if (nset == 0)
-      break;
+  for (k = 0; k < numvertex; ++k) {
+   tnode = &vlist[k] ;  
+   if (tnode -> ancestornumber >= 0) setdisq(tnode, 0) ;
   }
-  if (unset)
-    fatalx ("node not linked to root... %s\n", unode->name);
+  for (k = 0; k < numvertex; ++k) {
+   tnode = &vlist[k] ;  
+  }
 }
 
 void
@@ -2163,10 +2163,19 @@ fixedge (EDGE * edge)
   n1 = (NODE *) edge->up;
   n2 = (NODE *) edge->down;
 
-  if (n1->distance < n2->distance)
+  if (n1->distance <= n2->distance)
     return;
   edge->up = (struct NODE *) n2;
   edge->down = (struct NODE *) n1;
+}
+
+int
+isleaf (NODE * node)
+{
+ if (node -> left != NULL) return NO ;
+ if (node -> right != NULL) return NO ;
+ if (node -> numadaughter > 0) return NO ;
+ return YES ;
 }
 
 void
@@ -2176,8 +2185,7 @@ fixnode (NODE * node)
   int qleft = NO, j, nee, basedis, ddis;
   NODE *xx[3], *tnode;
 
-  if (node->numwind > 0)
-    return;
+  if (node -> distance == HUGEDIS) return ;  
   nee = setxx (node, xx);	// neighbours
   node->parent = node->left = node->right = NULL;
   basedis = node->distance;
@@ -2193,7 +2201,7 @@ fixnode (NODE * node)
     if (!qleft)
       node->left = (struct NODE *) tnode;
     qleft = YES;
-  }
+ }
   node->eparent = (struct EDGE *) xedge (node, (NODE *) node->parent);
   if (node->eparent != NULL) {
     tnode = (NODE *) node->parent;
@@ -2201,6 +2209,7 @@ fixnode (NODE * node)
   }
   node->eleft = (struct EDGE *) xedge (node, (NODE *) node->left);
   node->eright = (struct EDGE *) xedge (node, (NODE *) node->right);
+  node -> isleaf = isleaf(node) ;
 }
 
 EDGE *
@@ -2293,7 +2302,7 @@ void
 settime ()
 // fill in times on nodes
 {
-  double konst = 10000;		// nominal scaling for drift
+  double konst = 20000;		// nominal scaling for drift
   double *eq, *rhs, *pp, *ans;
   int nneq, neq, nv, t, v1, v2, j, x, k;
   int ww[100];
@@ -2301,6 +2310,7 @@ settime ()
   EDGE *edge;
   int *vnum;
 
+  printf("settime called\n") ; 
   nneq = 2 * (numedge + numvertex) + 10000;
   nv = numvertex;
 
@@ -2311,28 +2321,24 @@ settime ()
 
   ZALLOC (eq, nneq * nv, double);
   ZALLOC (rhs, nneq, double);
-  ZALLOC (vnum, nv, int);
   ZALLOC (ans, nv, double);
-  idperm (vnum, nv);
-  setvnum (vnum, egnum, numpops);
   for (j = 0; j < numvertex; ++j) {
     node = &vlist[j];
     t = node->numwind;
     if (t == 0)
       continue;
-    setvnum (vnum, node->windex, t);
   }
-  printimat (vnum, 1, nv);
 
   pp = eq;
+  neq = 0 ;
   for (k = 0; k < nv; ++k) {
     n1 = &vlist[k];
-    pp[k] = 1.0e-6;
-    if (n1->isroot)
-      pp[k] = 1.0e6;
+    if ((n1 -> isleaf) == NO) continue;
+    pp[k] = 1 ;     
+    rhs[neq] = 0 ;
     pp += nv;
+    ++neq ;
   }
-  neq = nv;
   for (j = 0; j < numedge; ++j) {
     edge = &elist[j];
     n1 = (NODE *) edge->up;
@@ -2340,10 +2346,8 @@ settime ()
     rhs[neq] = edge->val * konst;
     v1 = n1->gnode;
     v2 = n2->gnode;
-    v1 = vnum[v1];
-    v2 = vnum[v2];
-    printf ("zz %s %d %d\n", n1->name, n1->gnode, v1);
-    printf ("zz %s %d %d\n", n2->name, n2->gnode, v2);
+    printf ("zz1 %s %d %d\n", n1->name, n1->gnode);
+    printf ("zz2 %s %d %d\n", n2->name, n2->gnode);
     pp[v2] = 1.0;
     pp[v1] = -1.0;
     pp += nv;
@@ -2360,16 +2364,14 @@ settime ()
   printmat (ans, 1, nv);
   printnl ();
   for (k = 0; k < nv; ++k) {
-    v1 = vnum[k];
     n1 = &vlist[k];
-    n1->time = ans[v1];
+    n1->time = ans[k];
   }
   free (eq);
   free (rhs);
-  free (vnum);
 }
 
-void
+void 
 setvnum (int *vnum, int *list, int n)
 {
 
@@ -2469,7 +2471,7 @@ qreadit (char *cname)
 
 
     if (okline == NO) {
-      printf ("*** warning bad line:\n %s\n", line);
+      fatalx ("*** bad line:\n %s\n", line);
     }
     freeup (spt, nsplit);
     continue;
@@ -2486,419 +2488,6 @@ ckline (char *line, int ns, int n)
 {
   if (ns < n)
     fatalx ("bad line %s\n", line);
-}
-
-void
-superalloc (int **xv, int ***xe, int ***adv, int **aedge)
-{
-
-  int t;
-
-  ZALLOC (*xv, numvertex, int);
-  ZALLOC (*aedge, numadmix, int);
-
-  *xe = initarray_2Dint (numedge, 3, -1);
-  t = MAX (numadmix, 1);
-  *adv = initarray_2Dint (t, MAXW, -1);
-}
-
-void
-supersetup (int *xvlist, int *nxvlist, int **xelist, int *nxelist,
-	    int **admixv, int *admixedge, int *nxalist)
-{
-  NODE *xroot, *n1, *n2, *node;
-  EDGE *edge;
-  int *vnum;
-  int nxv, nxe, nxa;
-  int k, t;
-
-
-  fflush (stdout);
-  nxa = nxv = nxe = 0;
-
-  for (k = 0; k < numedge; ++k) {
-    edge = &elist[k];
-    n1 = (NODE *) edge->up;
-    n2 = (NODE *) edge->down;
-    xelist[nxe][0] = n1->gnode;
-    xelist[nxe][1] = n2->gnode;
-    xelist[nxe][2] = edge->edgenum;
-    ++nxe;
-  }
-  for (k = 0; k < numvertex; ++k) {
-    node = &vlist[k];
-    if (node->isadmix)
-      continue;
-    node->supernum = nxv;
-    xvlist[nxv] = k;
-    ++nxv;
-  }
-  for (k = 0; k < numadmix; ++k) {
-    node = adlist[k];
-    ivclear (admixv[nxa], -1, MAXW);
-    t = node->numwind;
-    if (t <= 0)
-      fatalx ("bad logic\n");
-    copyiarr (node->windex, admixv[nxa], t);
-
-    if (node->left == NULL)
-      fatalx ("bad admix node %s\n", node->name);
-    if (node->right != NULL)
-      fatalx ("bad admix node (redge) %s\n", node->name);
-    edge = (EDGE *) node->eleft;
-    admixedge[nxa] = edge->edgenum;
-    printf ("zz %s %d\n", edge->name, edge->edgenum);
-    fflush (stdout);
-    ++nxa;
-  }
-
-  *nxvlist = nxv;
-  *nxelist = nxe;
-  *nxalist = nxa;
-}
-
-void
-superest (double *xmean, double *xvar, double *svar, double *yobs,
-	  int nxvlist, int *eelist)
-{
-  double tiny = 1.0e-12;
-  int x, a, t;
-  int nv2 = nxvlist * nxvlist;
-  double *v1, *v2, *rhs, *ww;
-  int *xtype;
-  NODE *node;
-
-  ZALLOC (v1, nv2, double);
-  ZALLOC (v2, nv2, double);
-  ZALLOC (rhs, nxvlist, double);
-  ZALLOC (ww, nxvlist, double);
-  ZALLOC (xtype, nxvlist, int);
-
-  copyarr (svar, v1, nv2);
-  for (x = 0; x < nxvlist; ++x) {
-    v1[x * nxvlist + x] += tiny;
-  }
-  pdinv (v2, v1, nxvlist);
-  for (x = 0; x < numpops; ++x) {
-    t = eelist[x];
-    rhs[t] = ww[t] = yobs[x];
-    xtype[t] = 1;
-  }
-  for (a = 0; a < nxvlist; ++a) {
-    if (xtype[a] == 1)
-      continue;
-    rhs[a] = -vdot (v2 + a * nxvlist, ww, nxvlist);
-  }
-  for (x = 0; x < numpops; ++x) {
-    t = eelist[x];
-    for (a = 0; a < nxvlist; ++a) {
-      v2[t * nxvlist + a] = v2[a * nxvlist + t] = 0.0;
-    }
-    v2[t * nxvlist + t] = 1.0;
-  }
-  pdinv (v1, v2, nxvlist);
-// mulmat(xmean, v1, rhs, nxvlist, nxvlist, 1) ;
-  solvit (v2, rhs, nxvlist, xmean);
-  copyarr (v1, xvar, nv2);
-
-  for (x = 0; x < numpops; ++x) {
-    t = eelist[x];
-    for (a = 0; a < nxvlist; ++a) {
-      xvar[t * nxvlist + a] = xvar[a * nxvlist + t] = 0.0;
-    }
-  }
-
-  free (v1);
-  free (v2);
-  free (rhs);
-  free (ww);
-  free (xtype);
-
-}
-
-void
-supergetvnames (char **vnames, int *xvlist, int nxvlist)
-{
-  int a, x;
-  NODE *node;
-
-  for (a = 0; a < nxvlist; ++a) {
-    x = xvlist[a];
-    node = &vlist[x];
-    vnames[a] = node->name;
-  }
-
-}
-
-void
-supergetvar (double *svar,
-	     int *xvlist, int nxvlist, int **xelist, int nxelist,
-	     int **admixv, int *admixedge, int nxalist)
-{
-  double *pwts;
-  double *ee, *ww;
-  char **vnames;
-  int t, a, b, k, x1, x2, nrows, ncols;
-  double y;
-  NODE *node;
-  EDGE *edge;
-
-  ZALLOC (pwts, numvertex * numedge, double);
-  ZALLOC (vnames, numvertex, char *);
-  ZALLOC (ee, numedge, double);
-  ZALLOC (ww, numedge, double);
-
-  getpnwts (pwts, &nrows, &ncols);
-  vzero (svar, nxvlist * nxvlist);
-
-  supergetvnames (vnames, xvlist, nxvlist);
-  for (a = 0; a < nxelist; ++a) {
-    k = xelist[a][2];
-    edge = &elist[k];
-    t = edge->edgenum;
-    ee[t] = edge->val;
-  }
-
-  for (a = 0; a < nxvlist; ++a) {
-    x1 = xvlist[a];
-    for (b = 0; b < nxvlist; ++b) {
-      x2 = xvlist[b];
-
-      vvt (ww, pwts + x1 * numedge, pwts + x2 * numedge, numedge);
-      vvt (ww, ww, ee, numedge);
-      y = asum (ww, numedge);
-
-      svar[a * nxvlist + b] = y;
-      svar[b * nxvlist + a] = y;
-    }
-  }
-/**
-  printf("supergetvar: \n") ;
-  printmatz(svar, vnames, nxvlist) ;
-  printnl() ;
-*/
-
-  free (ee);
-  free (ww);
-  free (pwts);
-  free (vnames);
-
-}
-
-void
-superreest (double *s2,
-	    int *xvlist, int nxvlist, int **xelist, int nxelist, int **admixv,
-	    int *admixedge, int nxalist)
-{
-#define MAXP (MAXW+1)
-  int i, xn1, xn2, z1, z2, eenum, k, t, tp, kk, a, b;
-  double vv[MAXP], ww[MAXP], xx[MAXP * MAXP], xxx[MAXW * MAXW];
-  double y;
-  NODE *n1, *n2, *nn;
-  EDGE *edge;
-  int cc[MAXP];
-  static int ncall = 0;
-
-  ++ncall;
-  for (i = 0; i < nxelist; ++i) {
-    xn1 = xelist[i][0];
-    xn2 = xelist[i][1];
-    eenum = xelist[i][2];
-    n1 = &vlist[xn1];
-    n2 = &vlist[xn2];
-    edge = &elist[eenum];
-    if (n1->isadmix)
-      continue;
-
-    z1 = n1->supernum;
-    z2 = n2->supernum;
-
-    cc[0] = z1;
-    cc[1] = z2;
-    ww[0] = 1.0;
-    ww[1] = -1.0;
-    t = 1;
-    rcsquish (xx, s2, cc, nxvlist, t + 1);
-    mulmat (vv, xx, ww, t + 1, t + 1, 1);
-    y = vdot (vv, ww, t + 1);
-    edge->val = y;
-
-/**
-   y  = s2[z1*nxvlist+z1] ;  
-   y += s2[z2*nxvlist+z2] ;  
-   y -= 2.0*s2[z1*nxvlist+z2] ;
-   edge -> val = y ;
-*/
-
-  }
-
-  for (i = 0; i < nxelist; ++i) {
-    break;
-    xn1 = xelist[i][0];
-    xn2 = xelist[i][1];
-    eenum = xelist[i][2];
-    n1 = &vlist[xn1];
-    n2 = &vlist[xn2];
-    edge = &elist[eenum];
-    if (n1->isadmix == NO)
-      continue;
-    t = n1->numwind;
-    for (k = 0; k < t; ++k) {
-      kk = n1->windex[k];
-      nn = &vlist[kk];
-      cc[k] = nn->supernum;
-      ww[k] = n1->wmix[k];
-    }
-    bal1 (ww, t);
-    cc[t] = n2->supernum;
-    ww[t] = -1.0;
-    rcsquish (xx, s2, cc, nxvlist, t + 1);
-    mulmat (vv, xx, ww, t + 1, t + 1, 1);
-    y = vdot (vv, ww, t + 1);
-    edge->val = y;
-  }
-// weight estimation
-  for (i = 0; i < nxelist; ++i) {
-    xn1 = xelist[i][0];
-    xn2 = xelist[i][1];
-    eenum = xelist[i][2];
-    n1 = &vlist[xn1];
-    n2 = &vlist[xn2];
-    edge = &elist[eenum];
-    if (n1->isadmix == NO)
-      continue;
-    t = n1->numwind;
-    for (k = 0; k < t; ++k) {
-      kk = n1->windex[k];
-      nn = &vlist[kk];
-      cc[k] = nn->supernum;
-    }
-
-    cc[t] = n2->supernum;
-    tp = t + 1;
-    rcsquish (xx, s2, cc, nxvlist, tp);
-    copyarr (n1->wmix, ww, t);
-
-    ww[t] = -1.0;
-    if (ncall < 10) {
-      printf ("zz %s %d ", n1->name, n1->isfixed);
-      printmat (n1->wmix, 1, t);
-    }
-
-    if (n1->isfixed == YES) {
-      mulmat (vv, xx, ww, t + 1, t + 1, 1);
-      y = vdot (vv, ww, t + 1);
-      edge->val = y;
-      continue;
-    }
-    for (a = 0; a < t; a++) {
-      for (b = 0; b < t; b++) {
-	xxx[a * t + b] = xx[a * tp + b] + xx[t * tp + t];
-	xxx[a * t + b] -= xx[a * tp + t];
-	xxx[a * t + b] -= xx[b * tp + t];
-      }
-    }
-    y = qwmax (xxx, ww, t);
-/**
-   printf("zzqw\n") ;
-   printmat(xxx, t, t) ;
-   printnl() ;
-   printmat(ww, 1,  t) ;
-   printf("zzqwans %12.6f %12.6f\n", edge -> val, y) ;
-*/
-    copyarr (ww, n1->wmix, t);
-    edge->val = y;
-    if (ncall < 10) {
-      printf ("zz %s %d ", n1->name, n1->isfixed);
-      printmat (n1->wmix, 1, t);
-    }
-  }
-
-  return;
-
-}
-
-void
-supergetvals (double **admixw, double *elen,
-	      int *xvlist, int nxvlist, int **xelist, int nxelist,
-	      int **admixv, int *admixedge, int nxalist)
-{
-  double *ewts, **vmix;
-  int k, t, eenum;
-  EDGE *edge;
-  NODE *node;
-
-  ZALLOC (ewts, numedge, double);
-  vmix = initarray_2Ddouble (MAXG, MAXW, 0.0);
-
-  getewts (ewts);
-  for (k = 0; k < nxelist; ++k) {
-    t = xelist[k][2];
-    elen[k] = ewts[t];
-  }
-
-  for (k = 0; k < nxalist; ++k) {
-    eenum = admixedge[k];
-    edge = &elist[eenum];
-    node = (NODE *) edge->up;
-    t = node->numadmix;
-    if (t < 0)
-      fatalx ("logic bug: %s %s\n", node->name, edge->name);
-    copyarr (node->wmix, admixw[k], t);
-  }
-}
-
-void
-superputvals (double **admixw, double *elen,
-	      int *xvlist, int nxvlist, int **xelist, int nxelist,
-	      int **admixv, int *admixedge, int nxalist)
-{
-  double *ewts, **vmix;
-  int k, t, eenum;
-  EDGE *edge;
-  NODE *node;
-
-  ZALLOC (ewts, numedge, double);
-  vmix = initarray_2Ddouble (MAXG, MAXW, 0.0);
-
-  for (k = 0; k < nxelist; ++k) {
-    t = xelist[k][2];
-    ewts[t] = elen[k];
-  }
-  putewts (ewts);
-
-  for (k = 0; k < nxalist; ++k) {
-    eenum = admixedge[k];
-    edge = &elist[eenum];
-    node = (NODE *) edge->up;
-    t = node->numadmix;
-    if (t < 0)
-      fatalx ("logic bug: %s %s\n", node->name, edge->name);
-    copyarr (admixw[k], vmix[t], MAXW);
-    if (node->isfixed) {
-      copyarr (node->wmix, vmix[t], MAXW);
-    }
-  }
-  putgmix (vmix);
-
-
-  free (ewts);
-  free2D (&vmix, MAXG);
-
-}
-
-void
-supereglist (int *eelist)
-{
-  int k, t;
-  NODE *node;
-
-  ivzero (eelist, numvertex);
-  for (t = 0; t < numpops; ++t) {
-    k = egnum[t];
-    node = &vlist[k];
-    eelist[t] = node->supernum;
-  }
 }
 
 void
