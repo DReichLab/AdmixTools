@@ -1028,7 +1028,7 @@ f3scz (double *estn, double *estd, SNP * cupt, Indiv ** indm,
   y = (p1+p2+p3)/3.0 ; 
 
   if (y<.0001) ispoly = 0 ; 
-  if (y<.9999) ispoly = 0 ;
+  if (y>.9999) ispoly = 0 ;
 
 
 // if (h1 == 0.0) return ;

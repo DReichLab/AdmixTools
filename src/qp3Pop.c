@@ -25,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "410"
+#define WVERSION   "412"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -719,7 +719,8 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
       fprintf (fff, "  %9.3f ", ytop);
       //   fprintf(fff, "%9.3f ", ybot/2.0) ;         
       fprintf (fff, " %c ", cupt->alleles[0]);
-      fprintf (fff, "%c", cupt->alleles[1]);
+      fprintf (fff, " %c", cupt->alleles[1]);
+      fprintf (fff, " %d", ret) ;
       fprintf (fff, "\n");
 
 
