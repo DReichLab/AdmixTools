@@ -2094,6 +2094,8 @@ initvmix (double *wwinit, int nwts, int numiter)
   nedge = getnumedge ();
   nanc =  getnumanc() ;
   nvar = nedge + nanc*(nanc-1)/2 ;
+  if (nvar < nwts)
+    nvar = nwts;
   ng2 = numeg * numeg;
 
   ZALLOC (ff3fit, ng2, double);
