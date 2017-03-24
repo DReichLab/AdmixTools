@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "6040"   
+#define WVERSION   "6050"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -2093,7 +2093,7 @@ initvmix (double *wwinit, int nwts, int numiter)
     return 0 ;
   nedge = getnumedge ();
   nanc =  getnumanc() ;
-  nvar = nedge + nanc*(nanc-1)/2 ;
+  nvar = nedge + nwts + nanc*(nanc-1)/2 ;
   ng2 = numeg * numeg;
 
   ZALLOC (ff3fit, ng2, double);
