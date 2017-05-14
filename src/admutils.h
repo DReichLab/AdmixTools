@@ -153,6 +153,7 @@ void testnan(double *a, int n) ;
 void hap2dip(SNP *cupt) ; 
 void flipalleles(SNP *cupt) ;
 void flipalleles_phased(SNP *cupt) ;
+void getgall (SNP * cupt, int *x, int n) ; 
 int   getgtypes(SNP *cupt, int k) ;
 void  putgtypes(SNP *cupt, int k, int val) ;
 int   getep(SNP *cupt, int k) ;

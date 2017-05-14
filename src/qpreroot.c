@@ -138,6 +138,7 @@ main (int argc, char **argv)
   }
 
   if (calctime) settime() ;
+//  dumppars (dumpname, wwtemp, nwts, ww2, nedge);
   dumpgraph (graphoutname);
   dumpdotgraph (graphdotname);
   t = 0;
@@ -306,3 +307,48 @@ readcommands (int argc, char **argv)
   writepars (ph);
 
 }
+
+void
+dumppars (char *dumpname, double *www, int nwts, double *xxans, int nedge)
+{
+  FILE *dumpfile;
+
+  if (dumpname == NULL)
+    return;
+  openit (dumpname, &dumpfile, "w");
+  dump1 (dumpfile, www, nwts);
+  dump1 (dumpfile, xxans, nedge);
+
+  fclose (dumpfile);
+}
+
+void
+dump1 (FILE * dumpfile, double *ww, int n)
+{
+  int k;
+  for (k = 0; k < n; ++k)
+    fprintf (dumpfile, "%12.6f\n", ww[k]);
+
+}
+
+void
+loadpars (char *loadname, double *www, int nwts, double *xxans, int nedge)
+{
+  FILE *loadfile;
+
+  if (loadname == NULL)
+    return;
+  printf ("zzloadpars %d %d\n", nwts, nedge);
+  openit (loadname, &loadfile, "r");
+  read1 (loadfile, www, nwts);
+  read1 (loadfile, xxans, nedge);
+  printmat (www, 1, nwts);
+
+  printnl ();
+  printnl ();
+  printmat (xxans, 1, nedge);
+
+  fclose (loadfile);
+
+}
+

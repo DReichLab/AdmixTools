@@ -6,7 +6,9 @@
 #include "eigsubs.h"
 
 extern int verbose;
+extern double yscale ;
 
+void addscaldiag(double *mat, double scal, int n) ;
 
 int
 dofrank (int m, int n, int rank)
@@ -74,10 +76,16 @@ doranktestfix (double *mean, double *var, int m, int n, int xrank,
     y = ranktestfix (mean, var, m, n, rank, f4pt->A, f4pt->B, vfix);
     dof = dofrankfix (m, n, rank, nfix);
   }
-  if (dof > 0)
+  
+
+  f4pt -> chisq = 0 ; 
+
+  if (dof > 0) { 
     tail = rtlchsq (dof, y);
-  f4pt->chisq = y;
-  f4pt->dof = (double) dof;
+    f4pt->chisq = y;
+  }
+
+   f4pt->dof = (double) dof;
 
   copyarr (mean, f4pt->mean, m * n);
   if (rank > 0) {
@@ -100,9 +108,13 @@ doranktest (double *mean, double *var, int m, int n, int rank, F4INFO * f4pt)
 
   y = ranktest (mean, var, m, n, rank, f4pt->A, f4pt->B);
   dof = dofrank (m, n, rank);
-  if (dof > 0)
+
+  f4pt -> chisq = 0 ; 
+  if (dof > 0) {
     tail = rtlchsq (dof, y);
-  f4pt->chisq = y;
+    f4pt->chisq = y;
+  }
+
   f4pt->dof = (double) dof;
 
   copyarr (mean, f4pt->mean, m * n);
@@ -194,16 +206,35 @@ solvitforcez (double *coeffs, double *rhs, int dim, double *ans, int *vl,
 {
   int ret ; 
   double *vals;
+  double *tco ;
 
   ZALLOC (vals, dim, double);
+  ZALLOC (tco, dim*dim, double);
 
-  ret = solvitfix(coeffs, rhs, dim, ans, vl, vals, nf) ; 
+  copyarr(coeffs, tco, dim*dim) ; 
+  addscaldiag(tco, yscale, dim) ;
+  
+  ret = solvitfix(tco, rhs, dim, ans, vl, vals, nf) ; 
+
   if (ret<0) fatalx("bad solvitforcez\n") ; 
   free(vals) ; 
+  free(tco) ;
 
   return ret ; 
   
 
+}
+
+void addscaldiag(double *mat, double scal, int n) 
+{
+ double y ;  
+ int i, k ; 
+
+  y = scal * trace(mat, n) ;
+  for (i=0; i<n; ++i) { 
+   k = i*n + i ; 
+   mat[k] += y ; 
+  }
 }
  
 double
@@ -223,6 +254,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 
   int *vl;
   double *vfl;
+
   int nf;
 
   t = intsum (vfix, m);
@@ -253,7 +285,9 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
   ZALLOC (varinv, dd, double);
   ZALLOC (ww, d, double);
 
-  pdinv (varinv, var, d);
+  copyarr(var, varinv, d*d) ; 
+  addscaldiag(varinv, yscale, d) ;
+  pdinv (varinv, varinv, d);
 
   adim = rank * m;
   bdim = rank * n;
@@ -329,6 +363,8 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 	}
       }
     }
+
+    addscaldiag(coeffs, yscale, bdim) ;
     solvit (coeffs, rhs, bdim, ans);
 
     copyarr (ans, B, bdim);
@@ -428,7 +464,9 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
   ZALLOC (varinv, dd, double);
   ZALLOC (ww, d, double);
 
-  pdinv (varinv, var, d);
+  copyarr(var, varinv, d*d) ; 
+  addscaldiag(varinv, yscale, d) ;
+  pdinv (varinv, varinv, d);
 
   if (rank == 0) {
     vzero (ww, d);
@@ -516,6 +554,8 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 	}
       }
     }
+    
+    addscaldiag(coeffs, yscale, bdim) ;
     solvit (coeffs, rhs, bdim, ans);
 
     copyarr (ans, B, bdim);
@@ -548,14 +588,28 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 	}
       }
     }
-    solvit (coeffs, rhs, adim, ans);
+    if (verbose) {
+      printnl ();
+      printmat (coeffs, adim, adim);
+      printmat (rhs, m, rank);
+    }
+
+    vzero (ans, adim);
+    addscaldiag(coeffs, yscale, adim) ;
+    solvit(coeffs, rhs, adim, ans);
 
     copyarr (ans, A, adim);
     normab (A, B, m, n, rank);
+
+    if (verbose) {
+      printnl ();
+      printmatl (A, m, rank);
+    }
+
     mulmat (xmean, A, B, m, rank, n);
     y1 = scx (varinv, mean, xmean, d);
     if (verbose)
-      printf ("iter A:  %9.3f\n", y1);
+      printf ("iter A: %d %9.3f\n", iter, y1);
   }
 
   if (pA != NULL)
@@ -578,6 +632,7 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 
   return y1;
 }
+
 
 void
 normab (double *A, double *B, int m, int n, int rank)
@@ -627,3 +682,4 @@ f4info_init (F4INFO * f4pt, int nl, int nr, char **popllist, char **poprlist,
   f4pt->dofdiff = f4pt->chisqdiff = 0.0;
   f4pt->bestparent = f4pt->bestchild = NULL;
 }
+

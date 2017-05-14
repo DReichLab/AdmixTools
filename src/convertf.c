@@ -16,7 +16,7 @@
 #include "egsubs.h"
 #include "exclude.h"
 
-#define WVERSION   "4511"
+#define WVERSION   "4700"
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -366,8 +366,6 @@ main (int argc, char **argv)
       flip1 (cupt, phasedmode, YES);
   }
 
-  flipstrand (flipstrandname, snpmarkers, numsnps);
-  flipsnps (flipsnpname, snpmarkers, numsnps, phasedmode);
 
   if (deletedup)
     dedupit (snpmarkers, numsnps);	// only one marker per position
@@ -815,12 +813,12 @@ remapind (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers,
   Indiv *indx;
   SNP *cupt;
 
-  if (numindivs != numind2)
+  if ((numindivs != numind2) && (remapcheck == YES)) 
     fatalx ("different remapind sizes %d %d\n", numindivs, numind2);
   ZALLOC (tind, numind2, int);
-  ZALLOC (g2, numind2, int);
-  ZALLOC (g1, numind2, int);
-  ZALLOC (w1, numind2, int);
+  ZALLOC (g2, numindivs, int);
+  ZALLOC (g1, numindivs, int);
+  ZALLOC (w1, numindivs, int);
 
   for (k = 0; k < numind2; ++k) {
     indx = indm2[k];
@@ -832,16 +830,15 @@ remapind (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers,
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
 
-    for (j = 0; j < numind2; ++j) {
+    for (j = 0; j < numindivs; ++j) {
       g1[j] = getgtypes (cupt, j);
     }
-    copyiarr (g1, w1, numind2);
+    copyiarr (g1, w1, numindivs);
 
     for (k = 0; k < numind2; ++k) {
       g2[k] = g1[tind[k]];
     }
 
-    ivclear (g1, -1, numind2);
     copyiarr (g2, g1, numind2);
 
     for (k = 0; k < numind2; ++k) {

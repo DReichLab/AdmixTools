@@ -33,6 +33,8 @@
 #define MAXSTR  512
 #define MAXPOPS 100
 
+double yscale = 0.0 ; 
+
 char *parname = NULL;
 char *trashdir = "/var/tmp";
 int qtmode = NO;

@@ -20,7 +20,7 @@
 #include "f4rank.h"
 
 
-#define WVERSION   "610" 
+#define WVERSION   "632" 
 // best analysis added
 // hires added
 // chrom: 23 added
@@ -31,10 +31,13 @@
 // summ: line added
 // gendstat added.  Generalized D-stat
 // bug in doq4vecb fixed  denominator sometimes wrong... 
+// coverage stats added
 
 #define MAXFL  50
 #define MAXSTR  512
 #define MAXPOPS 100
+
+double yscale = .0001 ;
 
 char *parname = NULL;
 char *trashdir = "/var/tmp";
@@ -107,6 +110,7 @@ void calcadm (double *ans, double *A, int n);
 void printss (double *mean, double *wt, int nl, int nr);
 double scorel(double *d, double *V, double *lam, int n)  ;
 double gendstat(double *ca, int b1, int b2, int nr, int nl, double *mean, double *var, int *ktable) ;
+void addscaldiag(double *mat, double scal, int n) ; 
 
 int
 main (int argc, char **argv)
@@ -141,7 +145,7 @@ main (int argc, char **argv)
   int chrom;
   int maxtag = -1;
   int *rawcol;;
-  int a, b, x, t, col, wt;
+  int a, b, x, s, t, col, wt;
   int *xind;
   int xmax, dof;
 
@@ -316,6 +320,15 @@ main (int argc, char **argv)
 
   countpops (counts, xsnplist, xindex, xtypes, nrows, ncols);
 
+  printf("## ncols: %d\n", ncols) ;
+  for (i=0; i<numeg; ++i) { 
+   t = 0 ; 
+   for (a=0; a<ncols; ++a) { 
+    s = counts[a][i][0] + counts[a][i][1]  ;
+    if (s>0) ++t ;
+   }
+   printf("coverage: %20s %6d\n", eglist[i] , t) ;
+  }
 
   ZALLOC (bcols, ncols, int);	// blocks for columns -1 => unused
   ivclear (bcols, -1, ncols);
@@ -419,7 +432,7 @@ main (int argc, char **argv)
   ZALLOC (var, nl * nl, double);
   ZALLOC (jvar, nl * nl, int);
 
-  printss (ymean, ww, nl, nr);
+//  printss (ymean, ww, nl, nr);
 
   calcevar (var, yvar, nl, nr, btop, bbot, gtop, gbot, bnblocks, bdim);
   getdiag (ww, var, nl);
@@ -594,10 +607,22 @@ main (int argc, char **argv)
   return 0;
 }
 
+void addco(double *co, double yadd, int n) 
+{
+// special purpose. Last diagonal element not changed 
+ int i, k ; 
+
+ for (i=0; i<(n-1) ; ++i) {  
+  k = i*n + i ; 
+  co[k] += yadd ; 
+ }
+}
+
 void
 calcadm (double *ans, double *A, int n)
 {
-  double *coeff, *rhs;
+  double *coeff, *rhs,  y, ytrace ;
+  int t, baditer = 0 ;
 
   if (A == NULL) {
     vzero (ans, n);
@@ -607,10 +632,26 @@ calcadm (double *ans, double *A, int n)
   ZALLOC (rhs, n, double);
 
   transpose (coeff, A, n, n - 1);
+  ytrace = trace(coeff, n) ;
   vclear (coeff + n * (n - 1), 1.0, n);
   rhs[n - 1] = 1;
+  vzero(ans, n) ;
 
-  linsolv (n, coeff, rhs, ans);
+  
+
+  for (;;) { 
+   if (baditer>=10) break ;
+   t = linsolv (n, coeff, rhs, ans);
+   y = asum(ans, n) ;  
+   if (!isfinite(y)) t = 1 ; 
+   if (t==0) break ; 
+    ++baditer ; 
+    if (verbose) printf("singular matrix: %3d %12.6f\n", baditer, ytrace) ;
+    addco(coeff, ytrace*.001, n) ;
+  }
+//   printf("zz2: ") ; printmat(ans, 1, n) ;
+  if (asum(ans, n) > 0) bal1(ans, n) ;
+
 
 /**
   printf("zzcalcadm\n") ;
@@ -621,6 +662,7 @@ calcadm (double *ans, double *A, int n)
 */ 
 
 
+  
 
 
   free (coeff);
@@ -695,6 +737,7 @@ readcommands (int argc, char **argv)
   getint (ph, "useallsnps:", &allsnps);
   getint (ph, "details:", &details);
   getint (ph, "seed:", &seed) ; 
+  getdbl (ph, "diagplus:", &yscale);
 
 
 
@@ -778,9 +821,22 @@ isok = YES;
 for (a = 0; a < dim; ++a) {
 ret = getf4 (counts[col], xtop[a], &y);
 if (ret==2) {
- printf("bad quad: "); printimat(xtop[1], 1, 4) ;
+ printf("bad quad: "); printimat(xtop[a], 1, 4) ;
  fatalx("bad quad\n") ;
 }
+
+/**
+if (verbose && (a==2)) {  
+ printf("zz %3d %d %3d %12.3f ", col, ret, bnum, y) ; printimat(xtop[a], 1, 4) ; 
+ printf("zzc ") ;
+ for (j=0; j<4; ++j) {  
+  b = xtop[a][j] ; 
+  printf("%3d %3d  ", counts[col][b][0], counts[col][b][1]) ;
+ }
+ printnl() ;
+}
+*/
+
 f4[a] = y ;  
 f4bot[a] = 1 ; 
 if (ret<0) {
@@ -822,6 +878,17 @@ wjack[k] = asum (bbot[k], dim);
 }
 
 wjackvest (ymean, yvar, dim, mean, bjtop, wjack, nblocks);
+if (verbose)  { 
+ printf("wjackvest! %d\n", dim) ;
+ printmatl (ymean, 1, dim) ; 
+ printnl() ; 
+ printmatl (yvar, dim, dim) ; 
+ for (k=0; k<dim; ++k) { 
+  printf("diag: %3d %15.9f\n", k, yvar[k*dim+k]) ;
+ }
+}
+
+ addscaldiag(yvar, yscale, dim) ;
 
 bnblocks = nblocks;
 bdim = dim;
@@ -934,6 +1001,7 @@ calcevar (double *var, double *yvar, int nl, int nr, double **btop,
 double *ymean, *mean, *wtop, *wbot, *totmean, **tmean, *wjack;
 F4INFO *f4wk, f4tt;
 int k;
+double y ; 
 
 if (dim <= 0)
 fatalx ("(calcevar) dimension unset\n");
@@ -946,6 +1014,8 @@ ZALLOC (wbot, dim, double);
 ZALLOC (totmean, nl, double);
 tmean = initarray_2Ddouble (nblocks, nl, 0);
 
+addscaldiag(yvar, yscale, dim) ;
+
 f4wk = &f4tt;
 f4info_init (f4wk, nl, nr, popllist, poprlist, nl - 1);
 
@@ -953,6 +1023,7 @@ vvd (mean, gtop, gbot, dim);
 doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
 calcadm (totmean, f4wk->A, nl);
 
+// printf("zztotmean: ") ; printmat(totmean, 1, nl) ;
 
 for (k = 0; k < nblocks; ++k) {
 vvm (wtop, gtop, btop[k], dim);
@@ -960,12 +1031,20 @@ vvm (wbot, gbot, bbot[k], dim);
 vvd (mean, wtop, wbot, dim);
 doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
 calcadm (tmean[k], f4wk->A, nl);
+// printf("zzm: %d %9.3f\n", k, asum(tmean[k], nl)) ;
 }
 
 ZALLOC (wjack, nblocks, double);
 for (k = 0; k < nblocks; ++k) {
 wjack[k] = asum (bbot[k], dim);
+ y = asum(tmean[k], nl) ; 
+ if isnan(y) { 
+  copyarr(totmean, tmean[k], nl) ; 
+  wjack[k] = 0 ;
+ }
+
 }
+
 wjackvest (jmean, var, nl, totmean, tmean, wjack, nblocks);
 printf ("Jackknife mean:  ");
 printmatl (jmean, 1, nl);

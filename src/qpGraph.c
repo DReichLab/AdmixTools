@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "6050"   
+#define WVERSION   "6065"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -48,11 +48,12 @@
 // initmix added
 // fulloutlier added
 // bad2popname added
-// worstz added for outliers 
+// worst Z added for outliers 
 // weigntname added 
 // dottitle added
 // big new feature.  Multiple ancestors
 // initverbose added
+// calcfit not called after loadname
 
 
 #define MAXFL  50
@@ -820,10 +821,10 @@ outpop:    (not present)
 
     getwww (vmix, wwtemp, nwts);
     putgmix (vmix);
-
-    calcfit (ff3fit, xxans, numeg);
+    y = scorit (wwtemp, nwts, &y1, ww2);
+    calcfit (ff3fit, ww2, numeg);
 // now print answers  
-    printf ("initial\n");
+    printf ("initial score: %9.3f\n", y);
     printf ("ff3fit:\n");
     printmatz (ff3fit, egshort, numeg);
     printnl ();
@@ -832,8 +833,8 @@ outpop:    (not present)
     printmatz (ff3fit, egshort, numeg);
     printnl ();
     printf3 ("ff3diff:", f3file, ff3fit, egshort, numeg);
-    printvals (vmix, xxans, nedge);
-    printfit (xxans);
+    printvals (vmix, ww2, nedge);
+//  printfit (ww2);
   }
 
   for (k = 0; k < nmix; ++k) {
@@ -1360,7 +1361,7 @@ read1 (FILE * loadfile, double *ww, int n)
   vclear (ww, -1.0, n);
   for (k = 0; k < n; ++k) {
     fscanf (loadfile, "%lf\n", &ww[k]);
-    printf ("zzfs %d %9.3f\n", k, ww[k]);
+//  printf ("zzfs %d %9.3f\n", k, ww[k]);
   }
 
 }

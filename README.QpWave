@@ -67,6 +67,15 @@ probably wrong.
 of f4-statististics is likely to be poorly estimated.   I then don't trust 
 the computed p-values although the admixture weights seem to usually be 
 reasonable.  
+4) *** NEW *** 
+The new version is more robust in boundary cases where
+the mixing coefficients are not well determined.  In
+well-conditioned cases the difference from the old code should
+be very small.   There's a magic constant (diagplus) that gets added
+along the diagonal of various matrices.  To get the old answers with the new
+program code:
+
+diagplus:  0  
 
 
 Nick Patterson
