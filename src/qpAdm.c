@@ -18,9 +18,10 @@
 #include "egsubs.h"
 #include "qpsubs.h"
 #include "f4rank.h"
+#include "eigsubs.h" 
 
 
-#define WVERSION   "632" 
+#define WVERSION   "634" 
 // best analysis added
 // hires added
 // chrom: 23 added
@@ -564,6 +565,10 @@ main (int argc, char **argv)
   if (details) {
     printf ("coeffs: ");
     printmat (wbest, 1, nl);
+    printnl() ;
+    printf("## dscore:: f_4(Base, Fit, Rbase, right2)\n") ; 
+    printf("## genstat:: f_4(Base, Fit, right1, right2)\n") ; 
+    printnl() ;
     dim = nl * nr;
     for (b = 0; b < nr; ++b) {
       vzero (w0, nl * nr);
@@ -1038,7 +1043,7 @@ ZALLOC (wjack, nblocks, double);
 for (k = 0; k < nblocks; ++k) {
 wjack[k] = asum (bbot[k], dim);
  y = asum(tmean[k], nl) ; 
- if isnan(y) { 
+ if (isnan(y)) { 
   copyarr(totmean, tmean[k], nl) ; 
   wjack[k] = 0 ;
  }
