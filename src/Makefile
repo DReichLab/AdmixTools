@@ -2,10 +2,17 @@ HOMEL=$(PWD)
 TOP=../bin
 BIN=$(HOMEL)/../bin
 
-override LDLIBS += -lgsl -lopenblas -lgfortran -lm -lnick
+override LDLIBS += -lgsl -lopenblas -lm -lnick
+# Some Linux distributions require separate lapacke library
+# override LDLIBS += -llapacke
 override LDFLAGS += -L./nicksrc
 override CFLAGS += -c -g -p -Wimplicit -I./ -I./nicksrc
-#CFLAGS= -c -g -p -Wimplicit-int
+# Mac additions using homebrew installations
+#override CFLAGS += -I/usr/local/opt/openblas/include -I/usr/local/opt/gsl/include
+#override LDFLAGS += -L/usr/local/opt/openblas/lib -L/usr/local/opt/gsl/lib
+# Harvard Medical School O2 cluster additions
+#override CFLAGS += -I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include
+#override LDFLAGS += -L/n/app/openblas/0.2.19/lib -L/n/app/gsl/2.3/lib/
 
 ND = nicksrc
 NLIB = $(ND)/libnick.a

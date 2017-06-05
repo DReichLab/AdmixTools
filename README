@@ -24,8 +24,10 @@ recompile the programs, type
 "make clobber"
 "make install"      
 
-We also provide a makefile for Mac (tested for El Capitan: gsl needed). 
-make -f Makefile.mac install
+If you are building on a Mac, you will need gsl and openblas installed. 
+"brew install gsl"
+"brew install homebrew/science/openblas"
+Uncomment the lines in src/Makefile that modify the CFLAGS and LDFLAGS. 
 
 If you have trouble compiling and running our code, try compiling and
 running the examples in the examples/ directory. Download the example
