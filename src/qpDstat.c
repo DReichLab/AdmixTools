@@ -25,7 +25,7 @@
 */
 
 
-#define WVERSION   "711"
+#define WVERSION   "712"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -43,6 +43,7 @@
 // xmode ;  call countpopsx which deals with gender on X
 // syntactic sugar (strip :) in popfilename  
 // numchrm added
+// formatting bug (overflow of abba counts) fixed
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -535,7 +536,7 @@ main (int argc, char **argv)
               printf (" %12.6f", dstat[k]);
 
             if (printsd) {
-              printf (" %12.6f", serr[k]);
+              printf (" %12.6f ", serr[k]);
             }
 
             printf (" %9.3f ", rscore[k]);
@@ -613,9 +614,9 @@ main (int argc, char **argv)
     }
 
     if (f4mode == NO)
-      printf (" %10.4f", dstat[k]);
+      printf (" %10.4f ", dstat[k]);
     if (f4mode == YES)
-      printf (" %12.6f", dstat[k]);
+      printf (" %12.6f ", dstat[k]);
 
     if (printsd) {
       printf (" %12.6f", serr[k]);
