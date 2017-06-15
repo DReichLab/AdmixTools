@@ -32,6 +32,7 @@ src/qp3Pop
 src/qpAdm
 src/qpBound
 src/qpDstat
+src/qpff3base
 src/qpF4ratio
 src/qpGraph
 src/qpWave
