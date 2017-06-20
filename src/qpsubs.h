@@ -214,6 +214,7 @@ void setsimp(double *ww, int n) ;
 int edgenum(char *edgename) ;
 void addvertex(char *vertname)  ;   
 void freegraph() ; 
+void addnode (char *nodename, char *edgename, double breakval) ; 
 void addedgenode(char *nodename, char *n2name, char *edgename, char *newedgename, char *label, double breakval, double eval) ;
 void getpops(char **eelist, int *npops) ;
 void addmixedge(char **nodes, char **edgenames, char *newedgename, 

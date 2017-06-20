@@ -441,7 +441,7 @@ readsnpdata (SNPDATA ** snpraw, char *fname)
       sdpt->inputrow = num;
 
       if (strlen (spt[0]) >= IDSIZE)
-	fatalx ("ID too long\n", spt[0]);
+	fatalx ("snp ID too long: %s\n", spt[0]);
       strcpy (sdpt->ID, spt[0]);
 
       sdpt->chrom = chrom = str2chrom (spt[1]);
@@ -551,7 +551,7 @@ readsnpmapdata (SNPDATA ** snpraw, char *fname)
 	fatalx ("(readsnpmapdata) bad line: %s\n", line);
       sdpt = snpraw[num];
       if (strlen (spt[1]) >= IDSIZE)
-	fatalx ("ID too long\n", spt[1]);
+	fatalx ("snp ID too long: %s\n", spt[1]);
       strcpy (sdpt->ID, spt[1]);
 
       if (nsplit >= 6) {	// alleles in .map file are optional
@@ -991,7 +991,7 @@ readinddata (Indiv ** indivmarkers, char *fname)
 	fatalx ("%s bad line: %s", fname, line);
       indx = indivmarkers[num];
       if (strlen (sx) >= IDSIZE)
-	fatalx ("ID too long: %s\n", sx);
+	fatalx ("Indiv ID too long: %s\n", sx);
       strcpy (indx->ID, sx);
       indx->idnum = num;
       sx = spt[1];
@@ -1050,10 +1050,7 @@ readindpeddata (Indiv ** indivmarkers, char *fname)
       if (nsplit < 6)
 	fatalx ("%s bad line: %s", fname, line);
       indx = indivmarkers[num];
-/**
-      if (strlen (sx) >= IDSIZE)
-	fatalx ("ID too long: %s\n", sx);
-*/
+
       maxnsplit = MAX (maxnsplit, nsplit);
 
       sx = spt[1];
@@ -1156,7 +1153,7 @@ pedname (char *cbuff, char *sx0, char *sx1)
   if (familynames == NO)
     ll = l1;
   if (ll >= IDSIZE) {
-    fatalx ("idnames too long %s %s ll: %d limit: %d\n", sx0, sx1, ll,
+    fatalx ("idnames too long: %s %s ll: %d limit: %d\n", sx0, sx1, ll,
 	    IDSIZE - 1);
   }
   if (familynames == YES) {	// prepend family name to individual name

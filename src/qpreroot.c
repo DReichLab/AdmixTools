@@ -131,7 +131,7 @@ main (int argc, char **argv)
     gsimplify (0);
   }
 
-  if (calctime) settime() ;
+//  if (calctime) settime() ;
 //  dumppars (dumpname, wwtemp, nwts, ww2, nedge);
   dumpgraph (graphoutname);
   dumpdotgraph (graphdotname);
