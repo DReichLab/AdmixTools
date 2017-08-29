@@ -11,8 +11,10 @@ override CFLAGS += -c -g -p -Wimplicit -I./ -I./nicksrc
 #override CFLAGS += -I/usr/local/opt/openblas/include -I/usr/local/opt/gsl/include
 #override LDFLAGS += -L/usr/local/opt/openblas/lib -L/usr/local/opt/gsl/lib
 # Harvard Medical School O2 cluster additions
-#override CFLAGS += -I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include
-#override LDFLAGS += -L/n/app/openblas/0.2.19/lib -L/n/app/gsl/2.3/lib/
+ifdef SLURM_CONF
+override CFLAGS += -I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include
+override LDFLAGS += -L/n/app/openblas/0.2.19/lib -L/n/app/gsl/2.3/lib/
+endif
 
 ND = nicksrc
 NLIB = $(ND)/libnick.a
