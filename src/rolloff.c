@@ -18,7 +18,7 @@
 #include "egsubs.h"
 #include "ldsubs.h"
 
-#define WVERSION   "1110"
+#define WVERSION   "1112"
 /** an attempt to 
  1) threshold for LD in parentals 
  2) Use a weighted Z-score
@@ -143,7 +143,6 @@ void clipwt (SNP ** snpmarkers, int numsnps);
 double estyran (SNP ** snpmarkers, int numsnps, int nxlim);
 void cx1 (double *xc, double *y1, double *y2);
 double cminor (double *xx);
-int cmap (SNP ** snppmarkers, int numsnps);
 int calcldscore (SNP * cupt, SNP * cupt2, double *xscore);
 
 int
@@ -846,7 +845,7 @@ dorc2 (double *ans, double *res, double binsize, double maxdis)
 int
 readcommands (int argc, char **argv)
 {
-  int i, haploid = 0;
+  int i ;
   char *parname = NULL;
   phandle *ph;
   char str[5000];
@@ -1177,19 +1176,3 @@ cminor (double *xx)
   return MIN (y1, y2);
 }
 
-int
-cmap (SNP ** snppmarkers, int numsnps)
-{
-  int t, k;
-  double y1, y2;
-  SNP *cupt;
-  for (k = 1; k <= 10; ++k) {
-    t = ranmod (numsnps);
-    cupt = snpmarkers[t];
-    y1 = cupt->genpos;
-    y2 = cupt->physpos / 1.0e8;
-    if (fabs (y1 - y2) > .001)
-      return YES;
-  }
-  return NO;
-}

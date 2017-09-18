@@ -63,6 +63,23 @@ Z = D/standard_error
 If you would like qpDstat to output standard error, please add this following line to your parameter file:
 printsd:  YES
 
+==========================================================================
+New program:  qpDpart;  implements partitioned D-stats 
+(Eaton and Ree.   Inferring phylogeny and introgression .. Systematic Biology (2013) (Vol 62:5) pp 689-706)
+parameter file as qpDstat with the following exceptions. 
+pattern:  pat1 : pat2   
+## pat1, pat2 are AB patterns of same length (L) 
+popfilename:  myfile 
+##myfile will consisit of L populatons / line.  
+fmode:  YES 
+## prints abba(pat1) - abba(pat2) NOT D-stat ;  Note fmode NOT f4mode
+fscale:   10000000  
+## if fmode: YES  f-stats are multiplied by fscale on printing.  Default is 1000000 
+## This is because if L is large f may be quite small.  
+## pattern:  BABA : ABBA  will pprduce results very similar to qpDstat  
+
+
+
 Nick Patterson
 <nickp@broadinstitute.org>
 ------------------------------------------------------------------------------

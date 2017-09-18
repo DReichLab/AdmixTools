@@ -9,6 +9,8 @@ void writepars(phandle  *pp) ;
 void closepars(phandle  *pp) ;
 phandle *openpars(char *fname) ;
 
+int getlongstring(phandle *pp, char *parname, char **kret)  ;
+// whole of line
 int getstring(phandle *pp, char *parname, char **kret)  ;
 int getint(phandle *pp, char *parname, int *kret)  ;
 int getints(phandle *pp, char *parname, int *aint, int nint) ;

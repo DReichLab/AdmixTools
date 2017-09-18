@@ -103,6 +103,7 @@ void ckline (char *line, int ns, int n);
 EDGE *xedge (NODE * n1, NODE * n2);
 void fixnode (NODE * node);
 void fixedge (EDGE * edge);
+int isleaf (NODE * node) ;
 NODE *root ();
 NODE *vert (char *nodename);
 void setdistances ();

@@ -21,7 +21,7 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "634" 
+#define WVERSION   "650" 
 // best analysis added
 // hires added
 // chrom: 23 added
@@ -32,7 +32,10 @@
 // summ: line added
 // gendstat added.  Generalized D-stat
 // bug in doq4vecb fixed  denominator sometimes wrong... 
-// coverage stats added
+// coverage stats addede
+// check for nested model.  
+// best logic changed if infeasibles 
+// better treatment of boundary case (nl=1) 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -112,6 +115,7 @@ void printss (double *mean, double *wt, int nl, int nr);
 double scorel(double *d, double *V, double *lam, int n)  ;
 double gendstat(double *ca, int b1, int b2, int nr, int nl, double *mean, double *var, int *ktable) ;
 void addscaldiag(double *mat, double scal, int n) ; 
+int isnested(int a, int b) ; 
 
 int
 main (int argc, char **argv)
@@ -126,7 +130,7 @@ main (int argc, char **argv)
   int i, j, k, k1, k2, k3, k4, kk;
   SNP *cupt, *cupt1, *cupt2, *cupt3;
   Indiv *indx;
-  double zscore, y1, y2, y, ysig, tail, ttail, yy1, yy2, yy;
+  double zscore, y1, y2, y, yfeas, ysig, tail, ttail, yy1, yy2, yy;
   int *blstart, *blsize, nblocks;
   int xnblocks;			/* for xsnplist */
   int *bcols;
@@ -155,8 +159,8 @@ main (int argc, char **argv)
   int nleft, nright;
   int *rlist, lbase, lpop, rbase;
   int *vfix;
-  double *yscbest, *ychi;
-  int *sbest;
+  double *yscbest, *ychi, *yinfeasbest;
+  int *sbest, *infeassbest, *nfeas, isfeas;
   double *var;
   int *jvar;
   double *w0, *w1, *w2;
@@ -424,6 +428,7 @@ main (int argc, char **argv)
     printmatl (ww, 1, nl);
   else
     printmat (ww, 1, nl);
+
   ZALLOC (wbest, nl, double);
   ZALLOC (w0, nl * nr, double);
   ZALLOC (w1, nl * nr, double);
@@ -478,6 +483,12 @@ main (int argc, char **argv)
   printnl ();
   printnl ();
   
+  if (nl == 1) { 
+   printf("single source. terminating\n") ; 
+   printf("run qpDstat if you want Z scores for f4 stats\n") ;
+   printf ("## end of run\n");
+   return 0 ;
+  }
 
 
 //  we now loop over fix patterns.  
@@ -489,6 +500,7 @@ main (int argc, char **argv)
   }
 
   ZALLOC (sbest, nl, int);
+  ZALLOC (nfeas, nl, int);
   ZALLOC (yscbest, nl, double);
   ZALLOC (ychi, nl, double);
   vclear (yscbest, -1.0e5, nl);	// p-value large is good
@@ -512,6 +524,7 @@ main (int argc, char **argv)
       }
       calcadm (ww, f4pt->A, nl);
       vmaxmin (ww, nl, NULL, &y);
+      yfeas = y ; 
       dof = nnint (f4pt->dof);
       if (dof > 0) {
 	ttail = tail = rtlchsq (dof, f4pt->chisq);
@@ -519,19 +532,42 @@ main (int argc, char **argv)
       else {
 	ttail = tail = 0;
       }
-      if (y < -0.001)
+
+      isfeas = NO ; 
+      if (yfeas >= -0.001) { 
+       isfeas = YES ; 
+       ++nfeas[wt] ;
+      }
+     
+      if (isfeas == NO)  { 
 	tail = 0;		// not feasible
+      }
       if (ttail < 1.0e-30)
 	ttail =  0;
-      if (tail > yscbest[wt]) {
+
+      if (nfeas[wt] == 1) { 
 	yscbest[wt] = tail;
 	sbest[wt] = k;
 	ychi[wt] = f4pt->chisq;
       }
+
+     
+      if ((nfeas[wt] == 0) && (ttail>yscbest[wt]))  { 
+	yscbest[wt] = ttail;
+	sbest[wt] = k;
+	ychi[wt] = f4pt->chisq;
+      }
+
+      if (tail > yscbest[wt])  {
+	yscbest[wt] = tail;
+	sbest[wt] = k;
+	ychi[wt] = f4pt->chisq;
+      }
+
       printf (" %12s  %1d   %3d %9.3f %15.6g ", binary_string (k, nl), wt,
 	      dof, f4pt->chisq, ttail);
       printmatx (ww, 1, nl);
-      if (y < -.001)
+      if (isfeas == NO) 
 	printf (" infeasible");
       printnl ();
       if (verbose) {
@@ -556,9 +592,16 @@ main (int argc, char **argv)
       continue;
     }
     y = ychi[wt] - ychi[wt - 1];
-    tail = rtlchsq (1, y);
-    printf (" chi(nested): %9.3f p-value for nested model: %15.6g\n", y,
+    if (isnested(sbest[wt-1], sbest[wt])) {  
+     tail = rtlchsq (1, y);
+     printf (" chi(nested): %9.3f p-value for nested model: %15.6g", y,
 	    tail);
+    }
+    else { 
+     printf("not nested") ;
+    }
+    if (nfeas[wt] == 0) printf(" infeasible") ; 
+    printnl() ;
   }
   printnl ();
   fflush (stdout);
@@ -632,6 +675,11 @@ calcadm (double *ans, double *A, int n)
   if (A == NULL) {
     vzero (ans, n);
     return;
+  }
+
+  if (n==1) { 
+   ans[0] = 1 ; 
+   return ; 
   }
   ZALLOC (coeff, n * n, double);
   ZALLOC (rhs, n, double);
@@ -1052,6 +1100,7 @@ wjack[k] = asum (bbot[k], dim);
 
 wjackvest (jmean, var, nl, totmean, tmean, wjack, nblocks);
 printf ("Jackknife mean:  ");
+if (nl==1) jmean[0] = 1 ; 
 printmatl (jmean, 1, nl);
 
 
@@ -1272,5 +1321,14 @@ double gendstat(double *ca, int b1, int b2, int nl, int nr, double *mean, double
  free(vb) ;
  free(vv) ;  
 
+}
+int isnested(int a, int b) 
+{
+// YES if 1 in A => 1 in b 
+ int x ; 
+ x = ~b ; 
+ x &= a ; 
+ if (x==0) return YES ; 
+ return NO ; 
 
 }

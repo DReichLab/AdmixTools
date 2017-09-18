@@ -1276,3 +1276,19 @@ setid2pops (char *idpopstring, Indiv ** indmarkers, int numindivs)
   freeup (spt, nsplit);
   return nsplit;
 }
+
+int cmap(SNP **snpmarkers, int numsnps) 
+{
+   int t, k ; 
+   double y1, y2 ; 
+   SNP *cupt ;  
+   for (k=1 ; k<=10; ++k) { 
+    t = ranmod(numsnps) ;
+    cupt = snpmarkers[t] ; 
+    y1 = cupt -> genpos ; 
+    y2 = cupt -> physpos / 1.0e8  ; 
+    if (fabs(y1-y2) > .001) return YES ;
+   }
+   return NO ;
+}
+

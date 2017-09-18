@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "6065"   
+#define WVERSION   "6100"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -54,6 +54,7 @@
 // big new feature.  Multiple ancestors
 // initverbose added
 // calcfit not called after loadname
+// basenum bug fixed
 
 
 #define MAXFL  50
@@ -390,23 +391,20 @@ main (int argc, char **argv)
   outnum = -1;
   basenum = 0;
 
-  t = getrootlabel (sss);
+ t = getrootlabel (sss);
   printf ("root label: %s\n", sss);
 
   if (outpop == NULL) {
-    if (t == 1)
-      outpop = strdup (sss);
-    else
       outpop = strdup ("NULL");
   }
 
-/** 
-  
+/**
+
 outpop: NULL (snps are flat weighted)
 outpop:  NONE   snps are weighted  1/ (p * (1--p))  where p is the allele frequency  in the entire sample
 outpop:  Mbuti (say)   snps are weighted 1/ (p*(1-p)) where p is allele frequency in Mbuti
 
-outpop:    (not present)  
+outpop:    (not present)
  a) if graph root is labeled population (say Mbuti) use this population
  b) if graph root is not a labeled population, same as outpop: NULL
 
@@ -425,9 +423,6 @@ outpop:    (not present)
     t = strcmp (eglist[k], outpop);
     if (t == 0)
       outnum = k;
-    t = strcmp (eglist[k], sss);
-    if (t == 0)
-      basenum = k;
   }
 
   if (outnum == -1) {
@@ -436,6 +431,11 @@ outpop:    (not present)
     ++numeg;
   }
 
+  printf("zzbasenum: %d %d\n", outnum, basenum) ;
+
+  basenum = 0 ; // hope this is OK
+     
+ 
   x = (1 << numeg);
   subsets = initarray_2Dint (x, numeg, 0);
 

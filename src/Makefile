@@ -19,7 +19,8 @@ endif
 ND = nicksrc
 NLIB = $(ND)/libnick.a
 
-PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave rolloff convertf dowtjack expfit.sh grabpars qpBound qpGraph qpreroot qpff3base 
+PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave rolloff convertf dowtjack expfit.sh grabpars qpBound qpGraph qpreroot qpff3base rolloffp qpDpart
+
 PROGS2 = rexpfit.r  wtjack.pl 
 
 all: $(NLIB) $(PROGS) 
@@ -36,11 +37,15 @@ expfit.sh:	expfit.templ
 
 qpDstat: $(NLIB) qpDstat.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
+qpDpart: $(NLIB) qpDpart.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
 qp3Pop: $(NLIB) qp3Pop.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 qpF4ratio: $(NLIB) qpF4ratio.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 rolloff: $(NLIB) rolloff.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
+rolloffp: $(NLIB) rolloffp.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 qpBound: $(NLIB) qpBound.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o
 

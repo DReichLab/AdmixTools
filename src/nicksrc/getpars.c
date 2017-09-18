@@ -153,6 +153,22 @@ stripcomment (char *str)
 #define MAXFIELD 1000
 
 int
+getlongstring (phandle * pp, char *parname, char **strng)
+// whole of line
+{
+
+  char *field[MAXFIELD];
+  int n, kode;
+
+  kode = findpname (pp, parname);
+  if (kode < 0)
+    return kode;
+  *strng = strdup (pp->pdata[kode]);
+  return 1;
+}
+
+
+int
 getstring (phandle * pp, char *parname, char **strng)
 {
 

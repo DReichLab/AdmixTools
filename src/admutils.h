@@ -184,6 +184,7 @@ int numvalidgtind(SNP **snpm, int numsnps, int ind)  ;
 int numvalidgt(Indiv **indivmarkers, SNP *cupt)   ;
 int numvalidgtx(Indiv **indivmarkers, SNP *cupt, int affst)  ;
 int isxmale(SNP *cupt, Indiv *indx) ;
+int cmap(SNP **snppmarkers, int numsnps)  ;
 
 void printmatz(double *ww, char **eglist, int n) ;
 void printmatz5(double *ww, char **eglist, int n) ;
