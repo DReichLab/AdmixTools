@@ -31,6 +31,7 @@ src/qaz
 src/qp3Pop
 src/qpAdm
 src/qpBound
+src/qpDpart
 src/qpDstat
 src/qpff3base
 src/qpF4ratio
@@ -38,6 +39,7 @@ src/qpGraph
 src/qpWave
 src/qpreroot
 src/rolloff
+src/rolloffp
 src/tables
 pdoc.aux
 pdoc.dvi

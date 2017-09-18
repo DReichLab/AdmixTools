@@ -61,6 +61,8 @@ qpAdm: $(NLIB) qpAdm.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f
 
 qpWave: $(NLIB) qpWave.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f4rank.o eigsubs.o eigx.o
 
+.PHONY: install uninstall dirs clean clobber rmdirs example_data
+
 install:	all dirs tables
 	mkdir -p $(TOP)
 	cp $(PROGS) $(TOP)
@@ -89,6 +91,13 @@ clobber: clean rmdirs uninstall
 
 rmdirs: 
 	rm -rf $(HOMEL)/admixtables 
+
+AdmixTools_Example_Data.tar_.gz:
+	wget https://reich.hms.harvard.edu/sites/reich.hms.harvard.edu/files/inline-files/AdmixTools_Example_Data.tar_.gz
+
+example_data: AdmixTools_Example_Data.tar_.gz
+	tar zxvf AdmixTools_Example_Data.tar_.gz
+	mv data ../
 
 ## gsl-config may help here
 
