@@ -1,0 +1,7 @@
+DIR:   ../data/
+SSS:  allmap  
+indivname:    DIR/SSS.ind  
+snpname:      DIR/SSS.snp
+genotypename: DIR/SSS.geno
+popfilename:  list_qpDpart
+pattern:      AABAB : AABBA 
