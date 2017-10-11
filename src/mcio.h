@@ -93,6 +93,7 @@ int numvalidgtind(SNP **snpm, int numsnps, int ind)  ;
 int numvalidgt(Indiv **indivmarkers, SNP *cupt)   ;
 int numvalidgtx(Indiv **indivmarkers, SNP *cupt, int affst)  ;
 int getweights(char *fname, SNP **snpm, int numsnps)   ;
+int getindvals (char *fname, Indiv ** indivmarkers, int numindivs) ;
 void outpack(char *genooutfilename, SNP **snpm, Indiv **indiv, int numsnps, int numind)  ;
 int ispack(char *gname) ;
 int iseigenstrat(char *gname) ;

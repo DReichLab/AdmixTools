@@ -18,13 +18,14 @@
 #include "egsubs.h"  
 #include "ldsubs.h"  
 
-#define WVERSION   "210" 
+#define WVERSION   "321" 
 
 // mincount stripped 
 // basic idea: Model each admixed sample as a linear fit 
 // of 2 parental pops.  Compute residual and rolloff (res*wt) 
 // jackknife by chromosome
 // weights added as option.  LatestI/O 
+// timeoffset added 
 
 #define MAXFL  50   
 #define MAXSTR  512
@@ -45,6 +46,8 @@ SNP **snpm ;
 int numsnps, numindivs ; 
 int checkmap = YES ;
 
+char *parname = NULL ;
+
 char  *genotypename = NULL ;
 char  *snpname = NULL ;
 char  *genooutfilename = NULL ;
@@ -60,6 +63,7 @@ char *dumpname = NULL ;
 char *loadname = NULL ;
 char *oname = NULL ;
 char *weightname = NULL ; 
+char *timeoffsetname = NULL ; 
 int crossmode = NO ;
 int runmode = 0 ;
 int ldmode = NO ;
@@ -95,7 +99,7 @@ double binsize = BINSIZE ;
 
 char  unknowngender = 'U' ;
 
-void readcommands(int argc, char **argv) ;
+int readcommands(int argc, char **argv) ;
 void setfc(SNP **snpm, int numsnps) ;
 void sethmm(double *theta, double lambda, int ind) ;
 int addr4(int a, int b, int c, int d) ;
@@ -133,7 +137,7 @@ int main(int argc, char **argv)
 
   int numvind, nignore, numrisks = 1 ;
   char **eglist ;
-  double y, y1, y2, yy, ywt, z1, z2, znorm, yn ;
+  double y, y1, y2, yy, ywt, z1, z2, znorm, yn, ytime ;
   double *yy2 ;
   int ind, chrom, lastchrom, printit, num0=0 ;
   double xc[9], xww[3] ;
@@ -149,7 +153,8 @@ int main(int argc, char **argv)
   double *w0, *w1, *w2, *res, alpha, *ww, *ww1, *ww2, *dd, *wt, *wk  ;
   double *wa, *wb ;  
   int *sindex, *xindex ; 
-  double *xnum, *xden ;
+  double *xnum, *xden, *xdenq ;
+  double *znum, *zden ;
   double **xxnum, **xxden ;
   int numbins  ;  
   double co1, co2, dis, yran ;     
@@ -163,6 +168,7 @@ int main(int argc, char **argv)
   int numchrom = 22 ;
   double **jwt ;
   int numx ;  // snps in main double loop
+  double timeoffset ;  
 
   ofile = stdout; 
   packmode = YES ;
@@ -174,6 +180,8 @@ int main(int argc, char **argv)
 
   ZALLOC(admixpoplist, MAXAPOPS, char *) ;  
   readcommands(argc, argv) ;
+
+  if (parname == NULL) return 0 ;
 
   if (weightname != NULL) {
    printf("weights set on input\n") ;
@@ -278,8 +286,8 @@ int main(int argc, char **argv)
    ZALLOC(w1, numsnps, double) ;
    ZALLOC(w2, numsnps, double) ;
    ZALLOC(wk, numsnps, double) ;
-   ZALLOC(ww1, numsnps, double) ;
-   ZALLOC(ww2, numsnps, double) ;
+   ZALLOC(ww1, numsnps  + numbins, double) ;
+   ZALLOC(ww2, numsnps  + numbins, double) ;
    ZALLOC(wa, numsnps, double) ;
    ZALLOC(wb, numsnps, double) ;
    ZALLOC(res, numsnps, double) ;
@@ -294,6 +302,9 @@ int main(int argc, char **argv)
 
    ZALLOC(xnum, numbins, double) ;
    ZALLOC(xden, numbins, double) ;
+   ZALLOC(xdenq, numbins, double) ;
+   ZALLOC(znum, numbins, double) ;
+   ZALLOC(zden, numbins, double) ;
    ZALLOC(yy2, numbins, double) ;
 
     xxnum = initarray_2Ddouble(numchrom+1, numbins, 0) ;
@@ -387,8 +398,21 @@ int main(int argc, char **argv)
     getweights(weightname, snpmarkers, numsnps) ;
    }
 
+   if (timeoffsetname != NULL) { 
+    printf("loading time offset...\n") ; 
+    getindvals(timeoffsetname, indivmarkers, numindivs) ;
+    for (k=0; k<numindivs; ++k) { 
+     indx = indivmarkers[k] ; 
+     timeoffset = indx -> qval ; 
+     if (timeoffset > 0) {  
+      printf("timeoffset: %20s %9.3f\n", indx -> ID,  timeoffset) ;   
+     }
+    } 
+   }
+
    for (i=0; i < ncount; ++i) { 
     indx = indadmix[i] ;  
+    timeoffset = indx -> qval ;
     k = indx -> idnum ; 
     x = 0 ; 
     ivclear(sindex, -1, numsnps) ;
@@ -443,15 +467,38 @@ int main(int argc, char **argv)
       if (dis<0.0) fatalx("badbug\n") ;
       if (dis >= maxdis) break ;
       s = (int) (dis/binsize) ; // as in simpsim2 
+      ytime = exp(-timeoffset*dis) ;
 
       yy  = res[k1]*res[k2] ;                    
       ywt = wt[k1]*wt[k2] ;                     
 
+      znum[s] += ywt * yy ;  
+      zden[s] += ywt * ywt ;
+
+      y = exp(-timeoffset*dis) ;
+
+      ywt *= y ;
+
       xnum[s] += ywt * yy ;  
       xden[s] += ywt * ywt ;
+
+      t = ranmod(1000*1000) ; 
+      if (t==-1)  {  
+       printf("zza %12.6f ", dis) ;  
+       printf("%d %12.6f ", s, y) ;  
+       y1 = (double) s * binsize ;  
+       printf("%12.6f ", exp(-timeoffset*y1) ) ; 
+       printf(" %12.6f %12.6f", xnum[s]/znum[s]) ;  
+       printf(" %12.6f %12.6f", xden[s]/zden[s]) ;  
+       printnl() ;
+      }
+  
+
       yy2[s] += yy * yy ;
       y1 = res[k1]*wt[k1] ;
       y2 = res[k2]*wt[k2] ;
+      y1 *= ytime ;
+      
       corrpt = corrbins[s] ; 
       addcorr(corrpt, y1, y2) ;
       ++jwt[chrom][s] ;
@@ -473,26 +520,30 @@ int main(int argc, char **argv)
  }
 
 
-  vsp(xden, xden, 1.0e-10, numbins) ; 
+  vsp(xden, xden, 1.0e-20, numbins) ; 
+  vsp(zden, zden, 1.0e-20, numbins) ; 
   vsp(yy2, yy2, 1.0e-10, numbins) ; 
 
-   if (runmode != 2) vsqrt(xden, xden, numbins) ;
-   vsqrt(yy2, yy2, numbins) ;
-
-   if (runmode != 2) {
-    vvt(yy2, xden, yy2, numbins) ;
-    vvd(ww, xnum, yy2, numbins) ;
-    if (verbose) {
-     printf("correlation (weight and yy)\n") ;    
-     printmat(ww, 1, numbins-5) ;
-    }
-   }
-
+   vsqrt(xden, xden, numbins) ;
 
    vvd(ww, xnum, xden, numbins) ;
+   vvd(ww1, znum, zden, numbins) ;
+/**
+   for (s=0; s<numbins; ++s) {  
+    dis = (double) s * binsize ;  
+    y2 = exp(-30*dis) ;  
+    printf("zzb %12.6f %12.6f %12.6f ", ww[s], ww1[s], y2) ; 
+    printf(" %12.6f ", xnum[s]) ;
+    printf(" %12.6f ", znum[s]) ;
+    printf(" %12.6f ", xden[s]) ;
+    printf(" %12.6f ", zden[s]) ;
+    printnl() ;  
+   }
+*/
    
    sprintf(sss, " ##Z-score and correlation:: %s  binsize: %12.6f", poplistname, binsize) ;
    dumpit(oname, ww, corrbins, numbins-5, binsize, sss) ;
+  
    for (k=1; k<=numchrom; ++k) { 
     if (jackknife == NO) break ;
     sprintf(s1, "%s:%d", oname, k) ;
@@ -520,7 +571,7 @@ void dumpit(char *oname, double *ww, CORR **corrbins, int len, double bsize, cha
 
     y = (k+1) * bsize ;
     corrpt = corrbins[k] ;
-    fprintf(fff, "%9.3f ", 100.0*y) ;
+    fprintf(fff, "%9.3f ", 100.0*y) ;  // CM
     fprintf(fff, "%12.6f ", ww[k]) ;   
 //  fprintf(fff, "%12.6f ", corrpt -> Z) ;
     if (runmode != 2) {
@@ -640,11 +691,10 @@ dorc2(double *ans, double *res, double binsize, double maxdis)
    }
 }
 
-void readcommands(int argc, char **argv) 
+int readcommands(int argc, char **argv) 
 
 {
   int i,haploid=0;
-  char *parname = NULL ;
   phandle *ph ;
   char str[5000]  ;
   char *tempname ;
@@ -674,7 +724,7 @@ void readcommands(int argc, char **argv)
   }
 
          
-   pcheck(parname,'p') ;
+   if (parname == NULL) return -1 ;
    printf("parameter file: %s\n", parname) ;
    ph = openpars(parname) ;
    dostrsub(ph) ;
@@ -684,6 +734,7 @@ void readcommands(int argc, char **argv)
    getstring(ph, "indivname:", &indivname) ;
    getstring(ph, "poplistname:", &poplistname) ;
    getstring(ph, "weightname:", &weightname) ;
+   getstring(ph, "timeoffset:", &timeoffsetname) ;
    getstring(ph, "admixpop:", &admixpop) ;
    getstring(ph, "admixlist:", &admixlist) ;
    getstring(ph, "badsnpname:", &badsnpname) ;
@@ -786,7 +837,7 @@ double cntit1(double *xc, SNP *cupt, Indiv **indm, int numindivs, int t)
   int k, g ;
 
   vzero(xc, 3) ;
-  if (cupt -> ignore) return ;
+  if (cupt -> ignore) return -1 ;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;
@@ -805,8 +856,8 @@ double cntit2(double *xc, SNP *cupt, SNP *cupt2, Indiv **indm, int numindivs, in
   int k, e, f ;
 
   vzero(xc, 9) ;
-  if (cupt -> ignore) return ;
-  if (cupt2 -> ignore) return ;
+  if (cupt -> ignore) return -1 ;
+  if (cupt2 -> ignore) return -1 ;
   for (k=0; k<numindivs; ++k) { 
    indx = indm [k] ;
    if (indx -> ignore) continue ;

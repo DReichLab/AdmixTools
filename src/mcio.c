@@ -2233,6 +2233,51 @@ putweights (char *fname, SNP ** snpm, int numsnps)
 
 /* ---------------------------------------------------------------------------------------------------- */
 int
+getindvals (char *fname, Indiv ** indivmarkers, int numindivs)
+{
+  // number of read lines 
+  char line[MAXSTR];
+  char *spt[MAXFF], *sx;
+  int nsplit, num = 0;
+  int skipit, k;
+  double qval;
+
+  FILE *fff;
+  for (k = 0; k < numindivs; ++k) {
+    indivmarkers[k] -> qval = 0.0;
+  }
+  if (fname == NULL) return 0 ;
+
+  openit (fname, &fff, "r");
+  while (fgets (line, MAXSTR, fff) != NULL) {
+    nsplit = splitup (line, spt, MAXFF);
+    if (nsplit == 0) {
+      continue;
+    }
+    sx = spt[0];
+    skipit = NO;
+    skipit = setskipit (sx);
+    k = indindex (indivmarkers, numindivs, sx);
+    if (k < 0)
+      skipit = YES;
+    if (skipit == NO) {
+      if (nsplit > 1) {
+	sx = spt[1];
+	qval = atof (sx);
+	indivmarkers[k]->qval = qval;
+//      printf ("qval set: %20s %9.3f\n", indivmarkers[k]->ID, qval);
+	++num;
+      }
+    }
+    freeup (spt, nsplit);
+    continue;
+  }
+  fclose (fff);
+  fflush (stdout);
+  return num;
+}
+
+int
 getweights (char *fname, SNP ** snpm, int numsnps)
 {
   // number of real lines 
@@ -2246,6 +2291,7 @@ getweights (char *fname, SNP ** snpm, int numsnps)
   for (k = 0; k < numsnps; ++k) {
     snpm[k]->weight = 1.0;
   }
+  if (fname == NULL) return 0 ;
   openit (fname, &fff, "r");
   while (fgets (line, MAXSTR, fff) != NULL) {
     nsplit = splitup (line, spt, MAXFF);
@@ -2263,7 +2309,7 @@ getweights (char *fname, SNP ** snpm, int numsnps)
 	sx = spt[1];
 	weight = atof (sx);
 	snpm[k]->weight = weight;
-	printf ("weight set: %20s %9.3f\n", snpm[k]->ID, weight);
+//      printf ("weight set: %20s %9.3f\n", snpm[k]->ID, weight);
 	++num;
       }
     }
