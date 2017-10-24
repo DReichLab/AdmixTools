@@ -1,0 +1,26 @@
+parameter file: parqpDstat
+### THE INPUT PARAMETERS
+##PARAMETER NAME: VALUE
+DIR: ../data/
+SSS: allmap
+indivname: ../data//allmap.ind
+snpname: ../data//allmap.snp
+genotypename: ../data//allmap.geno
+poplistname: list_qpDstat
+## qpDstat version: 662
+packed geno read OK
+  0               Yoruba   21
+  1               French   26
+  2                  Han   32
+  3                Uygur    9
+jackknife block size:     0.050
+nodata:        Affx-50079445
+nodata:        Affx-36048139
+nodata:        Affx-50056055
+snps: 621035  indivs: 88
+number of blocks for jackknife: 711
+nrows, ncols: 88 621035
+result:     Yoruba     French        Han      Uygur      0.0410    32.300    -  30753  28328 621026 
+result:     Yoruba        Han     French      Uygur      0.0865    51.447    -  33690  28328 621026 
+result:     Yoruba      Uygur     French        Han      0.0456    22.403 best  33690  30753 621026 
+## end of run
