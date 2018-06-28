@@ -40,10 +40,11 @@ double uniform(double lo, double hi) ;   // uniform (lo..hi)
 void ransimplex(double *x, int n) ;   // uniform on n-simplex  
 void randirichlet(double *x, double *pp, int n)  ;  // dirichlet parameter vector pp
 void randirmult(double *pp, int *aa, int len, int m) ;  // dirichlet multinomial.  Output aa
-int prob1(double p) ;
+int prob1(double p) ; // return YES with probability p 
 double rant(double df) ;  // t distribution  
 double samppow(double e, double a, double b) ;
 double rejnorm(double lo, double hi) ;       // usually call ranboundnorm 
 double ranboundnorm(double lo, double hi) ;  // sample standard normal in [lo, hi] 
 double rantruncnorm(double T, int upper) ;  // sample standard normal > T (upper =1) < T (upper = 0) 
-int ranhprob(int n, int a, int m) ;  
+int ranhprob(int n, int a, int m) ;    // n balls a block sample m .  Fow many black
+double rangeom (double theta) ;  // Geometric distribution, mean 1/theta

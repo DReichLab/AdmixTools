@@ -14,12 +14,15 @@ override CFLAGS += -c -g -p -Wimplicit -I./ -I./nicksrc
 ifdef SLURM_CONF
 override CFLAGS += -I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include
 override LDFLAGS += -L/n/app/openblas/0.2.19/lib -L/n/app/gsl/2.3/lib/
+TOP=../bin
+BIN=$(HOMEL)/../bin
 endif
 
 ND = nicksrc
 NLIB = $(ND)/libnick.a
 
-PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave rolloff convertf dowtjack expfit.sh grabpars qpBound qpGraph qpreroot qpff3base rolloffp qpDpart
+PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave dowtjack expfit.sh qpBound qpGraph qpreroot qpff3base qpDpart qp4diff qpF4ratio qpgbug grabpars rolloff rolloffp convertf mergeit
+## rolloff* convertf mergeit from .../o2src
 
 PROGS2 = rexpfit.r  wtjack.pl 
 
@@ -41,6 +44,8 @@ qpDpart: $(NLIB) qpDpart.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.
 
 qp3Pop: $(NLIB) qp3Pop.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
+qp4diff: $(NLIB) qp4diff.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
 qpF4ratio: $(NLIB) qpF4ratio.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 rolloff: $(NLIB) rolloff.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
@@ -53,6 +58,8 @@ dowtjack: $(NLIB) dowtjack.o
 
 convertf: $(NLIB) convertf.o mcio.o admutils.o egsubs.o h2d.o exclude.o
 
+mergeit: $(NLIB) mergeit.o mcio.o admutils.o egsubs.o h2d.o exclude.o
+
 grabpars: $(NLIB) grabpars.o
 
 qpff3base: $(NLIB) qpff3base.o qpgsubs.o qpsubs.o mcio.o admutils.o egsubs.o regsubs.o ldsubs.o
@@ -60,8 +67,6 @@ qpff3base: $(NLIB) qpff3base.o qpgsubs.o qpsubs.o mcio.o admutils.o egsubs.o reg
 qpAdm: $(NLIB) qpAdm.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f4rank.o  eigsubs.o eigx.o
 
 qpWave: $(NLIB) qpWave.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f4rank.o eigsubs.o eigx.o
-
-.PHONY: install uninstall dirs clean clobber rmdirs example_data
 
 install:	all dirs tables
 	mkdir -p $(TOP)
@@ -92,16 +97,12 @@ clobber: clean rmdirs uninstall
 rmdirs: 
 	rm -rf $(HOMEL)/admixtables 
 
-AdmixTools_Example_Data.tar_.gz:
-	wget https://reich.hms.harvard.edu/sites/reich.hms.harvard.edu/files/inline-files/AdmixTools_Example_Data.tar_.gz
-
-example_data: AdmixTools_Example_Data.tar_.gz
-	tar zxvf AdmixTools_Example_Data.tar_.gz
-	mv data ../
-
 ## gsl-config may help here
 
 
 qpGraph: $(NLIB) qpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
+qpgbug: $(NLIB) qpgbug.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
 qpreroot: qpreroot.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+

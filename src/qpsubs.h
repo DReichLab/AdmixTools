@@ -198,6 +198,8 @@ double ff3val(double *ff3, int a, int b, int c, int n)  ;
 
 // graph stuff
 int loadgraph(char *readit, char ***peglist)   ;
+void readadmix(char *gname) ;
+void writeadmix(char *gname) ;
 void dumpgraph(char *gname) ;
 void dumpdotgraph(char *gdotname) ;
 void dumpdotgraph_title(char *gdotname, char *title) ;
@@ -231,6 +233,7 @@ int hashgraph()  ;
 void hashg(int knum, int *hashvals) ;
 void setispath() ;
 void setincidence(int *x) ;
+int calcscript(char **string) ;
 
 void copystringsd(char **eglist, char **neweglist, int numeg, int  xdel) ;
 int loadeglist(char ***pxeglist, int xnumeg) ;

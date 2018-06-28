@@ -1,4 +1,4 @@
-ADMIXTOOOLS version 4.1  5/15/16 (for Linux and Mac)
+ADMIXTOOLS version 5.0  6/28/18 (for Linux and Mac)
 
 See README.INSTALL for installation info. 
 
@@ -31,9 +31,8 @@ Uncomment the lines in src/Makefile that modify the CFLAGS and LDFLAGS.
 
 If you have trouble compiling and running our code, try compiling and
 running the examples in the examples/ directory. Download the example
-datasets by running "make example_data" from the src/ directory. 
-This downloads https://reich.hms.harvard.edu/sites/reich.hms.harvard.edu/files/inline-files/AdmixTools_Example_Data.tar_.gz
-and untars in the root AdmixTools directory, creating a subdirectory called ./data. 
+datasets from https://reich.hms.harvard.edu/sites/reich.hms.harvard.edu/files/inline-files/AdmixTools_Example_Data.tar_.gz
+and untar in the root AdmixTools directory, creating a subdirectory called ./data. 
 
 "cd examples"
 "./mklog"

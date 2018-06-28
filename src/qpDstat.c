@@ -25,7 +25,7 @@
 */
 
 
-#define WVERSION   "712"
+#define WVERSION   "751"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -44,6 +44,8 @@
 // syntactic sugar (strip :) in popfilename  
 // numchrm added
 // formatting bug (overflow of abba counts) fixed
+// instem added 
+// cputime etc printed
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -99,10 +101,11 @@ double blgsize = 0.05;          // block size in Morgans */
 double *chitot;
 int *xpopsize;
 
+char *instem = NULL ; 
 char *genotypename = NULL;
 char *snpname = NULL;
-char *snpoutfilename = NULL;
 char *indivname = NULL;
+char *snpoutfilename = NULL;
 char *badsnpname = NULL;
 char *poplistname = NULL;
 char *popfilename = NULL;
@@ -226,14 +229,23 @@ main (int argc, char **argv)
 
   double tlenz[5], tlen[5];
   int lenz[5];
+  double ymem ; 
 
 
   readcommands (argc, argv);
+
+  cputime(0) ;
+  calcmem(0) ;
+  
   printf ("## qpDstat version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
   if ((poplistname == NULL) && (popfilename == NULL))
     fatalx ("poplistname, popfilename both null\n");
+
+  if (instem != NULL) { 
+   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
+  } 
 
   if (xchrom == (numchrom + 1)) noxdata = NO;
 
@@ -289,6 +301,12 @@ main (int argc, char **argv)
       getnamesstripcolon (&qlist, nqlist, 4, popfilename, locount, hicount);
     numeg = 0;
     printf ("number of quadruples %d\n", nqlist);
+
+    if (nqlist==0) { 
+     printf("no quads!\n") ; 
+     return 0 ;
+    }
+
     fflush (stdout);
     for (k = 0; k < 4; ++k) {
       for (j = 0; j < nqlist; ++j) {
@@ -648,7 +666,9 @@ main (int argc, char **argv)
   }
 
 
-  printf ("## end of run\n");
+
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of qpDstat: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
   return 0;
 }
 
@@ -720,6 +740,7 @@ readcommands (int argc, char **argv)
   ph = openpars (parname);
   dostrsub (ph);
 
+  getstring (ph, "instem:", &instem);
   getstring (ph, "genotypename:", &genotypename);
   getstring (ph, "snpname:", &snpname);
   getstring (ph, "indivname:", &indivname);

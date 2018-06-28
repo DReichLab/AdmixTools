@@ -25,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "412"
+#define WVERSION   "420"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -69,10 +69,11 @@ int dzeromode = YES;
 int isinit = NO;
 double f2weight = 1.0;		// lsqmode only
 
+char *instem = NULL ; 
+char *indivname = NULL;
 char *genotypename = NULL;
 char *snpname = NULL;
 char *snpoutfilename = NULL;
-char *indivname = NULL;
 char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
@@ -185,6 +186,10 @@ main (int argc, char **argv)
   if (xchrom == (numchrom + 1)) noxdata = NO;
   setjquart (pubjack, jackweight, jackquart);
   setinbreed (inbreed);
+
+  if (instem != NULL) { 
+   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
+  } 
 
   numsnps =
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
@@ -412,6 +417,7 @@ readcommands (int argc, char **argv)
   ph = openpars (parname);
   dostrsub (ph);
 
+  getstring (ph, "instem:", &instem);
   getstring (ph, "genotypename:", &genotypename);
   getstring (ph, "snpname:", &snpname);
   getstring (ph, "indivname:", &indivname);

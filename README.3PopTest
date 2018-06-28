@@ -28,7 +28,7 @@ popfilename:  list_qp3test (contains 3 populations on each line <Source1 (A)> <S
 
 ## optional; but important parameter 
 inbreed: YES  
-## Use if target pop is inbred OR abd crucially if target is psudo-diploid
+## Use if target pop is inbred OR (and crucially) if target is pseudo-diploid
 
 
 DESCRIPTION OF OUTPUT FILE:

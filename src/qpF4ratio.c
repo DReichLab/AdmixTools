@@ -28,7 +28,7 @@
 */
 
 
-#define WVERSION   "300"
+#define WVERSION   "310"
 // diffmode added
 
 #define MAXFL  50
@@ -99,7 +99,7 @@ FILE *ofile;
 
 void readcommands (int argc, char **argv);
 int readpopx (char *pname, char ***plists, int npops);
-void doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
+int doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 	      int nrows, int ncols, int *xtop, int *xbot, int numeg,
 	      int nblocks);
 
@@ -167,7 +167,7 @@ main (int argc, char **argv)
   double mingenpos, maxgenpos;
   int *qhit;			/* number of times pair is clade in quartet */
   int *qmiss;			/* number of times pair migration event implied */
-  int **qplist, numqp = 0, maxqp = 10000;
+  int **qplist, numqp = 0, maxqp = 10000, nsnps;
   double *qpscore;
 
 
@@ -337,7 +337,7 @@ main (int argc, char **argv)
 	xtop[i] = indxindex (eglist, numeg, plists[a][i]);
 	xbot[i] = indxindex (eglist, numeg, plists[a][i + 4]);
       }
-      doq4rat (&y, &ysig, counts, bcols,
+      nsnps = doq4rat (&y, &ysig, counts, bcols,
 	       nrows, ncols, xtop, xbot, numeg, nblocks);
       ++numprint;
       if (numprint == 1) {
@@ -360,6 +360,7 @@ main (int argc, char **argv)
 	  printf (" : ");
       }
       printf ("%12.6f %12.6f  %9.3f", y, ysig, y / ysig);
+      printf(" 9d", nsnps) ;
       printnl ();
     }
   }
@@ -632,7 +633,7 @@ readpopx (char *pname, char ***plists, int npops)
   return num;
 }
 
-void
+int
 doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 	 int nrows, int ncols, int *xtop, int *xbot, int numeg, int nblocks)
 {
@@ -646,7 +647,7 @@ doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
   double y1, y2, yscal;
   double *w1, *w2, *ww, m1, m2;
   int bnum, totnum;
-  int ret;
+  int ret ; 
 
   if (nrows == 0)
     fatalx ("badbug\n");
@@ -715,6 +716,8 @@ doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 
   free (btop);
   free (bbot);
+
+  return totnum ;
 
 }
 

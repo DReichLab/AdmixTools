@@ -986,7 +986,7 @@ bprob (double p, double a, double b)
 
 double
 gammprob (double x, double p, double lam)
-/* gamma density */
+/* gamma log density */
 {
   double xx, yl;
   xx = MAX (x, 1.0e-8);
@@ -2533,9 +2533,6 @@ void bj2(double *aa, double *bb, int a, int b,  double *plpv, double *prpv, doub
  free(cat) ; 
  free(ind) ; 
  free(type) ; 
- 
-
-
 
 
 }
@@ -2747,3 +2744,158 @@ double genhpt(int a, int b, int *lt, int *rt)
   free2Dlongdouble(&hp, t) ;
   return 1.0-y ;  
 }
+
+void mlegamm(double *a, double n, double *p, double *lam)
+{
+
+  double a1, a2 ;
+  int k, num=0 ;
+
+  a1 = a2 = 0 ;
+  for (k=0; k<n; ++k) {
+   if (a[k] <= 0.0) continue ;
+   a1 += a[k] ;
+   a2 += log(a[k]) ;
+   ++num ;
+  }
+  a1 /= (double) num ;
+  a2 /= (double) num ;
+  mleg(a1, a2, p, lam) ;
+
+}
+
+void mlebeta(double *a, int n, double *p1, double *p2)
+
+{
+
+
+  double a1, a2 ;
+  int k, num=0 ;
+
+  a1 = a2 = 0 ;
+  estbpars(a, n,  p1, p2) ; //  initial momen ts estimator
+  for (k=0; k<n; ++k) {
+   if (a[k] <= 0.0) continue ;
+   if (a[k] >= 1.0) continue ;
+   a1 += log(a[k]) ;
+   a2 += log(1-a[k]) ;
+   ++num ;
+  }
+  a1 /= (double) num ;
+  a2 /= (double) num ;
+  mleb(p1, p2, a1, a2) ;
+
+}
+
+
+
+void estbpars(double *a, int n, double *p1, double *p2)
+
+{
+
+// moments estimator for beta
+
+  double *w1, ymean, yvar ;
+
+  ZALLOC(w1, n, double) ;
+
+  ymean = asum(a, n) / (double) n ;
+  vsp(w1, a, -ymean, n) ;
+  yvar = asum2(w1, n) / (double) n ;
+
+  bpars(p1, p2, ymean, yvar) ;
+
+  free(w1) ;
+
+
+}
+
+
+static void mleb1(double *p1, double *p2, double u, double mul)       
+{
+  double b1, b2, TT[1], R[1], H[1], X[1]  ;  
+  int iter, ret ;
+  double  fval ; 
+
+  b1 = *p1 ; 
+  b2 = *p2 ; 
+
+  for (iter = 1; iter <= 30; ++iter) {  
+   fval = u - (psi(b1) - psi(b1+b2)) ; 
+   if (fval <= 0) break ; 
+   b1 *= mul ;
+//  printf("zz1 %15.9f %12.6f\n", b1, fval) ;
+  }
+
+  for (iter = 1; iter <= 30; ++iter) {  
+   fval = u - (psi(b1) - psi(b1+b2)) ; 
+   if (fval >= 0) break ; 
+   b1 /= mul ;
+//   printf("zz2 %15.9f %12.6f\n", b1, fval) ;
+  }
+
+  *p1 = b1 ;
+
+}
+void mleb(double *p1, double *p2, double u, double v) 
+
+// u = mean(log x_i)  v = mean(log (1-x_i)) 
+{
+
+  double b1, b2, TT[4], R[2], H[2], X[2], bb1, bb2 ;  
+  int iter, ret ;
+  double yerr, oldyerr = 1.0e20 ; 
+
+  b1 = *p1 ; 
+  b2 = *p2 ; 
+
+   mleb1(&b1, &b2, u, 2) ; 
+   mleb1(&b2, &b1, v, 2) ; 
+
+   mleb1(&b1, &b2, u, 1.5) ; 
+   mleb1(&b2, &b1, v, 1.5) ; 
+
+  for (iter=1; iter <= 20; ++iter)  { 
+   if (oldyerr < yerr) { 
+    mleb1(&b1, &b2, u, 2) ; 
+    mleb1(&b2, &b1, v, 2) ; 
+    continue ;  
+   } 
+   R[0] = psi(b1)-psi(b1+b2) -u ;
+   R[1] = psi(b2)-psi(b1+b2) -v ;
+
+   yerr = fabs(R[0]) + fabs(R[1]) ;
+
+   
+   TT[0] = tau(b1) - tau(b1+b2) ;
+   TT[3] = tau(b2) - tau(b1+b2) ;
+   TT[1] = TT[2] = -tau(b1+b2) ;  
+
+   vst(X, R, -1, 2) ;
+
+/**
+   printf("iter: %3d %15.9f %15.9f\n", iter, b1, b2) ;
+   printmatl(R, 1, 2) ; 
+   printmatl(TT, 2, 2) ;  
+*/
+   ret = solvit(TT, X, 2, H) ;  
+   if (ret<0) fatalx("(mleb) TT not pos def\n") ;
+// printmatl(H, 1, 2) ; 
+   bb1 = b1 + H[0] ;
+   bb2 = b2 + H[1] ;
+   if (bb1<0) bb1 = b1/2 ; 
+   if (bb2<0) bb2 = b2/2 ; 
+   b1 = bb1 ; 
+   b2 = bb2 ;
+   if (yerr < 1.0e-12) break ;
+   oldyerr = yerr ;
+
+  }
+  *p1 = b1 ; 
+  *p2 = b2 ; 
+
+}
+
+
+
+

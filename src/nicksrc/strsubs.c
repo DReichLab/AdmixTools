@@ -12,7 +12,7 @@
 
 
 #define MAXSTR 10000
-#define MAXFF 50
+#define MAXFF  500 
 
 #include "strsubs.h"
 #include "vsubs.h"
@@ -575,11 +575,50 @@ substring (char **ap, char *inx, char *outx)
   return (substringx (ap, inx, outx, 0));
 }
 
+int mapstrings(char **pstr, char **insub, char **outsub, int n)  
+{
+  char *ss ;  
+  int k, t = 0 ; 
+  ss = strdup(*pstr) ;
+  
+  for (k=0; k<n; ++k) {  
+    t += substring(&ss, insub[k], outsub[k]) ; 
+  }
 
+  *pstr = strdup(ss) ; 
+  freestring(&ss) ;
+  return t ; 
+
+}
+  
+
+
+int upstring (char *ss)
+
+/* 
+ YES if at least one upper case character 
+ and no lower case  
+*/
+{
+  int nupper = 0;
+  int i;
+  for (i = 0; i < strlen (ss); i++)
+  {
+    if (islower (ss[i]))
+      return NO;
+    if (isupper (ss[i]))
+      ++nupper;
+  }
+  if (nupper > 0)
+    return YES;
+  return NO;
+
+}
 
 int
 numcols (char *name)
 // number of cols 
+#define MAXCOLS 1000 
 {
   FILE *fff;
   char line[MAXSTR];
@@ -591,7 +630,7 @@ numcols (char *name)
     fatalx ("(numlines)  no name");
   openit (name, &fff, "r");
   while (fgets (line, MAXSTR, fff) != NULL) {
-    nsplit = splitup (line, spt, MAXFF);
+    nsplit = splitup (line, spt, MAXCOLS);
     if (nsplit == 0)
       continue;
     sx = spt[0];
@@ -661,10 +700,32 @@ openit (char *name, FILE ** fff, char *type)
     ss = strerror (errno);
     printf ("bad open %s\n", name);
 // system("lsof | fgrep np29") ;
-    fatalx ("can't open file %s of type %s\n error info: %s\n", name, type,
+    fatalx ("(openit) can't open file %s of type %s\n error info: %s\n", name, type,
             ss);
   }
 }
+
+void fcheckr(char *name)
+// like ftest but just calls fatalx on errir
+{
+ FILE *fff ;
+
+ openit(name, &fff,  "r") ;
+ fclose(fff) ;
+
+
+}
+
+void fcheckw(char *name)
+{
+ FILE *fff ;
+
+ openit(name, &fff,  "w") ;
+ fclose(fff) ;
+
+
+}
+
 
 int
 getxx (double **xx, int maxrow, int numcol, char *fname)
@@ -930,7 +991,8 @@ getxxnames (char ***pnames, double **xx, int maxrow, int numcol, char *fname)
 {
 
   char line[MAXSTR];
-  char *spt[MAXFF];
+  char sstt[MAXSTR] ;  
+  char **spt ;
   char *sx;
   int nsplit, i, j, num = 0, maxff, numcolp;
   FILE *fff;
@@ -946,6 +1008,7 @@ getxxnames (char ***pnames, double **xx, int maxrow, int numcol, char *fname)
   }
   numcolp = numcol + 1;
   maxff = MAX (MAXFF, numcolp);
+  ZALLOC (spt, maxff, char *) ;
 
   while (fgets (line, MAXSTR, fff) != NULL) {
     nsplit = splitup (line, spt, maxff);
@@ -970,7 +1033,10 @@ getxxnames (char ***pnames, double **xx, int maxrow, int numcol, char *fname)
     if (num >= maxrow)
       fatalx ("too much data\n");
     for (i = 0; i < numcol; i++) {
-      xx[i][num] = atof (spt[i + 1]);
+// NA -> 0 
+      strcpy(sstt, spt[i+1]) ; 
+      if (strcmp(sstt, "NA") == 0) strcpy(sstt, "0") ;
+      xx[i][num] = atof (sstt) ;      
     }
     freeup (spt, nsplit);
     ++num;
@@ -988,9 +1054,9 @@ like getxxnames but file already open
 */
 {
 
-#define MAXFF  50
 
   char line[MAXSTR];
+  char sstt[MAXSTR] ; 
   char *spt[MAXFF];
   char *sx;
   int nsplit, i, j, num = 0, maxff, numcolp;
@@ -1026,7 +1092,9 @@ like getxxnames but file already open
     if (num >= maxrow)
       fatalx ("too much data\n");
     for (i = 0; i < numcol; i++) {
-      xx[i][num] = atof (spt[i + 1]);
+      strcpy(sstt, spt[i+1]) ; 
+      if (strcmp(sstt, "NA") == 0) strcpy(sstt, "0") ;
+      xx[i][num] = atof (sstt) ;      
     }
     freeup (spt, nsplit);
     ++num;
@@ -1734,6 +1802,7 @@ findupper (char *s)
 char *
 strnotchar (char *s, char c)
 // CNULL not tested
+// return pointer to first char NOT c 
 {
   char x;
   int len, k;
@@ -1806,5 +1875,52 @@ int filehash(char *name)
   }
   fclose (fff);
   return abs(hash) ;
+}
+
+char *mytemp (char *qqq) 
+// make temporary file name.   qqq is header string, eg "junk1" 
+{
+  char ss[MAXSTR] ; 
+  int t ; 
+
+  t = (int) getpid() ; 
+  sprintf(ss, "/tmp/%s.%d", qqq, t) ; 
+  return strdup(ss) ;
+}
+
+void printslurmenv () 
+{
+ char *ss ; 
+ char sss[256] ;  
+
+ ss = getenv("SLURM_JOBID") ; 
+ if (ss==NULL) return ; 
+ sprintf(sss, "sstat -j %s --format=jobid,avecpu,averss", ss) ;  
+ fflush(stdout) ;
+ printf("\n") ; 
+ printf("====================================================================================\n") ;
+ system(sss) ; 
+ printf("\n") ; 
+ fflush(stdout) ;
+
+}
+
+int getfline(char *ss, char *fname, int maxstr)
+{
+  FILE *fff ;
+  int n ;
+  char *pt ;
+  openit(fname, &fff, "r") ;
+
+  pt = fgets(ss, maxstr, fff) ;
+
+  fclose(fff) ;
+  if (pt == NULL) ss[0] = CNULL ;
+  else {
+   n = strlen(ss) ;
+   ss[n-1] = CNULL ;
+  }
+  return strlen(ss) ;
+
 }
 

@@ -446,26 +446,3 @@ dostrsub (phandle * pp)
     dostrsub (pp);
 
 }
-
-int
-upstring (char *ss)
-
-/* 
- YES if at least one upper case character 
- and no lower case  
-*/
-{
-  int nupper = 0;
-  int i;
-  for (i = 0; i < strlen (ss); i++)
-  {
-    if (islower (ss[i]))
-      return NO;
-    if (isupper (ss[i]))
-      ++nupper;
-  }
-  if (nupper > 0)
-    return YES;
-  return NO;
-
-}

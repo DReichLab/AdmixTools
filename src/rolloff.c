@@ -18,7 +18,7 @@
 #include "egsubs.h"
 #include "ldsubs.h"
 
-#define WVERSION   "1112"
+#define WVERSION   "1110"
 /** an attempt to 
  1) threshold for LD in parentals 
  2) Use a weighted Z-score
@@ -76,6 +76,8 @@ char *dumpname = NULL;
 char *loadname = NULL;
 char *oname = NULL;
 char *weightname = NULL;
+char *parname = NULL;
+
 int crossmode = NO;
 int runmode = 0;
 int ldmode = NO;
@@ -196,8 +198,12 @@ main (int argc, char **argv)
   printnl ();
 
   ZALLOC (admixpoplist, MAXAPOPS, char *);
+
   if (readcommands (argc, argv) < 0)
     return -1;
+
+  if (parname == NULL)
+    return 0;
 
   if (weightname != NULL) {
     poplistname = NULL;
@@ -846,7 +852,6 @@ int
 readcommands (int argc, char **argv)
 {
   int i ;
-  char *parname = NULL;
   phandle *ph;
   char str[5000];
   char *tempname;

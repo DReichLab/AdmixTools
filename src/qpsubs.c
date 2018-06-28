@@ -1536,7 +1536,7 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
 // block, bsize are first element and block length 
 // must have been allocated if not NULL 
 {
-  int n = 0, i;
+  int n, i, maxn;
   int chrom, xsize, lchrom, olds;
   double fpos, dis, gpos;
   SNP *cupt;
@@ -1544,6 +1544,7 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
 
   lchrom = -1;
   xsize = 0;
+  maxn = n = 0 ;
 
   fpos = -1.0e20;
   for (i = 0; i < numsnps; i++) {
@@ -1563,6 +1564,7 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
 	if (bsize != NULL)
 	  bsize[n] = xsize;
 	++n;
+        maxn = n ; 
       }
       lchrom = chrom;
       fpos = gpos;
@@ -1578,8 +1580,9 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
     if (bsize != NULL)
       bsize[n] = xsize;
     ++n;
+    maxn = n ; 
   }
-  *nblock = n;
+  *nblock = maxn + 1;
   return;
 }
 

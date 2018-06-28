@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "6412"   
+#define WVERSION   "6151"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -56,8 +56,6 @@
 // calcfit not called after loadname
 // basenum bug fixed
 // instem added
-// new version of qpgsubs (kimfit)
-// admixout, admixin 
 
 
 #define MAXFL  50
@@ -118,8 +116,6 @@ char *outliername = NULL;
 char *phylipname = NULL;
 char *dottitle = NULL ;
 
-char *admixout = NULL;
-char *admixin  = NULL;
 char *dumpname = NULL;
 char *loadname = NULL;
 
@@ -296,13 +292,9 @@ main (int argc, char **argv)
   FILE *phylipfile = NULL;
   int dmode = NO;
   int bad2 = NO;
-  int callinitv = YES ;
 
 
   readcommands (argc, argv);
-
-  cputime(0) ; 
-  calcmem(0) ; 
   printf ("## qpGraph version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
@@ -311,7 +303,6 @@ main (int argc, char **argv)
 
   if (instem != NULL) { 
    setinfiles(&indivname, &snpname, &genotypename, instem) ; 
-// set up names.  Nothing read
   } 
 
   setallsnpsmode (allsnpsmode);
@@ -825,10 +816,7 @@ outpop:    (not present)
     t = (int) pow (2, nmix);
   initmixnum = MAX (100 * nmix, 20 * t);
 
-  if (loadname != NULL) callinitv = NO ;
-  if (admixin != NULL) callinitv = NO ;
-
-  if (callinitv) {
+  if (loadname == NULL) {
     y = initvmix (wwtemp, nwts, initmixnum);    // side effect sets vmix
 //  printf ("initial admix wts:  score: %9.3f\n", y);
     getwww (vmix, wwtemp, nwts);
@@ -837,15 +825,7 @@ outpop:    (not present)
 
   if (loadname != NULL) {
     loadpars (loadname, wwtemp, nwts, xxans, nedge);
-  }
 
-  if (admixin != NULL) {
-    readadmix (admixin) ; 
-    getgmix(vmix, lmix, &nmix) ;
-    setwww (vmix, wwtemp, 2 * nmix);
-  }
-
-  if (callinitv == NO) {
     getwww (vmix, wwtemp, nwts);
     putgmix (vmix);
     y = scorit (wwtemp, nwts, &y1, ww2);
@@ -940,11 +920,8 @@ outpop:    (not present)
   dumppars (dumpname, wwtemp, nwts, ww2, nedge);
   dumpgraph (graphoutname);
   dumpdotgraph_title (graphdotname, dottitle);
-  fflush(stdout) ;
-  writeadmix(admixout) ;
 
-  y = 1.0e-6 * (double)  calcmem(1) ; 
-  printf ("## end of qpGraph time: %9.3f seconds memory: %9.3f Mbytes\n", cputime(1), y) ; 
+  printf ("## end of run\n");
   return 0;
 }
 
@@ -1123,22 +1100,6 @@ printfit (double *ww)
   xa = xb = xc = xd = -1;
   worstz = -1;
   ssworst[0] = CNULL ; 
-
-   ssx = ss ; 
-   if (fulloutlier) {
-    ssx += sprintf (ssx, "%15s %15s ", "", "") ;                    
-    ssx += sprintf (ssx, "%15s %15s ", "", "") ;                    
-   }
-   else {
-    ssx += sprintf (ssx, "%10s %10s ", "", "") ;                    
-    ssx += sprintf (ssx, "%10s %10s ", "", "") ;                    
-   }
-   ssx += sprintf (ssx, " %12s %12s ", "Fit", "Obs") ;
-   ssx += sprintf (ssx, "%12s ", "Diff");
-   ssx += sprintf (ssx, "%12s ", "Std. error");
-   ssx += sprintf (ssx, "%9s ", "Z");
-   printf("%s\n", ss) ;
-
 
   for (a = 0; a < numeg; a++) {
     for (b = 0; b < numeg; b++) {
@@ -1870,8 +1831,6 @@ readcommands (int argc, char **argv)
   getdbl (ph, "precision:", &gslprecision);
   getstring (ph, "badpop2name:", &badpop2name);
   getstring (ph, "weightname:", &weightname);
-  getstring (ph, "admixout:", &admixout);
-  getstring (ph, "admixin:", &admixin);
 
   getint (ph, "noxdata:", &noxdata);
   t = -1;
@@ -1926,6 +1885,19 @@ sol2 (double *co, double *rhs, double *ans)
     xa = c01;
   }
   ans[1] = ra / xa;
+
+}
+void printbug(int a,int b,int c, int col, SNP *cupt,double ytop)
+{
+ if (col>100000) return ; 
+
+ if (a>3) return ; 
+ if (b>3) return ; 
+ if (c>3) return ; 
+
+ printf("zzbug: %20s ", cupt -> ID) ;
+ printf("%1d %1d %1d ", a,b,c) ;
+ printf("%9.3f\n", ytop) ;
 
 }
 
@@ -1998,8 +1970,8 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
       b = x / numeg;
       c = x % numeg;
       ytop = dump3 (estmat, a, b, c, numeg);
-      if (ytop < -100)
-        continue;
+      printbug(a,b,c,col,cupt,ytop) ;
+      if (ytop < -100) continue;
       if (fstdmode == NO) {
         top[u] += wt * ytop;
         bot[u] += 1.0;

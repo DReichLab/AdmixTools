@@ -655,7 +655,7 @@ prob1 (double p)
   double z;
 
   if ((p < 0) || (p > 1))
-    fatalx ("bad p %12.6f\n", p);
+    fatalx ("(prob1) bad p %12.6f\n", p);
   z = DRAND2 ();
   if (z < p)
     return YES;
@@ -814,6 +814,9 @@ ranhprob (int n, int a, int m)
   double pm, logpm, w, ru, rw, rat;
   int mode, k, x, zans;
 
+  if (m<=0) return 0 ; 
+  if (m>n) return -1 ; 
+
   mode = modehprob (n, a, m);
   logpm = loghprob (n, a, m, mode);
   pm = exp (logpm);
@@ -850,5 +853,20 @@ void setrand (double *ww, int n)
     ww[k] = DRAND ();
   }
 }
+
+double rangeom (double theta) 
+{
+// sample # trials until success  prob theta.  Min value 1
+// Knuth Vol 2, page 131;  Mean of random variable 1/theta
+double y ; 
+
+ if (theta == 1.0) return 1 ; 
+ if (theta <= 0.0) fatalx("bad rangeom parameter\n") ;
+  
+ y = -ranexp() / log(1-theta) ; 
+ return ceil(y) ; 
+
+}
+ 
 
 

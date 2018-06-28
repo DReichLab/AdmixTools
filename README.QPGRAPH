@@ -46,6 +46,23 @@ precision:  controls accuracy of recovereed admixture weights.  Coefficients wil
 zthresh: controls outlier output.  All f-stats are calculated and those diverging more then "zthresh" from fitted values 
  printed.e all SNPs even if some populations hav e n data for a SNP (default NO) 
 
+*** new feature *** 
+admixin:  <admixwts file>  
+ contains lines such as
+admix T S1 S2 w1 w2 
+ where T is a target node, S1, S2 are source nodes and w1 w2 are weights.  qpGraph  
+ will rescale these to sum to 1. 
+These lines are in the same format as the output graph [-o option below] and such a graph can be used 
+ (only admix lines are recognized) 
+admixout:  <admixwts file> 
+This file is of course easy to habnd edit. 
+If admixin is present then initial try estimation is omitted which will make qpGraph run 
+ very much faster.  
+
+
+
+
+
 -g graph  
 See examples.qpGraph/gr1x 
 Note comments can be included in file. Begin a line with #

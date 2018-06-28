@@ -191,6 +191,7 @@ void printmatz5(double *ww, char **eglist, int n) ;
 void printmatz10(double *ww, char **eglist, int n) ;
 char *get3(char *ss) ;
 char *getshort(char *ss, int n) ;
+void setinfiles(char **pind, char **psnp, char **pgeno, char *stem)  ;
 
 
 #undef max 

@@ -1,0 +1,18 @@
+Summary of fit:
+
+Formula: wcorr ~ (C + A * exp(-m * dist/100))
+
+Parameters:
+   Estimate Std. Error t value Pr(>|t|)    
+C 6.191e-03  4.463e-04   13.87   <2e-16 ***
+A 9.607e-02  2.451e-03   39.19   <2e-16 ***
+m 2.267e+01  8.712e-01   26.02   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1 
+
+Residual standard error: 0.006619 on 393 degrees of freedom
+
+Number of iterations to convergence: 2 
+Achieved convergence tolerance: 3.786e-06 
+
+mean (generations):  22.667475 

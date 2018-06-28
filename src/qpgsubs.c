@@ -14,6 +14,8 @@
 
 #define WVERSION "2000"
 #define MAXA  10
+#define MAXSTR 256
+#define MAXFF  10
 
 extern int verbose;
 extern int isinit;
@@ -68,6 +70,7 @@ typedef struct
   char *name;
   struct NODE *up;
   struct NODE *down;
+  double theta ;
   double val;
   int edgenum;
   int isfixed;
@@ -99,11 +102,11 @@ void addadmix (char *vertname, char **avnames, double *ww, int nt);
 int getadwts (char **spt, char **ssx, double *ww, int nsplit, int *n);
 int getextlabel (NODE * node, char *sss);
 void ckline (char *line, int ns, int n);
+static int parsev(char *sx, double *pval, double *ptheta) ;
 
 EDGE *xedge (NODE * n1, NODE * n2);
 void fixnode (NODE * node);
 void fixedge (EDGE * edge);
-int isleaf (NODE * node) ;
 NODE *root ();
 NODE *vert (char *nodename);
 void setdistances ();
@@ -113,11 +116,12 @@ void setdisq(NODE *node, int dis)  ;
 void setdisqq(NODE *node, int dis)  ;
 int setxx (NODE * node, NODE ** xx);
 void reroot (char *nodename);
-void settime ();
+void setgtime ();
 void setvnum (int *vnum, int *list, int n);
-void pedge (FILE * fff, NODE * anode, NODE * bnode, double val, int mode);
+void pedge (FILE * fff, NODE * anode, NODE * bnode, double val, double theta, int mode);
 int vertexnum (char *vertname);
 int edgenum (char *edgename);
+int isleaf (NODE *node) ; 
 
 void
 getvnames (char **vnames)
@@ -467,11 +471,16 @@ addwts (double *vv, double *aa, NODE * node, double weight)
   EDGE *edge;
   int k, t, vind;
   double wt;
+  int nadmix, ncalllim ;  
 
   ++ncall;
+
   if (ncall > 100) {
-    fatalx ("looping\n");
+    nadmix = getnumadmix() ; 
+    ncalllim = pow(2.0, nadmix+1) + 50 ; 
+    if (ncall > ncalllim) fatalx ("looping\n");
   }
+
 
   if (verbose) {  
    printf("zzaddw  %s %s %9.3f\n", bugstring, node -> name, weight) ;
@@ -671,6 +680,111 @@ trivgraph (char *rootname)
   addvertex (rootname);
 }
 
+void getmixinfo(int vind, int *k1, int *k2, double *tmix) 
+{
+  NODE *node ;
+
+  *k1 = *k2 = -1 ; 
+
+  node = &vlist[vind] ;
+ if (node -> numwind != 2) fatalx("(getmixinfo) badbug\n") ;
+ *k1 = node -> windex[0] ; 
+ *k2 = node -> windex[1] ; 
+ *tmix = node  -> wmix[0] ;
+
+}
+
+void getkidinfo(int vind, int *k1, int *k2, double *tau1, double *tau2, double *th1, double *th2) 
+{
+  NODE *node, *tnode;
+  EDGE *tedge ; 
+
+  *k1 = *k2 = -1 ; 
+  *tau1 = *tau2 = -1 ;
+
+  node = &vlist[vind] ;
+
+  tnode = (NODE *) node->left;
+  tedge = (EDGE *) node->eleft;
+
+  if (tnode != NULL) { 
+   *k1 = tnode -> gnode ; 
+   *tau1 = tedge -> val ; 
+   *th1 = tedge -> theta ;
+  }
+
+  tnode = (NODE *) node->right;
+  tedge = (EDGE *) node->eright;
+
+  if (tnode != NULL) { 
+   *k2 = tnode -> gnode ; 
+   *tau2 = tedge -> val ; 
+   *th2 = tedge -> theta ;
+  }
+}
+
+void setapar(int a, int b, int c, double val) 
+{
+  NODE *node1, *node2 ;     
+  node1 = &vlist[a];
+
+  if (node1 -> windex[0] == b) { 
+   node1 -> wmix[0] = val ;       
+   node1 -> wmix[1] = 1.0 - val ;       
+   return ; 
+  }
+
+  if (node1 -> windex[0] == c) { 
+   node1 -> wmix[1] = val ;       
+   node1 -> wmix[0] = 1.0 - val ;       
+   return ; 
+  }
+
+  fatalx("(setapar) %d %d\n", a, b, c) ;
+}
+
+void setgtime(double *time) 
+
+{
+  NODE *node ; 
+  double y ; 
+  int a ;
+
+  for (a=0; a<numvertex; ++a) {  
+   node = &vlist[a];
+   node -> time = time[a] ;
+  }
+}
+
+void setepar(int a, int b, double val, double theta) 
+{
+  NODE *node1, *node2  ;     
+  EDGE *tedge ; 
+
+  if (a<0) return ; 
+  if (b<0) return ; 
+
+  node1 = &vlist[a];
+  node2 = &vlist[b];
+
+  if (node2 == (NODE *) node1 -> left) { 
+   tedge = (EDGE *) node1 -> eleft ;
+   tedge -> val = val ;
+   tedge -> theta = theta ;
+   return ;
+  }
+
+  if (node2 == (NODE *) node1 -> right) { 
+   tedge = (EDGE *) node1 -> eright ;
+   tedge -> val = val ;
+   tedge -> theta = theta ;
+   return ;
+  }
+
+  fatalx("(setepar) %d %d\n", a, b) ;
+}
+
+
 void
 addadmix (char *vertname, char **avnames, double *ww, int nt)
 {
@@ -709,7 +823,7 @@ gsimplify (int n)
   EDGE *cedge, *pedge;
 
   if (n > 100)
-    fatalx ("looping\n");
+    fatalx ("(gsimplify) looping\n");
   for (i = 0; i < numvertex; ++i) {
     node = &vlist[i];
     if (node->isdead)
@@ -988,13 +1102,6 @@ loadeglist (char ***pxeglist, int xnumeg)
 
   ZALLOC (xeglist, numpops, char *);
 
-/**
-  for (k=0; k<numpops; ++k) {
-   printf("zz2 %s\n", eglist[k]) ;
-  }
-  fflush(stdout) ;
-*/
-
   for (k = 0; k < numpops; ++k) {
     xeglist[k] = strdup (eglist[k]);
   }
@@ -1026,6 +1133,7 @@ loadgraph (char *rname, char ***peglist)
 
   freegraph ();
 
+  if (rname == NULL)  fatalx("no graph!\n") ;
   numedge = numvertex = numadmix = numpops = 0;
 
   ZALLOC (egnum, maxnodes, int);
@@ -1113,6 +1221,7 @@ initelist (EDGE * elist, int n)
     edge->val = 0.0;
     edge->iszero = NO;
     edge->isleft = NO;
+    edge -> theta = -1 ;  
     edge->isfixed = NO;
   }
 }
@@ -1149,8 +1258,6 @@ int
 readit (char *cname)
 // main input routine for graph
 {
-#define MAXSTR 128
-#define MAXFF  10
   FILE *fff;
   char line[MAXSTR + 1], c;
   char *spt[MAXFF], *sx, *s1, *s2;
@@ -1162,7 +1269,7 @@ readit (char *cname)
   double ww[MAXW];
   char *ssx[MAXW];
   int nt;
-  double val;
+  double val, theta;
   int num = 0;
 
 
@@ -1240,8 +1347,12 @@ readit (char *cname)
 	t = strcmp (sx, "zero");
 	if (t == 0)
 	  edge->iszero = YES;
-	if (!isalpha (sx[0]))
-	  edge->val = atof (sx);
+	if (!isalpha (sx[0])) {
+          parsev(sx, &val, &theta) ; 
+	  edge->val = val ;;
+          edge -> theta = theta ;
+//        printf("zz1 %s %9.3f\n", edge -> name, edge -> theta) ;
+        }
       }
       v1 = vindex (s1, vlist, n);
       v2 = vindex (s2, vlist, n);
@@ -1279,18 +1390,22 @@ readit (char *cname)
       }
       if (nsplit < 4) 
 	  fatalx ("bad line %s\n", line);
+      sx = spt[1];
+      s1 = spt[2];
+      s2 = spt[3];
+      edge->name = strdup (sx);
       if (nsplit >= 5) {
 	sx = spt[4];
 	t = strcmp (sx, "zero");
 	if (t == 0)
 	  edge->iszero = YES;
-	if (!isalpha (sx[0]))
-	  edge->val = atof (sx);
+	if (!isalpha (sx[0])) {
+          parsev(sx, &val, &theta) ; 
+	  edge->val = val ;;
+          edge -> theta = theta ;
+//        printf("zz2 %s %9.3f\n", edge -> name, edge -> theta) ;
+        }
       }
-      sx = spt[1];
-      s1 = spt[2];
-      s2 = spt[3];
-      edge->name = strdup (sx);
       v1 = vindex (s1, vlist, n);
       v2 = vindex (s2, vlist, n);
       if (v1 < 0)
@@ -1491,17 +1606,11 @@ dumpdotgraph_title (char *graphdotname, char *title)
   int k, j, t, vind, kk;
   int *dd, *ind;
   char sform[10];
-  double val, vmax;
+  double val, vmax, theta;
   char *sss = NULL;
 
-  if (title == NULL)  {  
-   dumpdotgraph(graphdotname) ; 
-   return ;
-  }
-
-  if (graphdotname == NULL)
-    return;
-  printf ("graphdotname:  %s\n", graphdotname);
+  if (graphdotname == NULL) return;
+//  printf ("graphdotname:  %s\n", graphdotname);
   fflush (stdout);
   openit (graphdotname, &fff, "w");
 
@@ -1521,9 +1630,11 @@ dumpdotgraph_title (char *graphdotname, char *title)
   //2 dump label
   fprintf (fff, "digraph G { \n");
   fprintf (fff, "size = \"7.5,10\" ;\n");
-  fprintf (fff, "labelloc = \"t\" ; \n");
-  fprintf (fff, "label = \"%s\" ; ", title) ;
-  fprintf (fff, "\n\n") ;
+  if (title != NULL) {
+   fprintf (fff, "labelloc = \"t\" ; \n");
+   fprintf (fff, "label = \"%s\" ; ", title) ;
+   fprintf (fff, "\n\n") ;
+  }
 
   for (k = 0; k < numvertex; ++k) {
     kk = ind[k];
@@ -1546,14 +1657,14 @@ dumpdotgraph_title (char *graphdotname, char *title)
       xnode = (NODE *) node->left;
       vmax = MAX (vmax, edge->val);
       val = MAX (vmax * .0001, edge->val);
-      pedge (fff, node, xnode, val, 0);
+      pedge (fff, node, xnode, val, edge -> theta, 0);
     }
     edge = (EDGE *) node->eright;
     if (edge != NULL) {
       xnode = (NODE *) node->right;
       vmax = MAX (vmax, edge->val);
       val = MAX (vmax * .0001, edge->val);
-      pedge (fff, node, xnode, val, 0);
+      pedge (fff, node, xnode, val, edge -> theta, 0);
     }
   }
   for (k = 0; k < numvertex; ++k) {
@@ -1565,7 +1676,7 @@ dumpdotgraph_title (char *graphdotname, char *title)
     for (j = 0; j < t; ++j) {
       vind = node->windex[j];
       xnode = &vlist[vind];
-      pedge (fff, xnode, node, node->wmix[j], 1);
+      pedge (fff, xnode, node, node->wmix[j], 0, 1);
     }
   }
   fprintf (fff, "} \n");
@@ -1579,102 +1690,16 @@ dumpdotgraph (char *graphdotname)
 // in dot format 
 {
 
-  FILE *fff;
-  NODE *node, *xnode, *xroot;
-  EDGE *edge;
-  int k, j, t, vind, kk;
-  int *dd, *ind;
-  char sform[10];
-  double val, vmax;
-  char *sss = NULL;
-  char ssx[1024], *sx ;
-
-  if (graphdotname == NULL)
-    return;
-  printf ("graphdotname:  %s\n", graphdotname);
-  fflush (stdout);
-  openit (graphdotname, &fff, "w");
-
-/** 
- we process vertices from the root 
-*/
-  setdistances ();
-  ZALLOC (dd, numvertex, int);
-  ZALLOC (ind, numvertex, int);
-  for (k = 0; k < numvertex; ++k) {
-    node = &vlist[k];
-    dd[k] = node->distance;
-  }
-  isortit (dd, ind, numvertex);	// ind stores indices in distance order
-
-  //1 dump vertex
-  //2 dump label
-  fprintf (fff, "digraph G { \n");
-  fprintf (fff, "size = \"7.5,10\" ;\n");
-
-  for (k = 0; k < numvertex; ++k) {
-    kk = ind[k];
-    node = &vlist[kk];
-    if (node->label == NULL)
-      continue;
-    freestring (&sss);
-    sss = fixss(strdup (node->name));
-    fprintf (fff, "%12s ", sss);
-    fprintf (fff, " [ label = \"%s\" ] ; ", fixss(node->label));
-/**
-    t = node -> popsize ;
-    if ((totpop > 0) || (t>0)) {
-     fprintf(fff, " %5d", t) ;
-    }
-*/
-    fprintf (fff, "\n");
-  }
-// dump ledge, redge 
-  vmax = 0.0;
-  for (k = 0; k < numvertex; ++k) {
-    kk = ind[k];
-    node = &vlist[kk];
-    edge = (EDGE *) node->eleft;
-    if (edge != NULL) {
-      xnode = (NODE *) node->left;
-      vmax = MAX (vmax, edge->val);
-      val = MAX (vmax * .0001, edge->val);
-      pedge (fff, node, xnode, val, 0);
-    }
-    edge = (EDGE *) node->eright;
-    if (edge != NULL) {
-      xnode = (NODE *) node->right;
-      vmax = MAX (vmax, edge->val);
-      val = MAX (vmax * .0001, edge->val);
-      pedge (fff, node, xnode, val, 0);
-    }
-  }
-  for (k = 0; k < numvertex; ++k) {
-    kk = ind[k];
-    node = &vlist[kk];
-    t = node->numwind;
-    if (t == 0)
-      continue;
-    for (j = 0; j < t; ++j) {
-      vind = node->windex[j];
-      xnode = &vlist[vind];
-      pedge (fff, xnode, node, node->wmix[j], 1);
-    }
-  }
-  fprintf (fff, "} \n");
-  fclose (fff);
-  free (dd);
-  free (ind);
-  freestring (&sss);
+  dumpdotgraph_title(graphdotname, NULL) ; 
 }
 
 void
-pedge (FILE * fff, NODE * anode, NODE * bnode, double val, int mode)
+pedge (FILE * fff, NODE * anode, NODE * bnode, double val, double theta, int mode)
 {
 
   char s1[256], s2[256], s3[256];
   char *ss2 = NULL, *ss3 = NULL;
-  int x;
+  int x, w;
 
   s1[0] = s2[0] = CNULL;
 
@@ -1686,7 +1711,11 @@ pedge (FILE * fff, NODE * anode, NODE * bnode, double val, int mode)
 
   else {
     x = nnint (1000 * val);
-    sprintf (s3, "%d", x);
+    if (theta>0) { 
+     w = nnint(100*theta) ; 
+     sprintf (s3, "%d:%d", x,w);
+    }
+    else sprintf (s3, "%d",  x);
   }
 
   if (val > 0) {
@@ -1707,6 +1736,112 @@ pedge (FILE * fff, NODE * anode, NODE * bnode, double val, int mode)
   freestring (&ss3);
 }
 
+void readadmix(char *admixname) 
+{
+
+  NODE *node, *xnode, *xroot;
+  EDGE *edge;
+  int k, j, t, tt, vind, kk;
+  int *dd, *ind;
+  double y ; 
+  FILE *fff;
+
+  char line[MAXSTR + 1], c;
+  char *spt[MAXFF], *sx, *s1, *s2;
+  int nsplit, n = 0;
+  int okline;
+  double cc[2] ;
+
+ if (admixname == NULL) return ;
+
+   openit (admixname, &fff, "r");
+
+  line[MAXSTR] = '\0';
+  while (fgets (line, MAXSTR, fff) != NULL) {
+    nsplit = splitup (line, spt, MAXFF);
+    if (nsplit < 6)   {  
+     freeup(spt, nsplit) ;
+     continue ; 
+    }
+
+    t = strcmp("admix", spt[0]) ; 
+    if (t != 0)   {  
+     freeup(spt, nsplit) ;
+     continue ; 
+    }
+
+    kk = vertexnum (spt[1]) ;    
+    if (kk < 0)
+     fatalx("vertex %s not found!\n") ;  
+     node = &vlist[kk] ; 
+      
+    t = 2 ; 
+    cc[0] = atof(spt[4]) ;
+    cc[1] = atof(spt[5]) ;
+    bal1(cc,2) ; 
+    ++n ; 
+
+    for (j = 0; j < t; ++j) {
+      vind = node->windex[j];
+      xnode = &vlist[vind];
+      tt = strcmp(xnode -> name, spt[j+2]) ; 
+      if (tt != 0) fatalx("node mismatch: %s\n", line) ;
+      node -> wmix[j] = cc[j] ;  
+    }
+    freeup(spt, nsplit) ;
+   
+  }
+  fclose(fff) ;
+  printf("## (readadmix) %d admix entries read\n", n) ;
+}
+
+void writeadmix(char *admixname) 
+{
+
+  FILE *fff;
+  NODE *node, *xnode, *xroot;
+  EDGE *edge;
+  int k, j, t, vind, kk, n;
+  int *dd, *ind;
+  char sform[10], sformx[10] ;  
+
+ if (admixname == NULL) return ;
+
+  if (hires) {
+    strcpy (sform, " %12.6f");
+    strcpy (sformx, ":%.6f") ; 
+  }
+  else {
+    strcpy (sform, " %9.3f");
+    strcpy (sformx, ":%.3f") ; 
+  }
+
+  openit (admixname, &fff, "w");
+
+  n = 0 ;
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k] ;
+    if (node->isdead) continue;
+    t = node->numwind;
+    if (t == 0) continue;
+    fprintf (fff, "admix %12s  ", node->name);
+    for (j = 0; j < t; ++j) {
+      vind = node->windex[j];
+      xnode = &vlist[vind];
+      fprintf (fff, "%10s ", xnode->name);
+    }
+    for (j = 0; j < t; ++j) {
+      fprintf (fff, sform, node->wmix[j]);
+    }
+    fprintf (fff, "\n");
+    ++n ; 
+  }
+  fclose(fff) ;
+  printf("## (writeadmix) %d admix entries written\n", n) ;
+}
+
+
+
 void
 dumpgraph (char *graphname)
 {
@@ -1716,12 +1851,18 @@ dumpgraph (char *graphname)
   EDGE *edge;
   int k, j, t, vind, kk;
   int *dd, *ind;
-  char sform[10];
+  char sform[10], sformx[10] ;  
+  char sss[100] ;
+  double y ; 
 
-  if (hires)
-    strcpy (sform, " %10.4f");
-  else
+  if (hires) {
+    strcpy (sform, " %12.6f");
+    strcpy (sformx, ":%.6f") ; 
+  }
+  else {
     strcpy (sform, " %9.3f");
+    strcpy (sformx, ":%.3f") ; 
+  }
   if (graphname == NULL)
     fff = stdout;
   else
@@ -1745,7 +1886,9 @@ dumpgraph (char *graphname)
     node = &vlist[kk];
     if (node->distance == HUGEDIS)
       fprintf (fff, "##");
-    fprintf (fff, "vertex %12s %9.0f\n", node->name, node->time);
+    y = node -> time ; 
+    if (y<0) y=-1 ;
+    fprintf (fff, "vertex %12s %9.0f\n", node->name, y) ; 
   }
   //2 dump label
   for (k = 0; k < numvertex; ++k) {
@@ -1770,12 +1913,16 @@ dumpgraph (char *graphname)
     if (node->isdead)
       continue;
     edge = (EDGE *) node->eleft;
+
     if (edge != NULL) {
       xnode = (NODE *) node->left;
       fprintf (fff, "ledge %12s", edge->name);
       fprintf (fff, " %12s", node->name);
       fprintf (fff, " %12s", xnode->name);
       fprintf (fff, sform, edge->val);
+      if (edge -> theta >= 0) { 
+        fprintf (fff, sformx, edge->theta);
+      }
       fprintf (fff, "\n");
     }
     edge = (EDGE *) node->eright;
@@ -1787,6 +1934,9 @@ dumpgraph (char *graphname)
       fprintf (fff, " %12s", node->name);
       fprintf (fff, " %12s", xnode->name);
       fprintf (fff, sform, edge->val);
+      if (edge -> theta >= 0) { 
+        fprintf (fff, sformx, edge->theta);
+      }
       fprintf (fff, "\n");
     }
   }
@@ -2299,78 +2449,6 @@ root ()
   return node ;
 }
 
-void
-settime ()
-// fill in times on nodes
-{
-  double konst = 20000;		// nominal scaling for drift
-  double *eq, *rhs, *pp, *ans;
-  int nneq, neq, nv, t, v1, v2, j, x, k;
-  int ww[100];
-  NODE *xroot, *n1, *n2, *node;
-  EDGE *edge;
-  int *vnum;
-
-  printf("settime called\n") ; 
-  nneq = 2 * (numedge + numvertex) + 10000;
-  nv = numvertex;
-
-/**
-  xroot = root() ;
-  reroot(xroot) ;
-*/
-
-  ZALLOC (eq, nneq * nv, double);
-  ZALLOC (rhs, nneq, double);
-  ZALLOC (ans, nv, double);
-  for (j = 0; j < numvertex; ++j) {
-    node = &vlist[j];
-    t = node->numwind;
-    if (t == 0)
-      continue;
-  }
-
-  pp = eq;
-  neq = 0 ;
-  for (k = 0; k < nv; ++k) {
-    n1 = &vlist[k];
-    if ((n1 -> isleaf) == NO) continue;
-    pp[k] = 1 ;     
-    rhs[neq] = 0 ;
-    pp += nv;
-    ++neq ;
-  }
-  for (j = 0; j < numedge; ++j) {
-    edge = &elist[j];
-    n1 = (NODE *) edge->up;
-    n2 = (NODE *) edge->down;
-    rhs[neq] = edge->val * konst;
-    v1 = n1->gnode;
-    v2 = n2->gnode;
-    printf ("zz1 %s %d %d\n", n1->name, n1->gnode);
-    printf ("zz2 %s %d %d\n", n2->name, n2->gnode);
-    pp[v2] = 1.0;
-    pp[v1] = -1.0;
-    pp += nv;
-    ++neq;
-  }
-  printmat (eq, neq, nv);
-  printnl ();
-  printnl ();
-  printf ("rhs:\n");
-  printmat (rhs, 1, neq);
-  printnl ();
-  regressit (ans, eq, rhs, neq, nv);
-  printf ("ans:\n");
-  printmat (ans, 1, nv);
-  printnl ();
-  for (k = 0; k < nv; ++k) {
-    n1 = &vlist[k];
-    n1->time = ans[k];
-  }
-  free (eq);
-  free (rhs);
-}
 
 void 
 setvnum (int *vnum, int *list, int n)
@@ -2394,8 +2472,6 @@ int
 qreadit (char *cname)
 // main input routine for graph (new format)
 {
-#define MAXSTR 128
-#define MAXFF  10
   FILE *fff;
   char line[MAXSTR + 1], c;
   char *spt[MAXFF], *sx, *s1, *s2;
@@ -2596,8 +2672,23 @@ copystringsd (char **eglist, char **neweglist, int numeg, int xdel)
   }
 }
 
+
+int shash (char *key) 
+{
+  int x, a, ans, len = strlen(key) ; 
+
+  ans = 33 ; 
+  a = 0 ;
+  for (x =0 ; x< len ; ++x) { 
+   a  = xshash(key[x] ^ a ) ;  
+   ans += a ; 
+  }
+  return ans ; 
+}
+
 int
-hashgraph ()
+oldhashgraph ()
+
 {
   int *hashvals;
   NODE *node, *node2;
@@ -2609,13 +2700,19 @@ hashgraph ()
     node = &vlist[k];
 
     if (node->label != NULL) {
-      t = stringhash (node->label);
+      t = shash (node->label);
       hashvals[k] += t;
     }
     if (node->isleaf) {
       hashg (k, hashvals);
     }
   }
+ 
+  for (k=0; k<numvertex; ++k) { 
+   node = &vlist[k];
+//   printf("zzhash: %20s %x\n", node -> name, hashvals[k]) ; 
+  } 
+
   node = root ();
   rootnum = node->gnode;
 
@@ -2628,24 +2725,216 @@ hashgraph ()
   return t;
 }
 
+int
+hashgraph ()
+{
+  int *hashvals;
+  NODE *node, *node2;
+  int k, t, rootnum;
+  int *dead ; 
+
+  ZALLOC (hashvals, numvertex, int);
+  ZALLOC (dead, numvertex, int);
+  node = root ();
+  rootnum = node->gnode;
+
+  ivclear(hashvals, 13, numvertex) ; 
+
+  if (rootnum < 0)
+    fatalx ("no root\n");
+
+  // setfancyhash(YES) ;
+
+
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k];
+    dead[k]  = node -> isdead ; 
+    node -> isdead = 0 ; 
+
+    if (node->label != NULL) {
+      t = shash (node->label);
+      hashvals[k] += t;
+//    printf("zzl %s %s %d %d\n", node -> name, node -> label, t, stringhash(node -> label)) ; 
+    }
+//  if (node -> isleaf) node -> isdead = 1 ;
+  }
+
+  hashg(rootnum, hashvals) ; 
+ 
+  t = hashvals[rootnum];
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k];
+    node -> isdead  = dead[k] ; 
+    if (verbose)   printf("zzh %20s %x\n", node -> name, hashvals[k]) ; 
+  }
+
+  free (hashvals);
+  free (dead);
+  return t;
+}
+
 void
 hashg (int knum, int *hashvals)
 {
-  NODE *node, *nodep;
-  int a, t, kk;
+  NODE *node, *noded, *tnode;
+  int a, t, kk, x, y;
 
   node = &vlist[knum];
+  if (node -> isdead) return ; 
+  node -> isdead = 1 ;  // true after returb 
 
-  t = node->numwind;
+  t = node->numadaughter;
   for (a = 0; a < t; a++) {
-    kk = node->windex[a];
-    hashvals[kk] += (hashvals[knum] + 1001);
+    tnode = (NODE *) node -> adaughter[a] ; 
+    kk = vertexnum(tnode->name);
     hashg (kk, hashvals);
+    hashvals[knum] += (hashvals[kk] + 1001);
   }
-  nodep = (NODE *) node->parent;
-  if (nodep != NULL) {
-    kk = nodep->gnode;
-    hashvals[kk] += (hashvals[knum] + 1);
+
+  noded = (NODE *) node->left;
+  if (noded != NULL) {
+    kk = vertexnum(noded->name) ; ;
     hashg (kk, hashvals);
+    hashvals[knum] += (hashvals[kk] + 1);
   }
+
+  noded = (NODE *) node->right;
+  if (noded != NULL) {
+    kk = vertexnum(noded->name) ; ;
+    hashg (kk, hashvals);
+    hashvals[knum] += (hashvals[kk] + 1);
+  }
+  x = hashvals[knum] ;  
+  hashvals[knum] = xshash(x) ;      
+  
 }
+
+
+int parsev(char *sx, double *pval, double *ptheta) 
+{
+ double val, theta=-1 ; 
+ char *spt[3] ; 
+ int nsplit ; 
+
+  nsplit = splitupx (sx, spt, 3, ':') ;
+  if (nsplit == 0) fatalx("(parsev)\n") ;
+  val = atof(spt[0]) ;
+  if (nsplit>1) theta = atof(spt[1]) ;
+  *pval = val ; 
+  *ptheta = theta ;
+  freeup(spt, nsplit) ;
+  return nsplit ;
+}
+
+
+int getsons(NODE *node, int *na, int *nb, int *vtable)  
+{
+   int n = 0, t, a  ;
+   NODE *son  ; 
+
+     son = (NODE *) node -> left ;  
+     if (son !=  NULL) {
+      t = son -> gnode ;
+      if (vtable[t] != -3) {
+       nb[n] = t ; 
+       ++n ; 
+      }
+     }
+
+     son = (NODE *) node -> right ;  
+     if (son !=  NULL) {
+      t = son -> gnode ;
+      if (vtable[t] != -3) {
+       nb[n] = t ; 
+       ++n ; 
+      }
+     }
+
+     for (a=0; a<n; ++a) { 
+      t = nb[a] ; 
+      na[a] = vtable[t] ;
+     }
+
+     return n ; 
+
+}
+
+
+
+int calcscript(char **string) 
+{
+  int nv, *vtable, n=0, iter, l, j, k, t, a, x, nlive, kroot ;  
+  int na[10], nb[10], isleaf, ispub ;  
+  NODE *node, *son, *daughter ;
+  char sss[MAXSTR] ;
+
+  nv = numvertex ;
+  ZALLOC(vtable, nv, int) ; 
+  ivclear(vtable, -2, nv) ;
+
+  for (iter=1; iter <= nv; ++iter) { 
+// look for "leaf" nodes 
+   nlive = 0 ;
+   for (k=0; k<nv; ++k) { 
+     if (vtable[k] == -3) continue ; 
+     node = &vlist[k] ; 
+     l = node->numwind;
+     for (j = 0; j < l; j++) {
+       t = node->windex[j];
+       vtable[t] = iter ; 
+     } 
+   }
+   for (k=0; k<nv; ++k) { 
+    if (vtable[k] == -3) continue ; 
+     ++nlive ; 
+     kroot = k ; 
+     node = &vlist[k] ; 
+     isleaf = YES ;
+     if (vtable[k] == iter) isleaf = NO ; 
+     t = getsons(node, na, nb, vtable) ; 
+     for (a=0; a<t; ++a) { 
+      if (na[a] != -3) isleaf = NO ;  
+     }
+     if (isleaf) vtable[k] = -1 ; 
+
+     if (isleaf && (node -> isadmix == YES)) { 
+       vtable[k] = -3 ;
+       sprintf(string[n], "admix: %s", node -> name) ;
+       ++n ; 
+     }
+
+   }
+     if (nlive ==0) break ; 
+     if (nlive==1) { 
+       node = &vlist[kroot] ; 
+       sprintf(string[n], "root: %s", node -> name) ; 
+       ++n ;
+       vtable[kroot] = -3 ;
+    }
+   for (k=0; k<nv; ++k) { 
+    if (vtable[k] == -3) continue ; 
+    if (vtable[k] == iter) continue ; 
+     node = &vlist[k] ; 
+     ispub = YES ;
+     t = getsons(node, na, nb, vtable) ; 
+     if (t==0) continue ; 
+     for (a=0; a<t; ++a) { 
+      if ((na[a] != -3) && (na[a] != -1)) ispub = NO ;  
+     }
+     if (ispub) {  
+       sprintf(string[n], "lift: %s", node -> name) ;
+        for (a=0; a<t; ++a) { 
+         x = nb[a] ; 
+         vtable[x]  = -3 ;
+        }
+        ++n ; 
+        break ;
+       }
+     }
+    }
+
+  free(vtable) ; 
+  return n ;  
+
+}
+

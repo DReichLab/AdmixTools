@@ -60,6 +60,7 @@ static int isgdis = YES;	// no means gsid 0 in input
 // fails if packed and out of order 
 static int familypopnames = NO;
 // in .fam output use popnames (egroup) 
+static int oldsnpformat = NO ;
 
 
 SNPDATA *tsdpt;
@@ -80,6 +81,14 @@ int calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind,
 		int *pihash, int *pshash);
 
 /* ---------------------------------------------------------------------------------------------------- */
+void 
+setoldsnpformat() 
+{
+
+ oldsnpformat = YES ;
+// for ancestrymap compatibility
+
+}
 
 void
 setfamilypopnames (int fpop)
@@ -435,8 +444,8 @@ readsnpdata (SNPDATA ** snpraw, char *fname)
     sx = spt[0];
     skipit = setskipit (sx);
     if (skipit == NO) {
-      if (nsplit < 4)
-	fatalx ("(readsnpdata) bad line: %s\n", line);
+      if (nsplit < 6)
+	fatalx ("(readsnpdata) bad line: %s 6 columns required\n", line);
       sdpt = snpraw[num];
       sdpt->inputrow = num;
 
@@ -475,6 +484,7 @@ readsnpdata (SNPDATA ** snpraw, char *fname)
       maxg = MAX (maxg, maxgpos[chrom]);
 
       setsdpos (sdpt, atoi (spt[3]));
+     if (oldsnpformat) {
       if (nsplit < 8) {
 	ivzero (sdpt->nn, 4);
 	if (nsplit == 6) {
@@ -495,11 +505,18 @@ readsnpdata (SNPDATA ** snpraw, char *fname)
 	  sdpt->alleles[1] = toupper (sx[0]);
 	}
       }
-      ++num;
     }
+    else {
+	  sx = spt[4];
+	  sdpt->alleles[0] = toupper (sx[0]);
+	  sx = spt[5];
+	  sdpt->alleles[1] = toupper (sx[0]);
+    }
+    ++num;
+   }
     freeup (spt, nsplit);
     continue;
-  }				// elihw
+  }		
 
   // if all genetic positions are set to zero, set from physical position 
   if (maxg <= 0.00001) {

@@ -19,7 +19,7 @@
 #include "qpsubs.h"
 
 
-#define WVERSION   "100"
+#define WVERSION   "110"
 // outpop NONE forced 
 // print number of samples / pop
 // popfilename added 
@@ -32,6 +32,7 @@
 // xmode ;  call countpopsx which deals with gender on X
 // syntactic sugar (strip :) in popfilename  
 // numchrm added
+// instem: 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -90,10 +91,11 @@ double blgsize = 0.05;
 double *chitot;
 int *xpopsize;
 
+char *instem = NULL ; 
+char *indivname = NULL;
 char *genotypename = NULL;
 char *snpname = NULL;
 char *snpoutfilename = NULL;
-char *indivname = NULL;
 char *badsnpname = NULL;
 char *poplistname = NULL;
 char *popfilename = NULL;
@@ -215,6 +217,10 @@ main (int argc, char **argv)
     fatalx ("poplistname, popfilename both null\n");
 
   if (xchrom == (numchrom + 1)) noxdata = NO;
+
+  if (instem != NULL) { 
+   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
+  } 
 
   nostatslim = MAX (nostatslim, 3);
   npattern = setpattern(pattern, rawpattern) ;
@@ -461,6 +467,7 @@ readcommands (int argc, char **argv)
   ph = openpars (parname);
   dostrsub (ph);
 
+  getstring (ph, "instem:", &instem);
   getstring (ph, "genotypename:", &genotypename);
   getstring (ph, "snpname:", &snpname);
   getstring (ph, "indivname:", &indivname);

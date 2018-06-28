@@ -14,6 +14,7 @@ static int debug = NO;
 static int fancyhash = NO;
 
 
+
 /* ********************************************************************* */
 
 void
@@ -109,6 +110,7 @@ xhash (char *key)
   return abs (t) % xnum;
 }
 
+
 int
 stringhash (char *key)
 {
@@ -129,8 +131,13 @@ stringhash (char *key)
   if (len >= MAXKEYLEN)
     fatalx ("key too long\n");
 
+  if (fancyhash==2) return fnv_hash(key) ; 
+
   wlen = (len - 1) / 4;
   ++wlen;
+
+  thash += wlen ; 
+  thash += key[0] ;  
 
   for (i = 0; i < wlen; ++i) {
     jmin = 4 * i;
@@ -144,18 +151,20 @@ stringhash (char *key)
   }
   if (debug)
     printf ("zz %s %x %x\n", key, w, xpack[0]);
+
   for (i = 0; i < wlen; i++) {
     thash += xhash1 (xpack[i]);
-    if (debug)
-      printf ("zz2  %x\n", thash);
     thash = xcshift (thash, 3);
   }
-  if (debug)
-    printf ("key: %s  hash: %x\n", key, thash);
 
-  return thash;
+  return thash ; 
 
+}
 
+void setfancyhash(int val)  
+
+{
+ fancyhash = val ;
 }
 
 int
@@ -299,3 +308,71 @@ finddup (char **ss, int n)
   return t;
 
 }
+
+int xshash(int x) 
+// slow but good 32 bit hash
+{
+
+ long w ; 
+ int a, b ; 
+
+ w = xlhash(x) ; 
+
+ a = w >> 32 ; 
+ return a ; 
+ 
+
+
+}
+
+long xlhash (long x) 
+// slow but good hash.  
+{
+ static long bigp = 0 ;
+ int k, nround = 7 ; 
+ long a1, b1, a2, b2, w ; 
+ static long *addpat ; 
+
+ if (bigp == 0) {
+   bigp = lpow2(61) - 1 ; 
+   ZALLOC(addpat, nround+1, long) ; 
+   for (k=1; k<=nround; ++k) { 
+    w = lpow2(41) + 89 + k ; 
+    addpat[k] = modinv(w, bigp) ; 
+   }
+ }
+
+ w = x ^ 101010101 ; ; 
+ for (k=1; k<=nround; ++k) { 
+  a1 = w & bigp ; 
+  b1 = w >> 61 ; 
+  a2 = modinv(a1, bigp) ; 
+  b2 = (a2 >> 7) & 7 ; 
+  w  = a2 << 3 ; 
+  b2 = b2 ^ b1 ; 
+  w  = w ^ b2 ; 
+  w ^= addpat[k] ; 
+ }
+
+ return w ; 
+}
+
+int fnv_hash(char *strng) 
+{
+// from fnv.c fnv.h on net.  Modified
+    int h ; 
+    char *p  ; 
+
+    h = FNV_OFFSET_BASIS;
+
+    p = strng ; 
+
+    for (;;) { 
+        if (*p == CNULL) break ; 
+        h *= FNV_PRIME;
+        h ^= *p;
+        ++p ; 
+    }
+    return h ;
+}
+

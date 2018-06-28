@@ -23,10 +23,14 @@ void catxx(char *sout, char **spt, int n) ;
 void catxc(char *sout, char **spt, int n, char c) ;
 void makedfn(char *dirname, char *fname, char *outname, int maxstr) ;
 int substring (char **ap, char *inx, char *outx) ;
+int mapstrings(char **pstr, char **insub, char **outsub, int n)  ;
+int upstring (char *ss)  ; 
 int numcols (char *name) ;
 int numlines(char *name) ;
 void openit(char *name, FILE **fff, char *type)  ;
 int  ftest(char *aname) ;
+void fcheckr(char *name) ;
+void fcheckw(char *name) ; 
 int getxx(double **xx, int maxrow, int numcol, char *fname) ;
 int getss(char  **ss, char *fname) ;
 int  loadlist(char **list, char *listname)    ;  // with dup check
@@ -76,8 +80,9 @@ char *findupper(char *s) ;
 char *fgetstrap(char *buff, int maxlen, FILE *fff, int *ret)  ;
 char readtonl(FILE *fff) ; 
 int  filehash(char *name) ;
-
-
+char *mytemp (char *qqq) ; 
+void printslurmenv ()  ; 
+int getfline(char *ss, char *fname, int maxstr) ;
 
 
 #define ZALLOC(item,n,type)      if ((item = (type *)calloc((n),sizeof(type))) == NULL) \

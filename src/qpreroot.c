@@ -24,11 +24,12 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "540"
+#define WVERSION   "651"
 
 // gsimplify option added
 // calctime added  
 // calctime NOT YET WORKING
+// calcscript bug fixed 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -51,6 +52,7 @@ char *graphname = NULL;
 char *graphoutname = NULL;
 char *graphdotname = NULL;
 char *poplistname = NULL;
+char *scriptname = NULL;
 
 char *dumpname = NULL;
 char *loadname = NULL;
@@ -62,7 +64,6 @@ char *outpop = NULL;
 char *basepop = NULL;
 int basenum = -1;
 int calchash = NO;
-int gsimp = NO;
 
 // outnum used for weights 
 // basenum for f3 status  
@@ -96,14 +97,22 @@ void printvals (double **tmix, double *edgelen, int nedge);
 void printfit (double *ww);
 
 void setsimp (double *ww, int n);
+void dumppars (char *dumpname, double *www, int nwts, double *xxans,
+	       int nedge);
+void dump1 (FILE * dumpfile, double *ww, int n);
+void loadpars (char *loadname, double *www, int nwts, double *xxans,
+	       int nedge);
+void read1 (FILE * loadfile, double *ww, int n);
 
 int
 main (int argc, char **argv)
 {
 
-  int nedge, t;
+  int nedge, t, k ;
   char *psname, *pdfname;
   char sss[MAXSTR];
+  char **scriptstring, nstring ; 
+  FILE *fff ; 
 
   readcommands (argc, argv);
   printf ("## qpreroot version: %s\n", WVERSION);
@@ -126,13 +135,28 @@ main (int argc, char **argv)
     printf ("## hash: %x\n", t);
   }
 
+  if (scriptname != NULL) {  
+   nstring = numlines(graphname) ; 
+   ZALLOC(scriptstring, nstring, char *) ; 
+   for (k=0; k<nstring; ++k) {
+    ZALLOC(scriptstring[k], MAXSTR, char) ; 
+   }
+   nstring = calcscript(scriptstring) ; 
+   openit(scriptname, &fff, "w") ;
+   for (k=0; k<nstring; ++k) {
+    fprintf(fff, "%s\n", scriptstring[k]) ; 
+   }
+   fclose(fff) ;
+
+  }
+
+/**
   if (gsimp) {
     printf ("calling gsimplify\n");
     gsimplify (0);
   }
+*/
 
-//  if (calctime) settime() ;
-//  dumppars (dumpname, wwtemp, nwts, ww2, nedge);
   dumpgraph (graphoutname);
   dumpdotgraph (graphdotname);
   t = 0;
@@ -219,7 +243,7 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "p:r:g:o:d:x:hvVst")) != -1) {
+  while ((i = getopt (argc, argv, "p:r:g:o:d:x:s:hvVt")) != -1) {
 
     switch (i) {
 
@@ -243,6 +267,10 @@ readcommands (int argc, char **argv)
       graphdotname = strdup (optarg);
       break;
 
+    case 's':
+      scriptname = strdup (optarg);
+      break;
+
     case 'x':
       delpop = strdup (optarg);
       break;
@@ -251,14 +279,11 @@ readcommands (int argc, char **argv)
       calchash = YES;
       break;
 
+/** 
     case 's':
       gsimp = YES;
       break;
-
-    case 't':
-      calctime = YES;
-      break;
-
+*/
 
     case 'v':
       printf ("version: %s\n", WVERSION);
@@ -286,6 +311,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "graphname:", &graphname);
   getstring (ph, "graphoutname:", &graphoutname);
   getstring (ph, "graphdotname:", &graphdotname);
+  getstring (ph, "scriptname:", &scriptname);
   getstring (ph, "outpop:", &outpop);
   getstring (ph, "output:", &outputname);
   getstring (ph, "delpop:", &delpop);
@@ -301,6 +327,3 @@ readcommands (int argc, char **argv)
   writepars (ph);
 
 }
-
-
-

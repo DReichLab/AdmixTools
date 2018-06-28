@@ -219,6 +219,7 @@ invperm (int *a, int *b, int n)
 void
 ipsortit (int **a, int *ind, int len, int rlen)
 {
+  if (len==0) return ;
   ipsortitp (a, ind, len, rlen, NULL);
 
 }

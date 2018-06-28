@@ -542,6 +542,20 @@ revarr (double *b, double *a, int n)
 }
 
 void
+revlarr (long *b, long *a, int n)
+{
+  int i;
+  long *x;
+  ZALLOC (x, n, long);
+  for (i = 0; i < n; i++) {
+    x[n - i - 1] = a[i];
+  }
+  copylarr (x, b, n);
+  free (x);
+}
+
+
+void
 revuiarr (unsigned int *b, unsigned int *a, int n)
 {
   int i;
@@ -798,6 +812,7 @@ countcat (int *tags, int n, int *ncat, int nclass)
 
 void
 rowsum (double *a, double *rr, int n)
+// square matrix 
 {
   int i, j;
   vclear (rr, 0.0, n);
@@ -810,6 +825,7 @@ rowsum (double *a, double *rr, int n)
 
 void
 colsum (double *a, double *cc, int n)
+// square matrix 
 {
   int i, j;
   vclear (cc, 0.0, n);
@@ -1428,6 +1444,26 @@ loghprob (int n, int a, int m, int k)
 
 }
 
+int hprobv(double *vprob, int n, int a, int m)
+//  vprob[k] is hprob(n,a, m, k) ;  vprob preallocated m+1  
+{
+   int k, mp = m+1 ;
+   double y ;  
+ 
+   vclear(vprob, -1.0e40, mp) ;
+   for (k=0; k<=m; ++k)    {
+     vprob[k] = loghprob(n, a, m, k) ;
+   }
+  
+   vexp(vprob, vprob, mp) ;
+   y = bal1(vprob, mp) ;
+   if (fabs(y-1.0) > 0.01) return -1 ;
+/**
+   printf("sum:: %15.9f\n", y) ;
+   printmatl(vprob, 1, mp) ;
+*/
+   return 1 ;
+}          
 
 double
 log2fac (int n)
@@ -1467,6 +1503,21 @@ addlog (double a, double b)
 
 }
 
+double logsum(double *x, int n) 
+{
+// no test for 0
+  
+  double *w, y ; 
+  ZALLOC(w, n, double) ; 
+
+  vlog(w, x, n) ; 
+  y = asum(w, n) ;
+
+  free(w) ; 
+  return y ; 
+
+
+} 
 
 
 double
@@ -1789,6 +1840,23 @@ bal1 (double *a, int n)
 }
 
 double
+bal2 (double *a, int n)
+// WARNING a is input and output
+{
+  double y;
+
+  y = asum2 (a, n);
+
+  if (y <= 0.0)
+    fatalx ("bad bal2\n");
+
+  y = sqrt(y) ; 
+  vst (a, a, 1.0 / y, n);
+
+  return y;
+}
+
+double
 logmultinom (int *cc, int n)
 
 /* log multinomial */
@@ -2069,6 +2137,7 @@ copyiarr2D (int **a, int **b, int nrows, int ncols)
 }
 
 
+// be very careful about rows and columns here. 
 void
 plus2Dint (int **a, int **b, int **c, int nrows, int ncols)
 {
@@ -2423,6 +2492,164 @@ void setlong(long *pplen, long a, long b)
   *pplen = xx ;
 
 
+}
+
+long lmod (long x, long base) 
+// like % but handles - numbers better
+{
+  long t ; 
+
+  t = x % base ; 
+  if (t < 0) return lmod(t+base, base) ; 
+  return t ; 
+
+
+}
+
+
+void
+printlmat (long *a, int m, int n)
+
+/**
+ print a matrix n wide m rows
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      printf ("%10ld ", a[i * n + j]);
+      jmod = (j + 1) % 5;
+      if ((jmod == 0) && (j < (n - 1))) {
+        printf ("  ...\n");
+      }
+    }
+    printf ("\n");
+  }
+}
+
+
+
+void
+floatitl (double *a, long *b, int n)
+{
+  int i;
+  for (i = 0; i < n; i++) {
+    a[i] = (double) b[i];
+  }
+}
+
+
+
+void
+lvvp (long *a, long *b, long *c, int n)
+{
+  int i;
+  for (i = 0; i < n; i++)
+    a[i] = b[i] + c[i];
+}
+
+void
+lvvm (long *a, long *b, long *c, int n)
+{
+  int i;
+  for (i = 0; i < n; i++)
+    a[i] = b[i] - c[i];
+}
+
+long gcdx(long a, long b, long *x, long *y)
+{
+    long t, x1, y1; // To store results of recursive call
+    if (a == 0)
+    {
+        *x = 0;
+        *y = 1;
+        return b;
+    }
+ 
+ 
+    // Update x and y using results of recursive
+    // call
+    t = gcdx(b%a, a, &x1, &y1) ;
+
+    *x = y1 - (b/a) * x1;
+    *y = x1;
+
+    return t ;
+    
+    
+ 
+}
+
+// gcd = a*x + b*y 
+
+long modinv(long a, long base) 
+{
+  long t, x, y, aa ; 
+
+  aa = lmod(a, base) ; 
+  if (aa==0) return 0 ;  // special case 
+  t = gcdx(a, base, &x, &y) ; 
+  if (t != 1) fatalx("(modinv) %ld %ld\n", a, base) ; 
+
+  return x ; 
+
+
+}
+
+long lpow2(int n) 
+{
+ long x = 1 ; 
+
+ return x << n ; 
+
+
+}
+
+double cputime (int mode) 
+{
+  static double ttt=0 ; 
+
+ if (mode==0) {  
+  ttt = clocktime() ;
+  return 0 ;
+ }
+
+ return clocktime() - ttt ; 
+
+}
+
+double calcmem (int mode) 
+{
+  static void *ttt = 0 ; 
+
+ if (mode==0) {  
+  ttt = topheap() ;
+  return 0 ;
+ }
+
+ return (double) (topheap()  - ttt) ; 
+
+}
+
+double exp1minus(double x) 
+// 1 - exp(-x) to good precision
+{
+ double ans, top, bot, term ; 
+ int n ; 
+
+ if (fabs(x)>.001) return 1.0 - exp(-x) ; 
+ 
+ ans = 0; top = x ; bot = 1 ; n = 1 ; 
+
+ for (;;) { 
+   term = top/bot ;
+   ans += term ; 
+   if (fabs(term) < 1.0e-20) break ; 
+   top *= -x ; 
+   ++n ; 
+   bot *= (double) n ; 
+ }
+ return ans ;
 }
 
 

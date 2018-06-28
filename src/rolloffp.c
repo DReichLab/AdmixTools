@@ -18,7 +18,7 @@
 #include "egsubs.h"  
 #include "ldsubs.h"  
 
-#define WVERSION   "321" 
+#define WVERSION   "361" 
 
 // mincount stripped 
 // basic idea: Model each admixed sample as a linear fit 
@@ -183,6 +183,9 @@ int main(int argc, char **argv)
 
   if (parname == NULL) return 0 ;
 
+  printnl() ;
+  cputime(0) ;
+
   if (weightname != NULL) {
    printf("weights set on input\n") ;
   }
@@ -192,9 +195,6 @@ int main(int argc, char **argv)
   if (seed == 0) seed = seednum() ;
   SRAND(seed) ;
   printf("seed: %d\n", seed) ;
-
-  if (oname == NULL) jackknife = NO ;
-
 
   if (chithresh < -0.5) {
    chithresh = 6.0 ;
@@ -211,6 +211,12 @@ int main(int argc, char **argv)
    if (admixpop == NULL) fatalx("no admixpop\n") ; 
     nadmixpop = 1 ;
     admixpoplist[0] = strdup(admixpop) ;
+  }
+
+  if (oname == NULL) { 
+    sprintf(sss, "%s.out", admixpop) ;  
+    oname = strdup(sss) ;  
+    printf("output tables: %s\n", oname) ;
   }
 
   numsnps = 
@@ -401,12 +407,20 @@ int main(int argc, char **argv)
    if (timeoffsetname != NULL) { 
     printf("loading time offset...\n") ; 
     getindvals(timeoffsetname, indivmarkers, numindivs) ;
-    for (k=0; k<numindivs; ++k) { 
-     indx = indivmarkers[k] ; 
+
+    ZALLOC(ttt, numindivs, double) ;
+    for (k=0; k<ncount; ++k) { 
+     indx = indadmix[k] ; 
+     ttt[k] = timeoffset = indx -> qval ; 
+    }
+    y = asum(ttt, ncount) / (double) ncount ; 
+    
+    
+    for (k=0; k<ncount; ++k) { 
+     indx = indadmix[k] ; 
      timeoffset = indx -> qval ; 
-     if (timeoffset > 0) {  
-      printf("timeoffset: %20s %9.3f\n", indx -> ID,  timeoffset) ;   
-     }
+     printf("timeoffset: %20s %9.3f\n", indx -> ID,  timeoffset) ;   
+     indx -> qval -= y ; 
     } 
    }
 
@@ -513,10 +527,12 @@ int main(int argc, char **argv)
 
    }
    if (printit > 0) { 
-    printf("sample: %20s chrom %3d done\n", indx -> ID, printit) ;  fflush(stdout) ;
+    printf("sample: %20s chrom: %3d done\n", indx -> ID, printit-1) ;  fflush(stdout) ;
    }
   }
-  printf("sample: %20s chrom: %3d done\n", indx -> ID, lastchrom) ;  fflush(stdout) ;
+   printf("sample: %20s chrom: %3d done\n", indx -> ID, lastchrom) ;  fflush(stdout) ;
+   y = cputime(1) ;  
+   printf("sample: %20s completed.  Total CPU since start: %9.3f\n", indx -> ID, y) ;
  }
 
 
@@ -528,18 +544,6 @@ int main(int argc, char **argv)
 
    vvd(ww, xnum, xden, numbins) ;
    vvd(ww1, znum, zden, numbins) ;
-/**
-   for (s=0; s<numbins; ++s) {  
-    dis = (double) s * binsize ;  
-    y2 = exp(-30*dis) ;  
-    printf("zzb %12.6f %12.6f %12.6f ", ww[s], ww1[s], y2) ; 
-    printf(" %12.6f ", xnum[s]) ;
-    printf(" %12.6f ", znum[s]) ;
-    printf(" %12.6f ", xden[s]) ;
-    printf(" %12.6f ", zden[s]) ;
-    printnl() ;  
-   }
-*/
    
    sprintf(sss, " ##Z-score and correlation:: %s  binsize: %12.6f", poplistname, binsize) ;
    dumpit(oname, ww, corrbins, numbins-5, binsize, sss) ;
@@ -552,7 +556,8 @@ int main(int argc, char **argv)
     dumpit(s1, ww, corrjbins[k], numbins-5, binsize, s2) ;
    }
 
-  printf("##end of rolloffp\n") ;
+  printf ("## end of rolloffp time: %9.3f seconds\n", cputime(1));
+
   return 0 ;
 }
 

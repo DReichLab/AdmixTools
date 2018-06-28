@@ -1,6 +1,6 @@
-#!/usr/bin/perl -w
+#!/usr/local/bin/perl -w
 
-## won't work unless  ../data installed
+## won't work unless ../data installed  
 $IN = "plist" ; 
 open (FF, "$IN") || die "badly\n" ;
 

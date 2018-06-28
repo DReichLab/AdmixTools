@@ -16,7 +16,7 @@
 #include "egsubs.h"
 #include "exclude.h"
 
-#define WVERSION   "4700"
+#define WVERSION   "5000"
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -87,6 +87,8 @@
  dupcheck contains iter number
 
  minvalpop :: every pop must have at least this number of valids (default not set) 
+ fillmissing: added 
+ better handling of seed
 */
 
 
@@ -124,6 +126,9 @@ int flipreference = YES;
 int remapcheck = YES;
 
 char *poplistname = NULL;
+char *fillmissingpoplistname = NULL ; 
+char **fpops ;
+int nfpops = 0 ;
 
 double r2thresh = -1.0;
 double r2genlim = 0.01;		// Morgans 
@@ -196,6 +201,7 @@ char cxx (char *c1, char *c2);
 void downsamp (SNP * cupt);
 int setsamp (Indiv ** indivmarkers, int numindivs, char *usesamples);
 int testmisspop(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int numindivs, int minvalpops)   ;
+int fillmiss(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char **fpops, int nfpops)  ;
 
 
 
@@ -237,15 +243,21 @@ main (int argc, char **argv)
 
   readcommands (argc, argv);
 
-  if (fastdup)
+  
+  printf("## %s version: %s\n", argv[0], WVERSION) ;
+
+  if (seed == 0)  {
+   seed = seednum() ; 
+  }
+
+  SRAND(seed) ; 
+
+  if (fastdup) { 
     randommode = YES;
-  if ((randommode) && (seed == 0)) {
-    seed = seednum ();
-    printf ("seed: %d\n", seed);
   }
 
   if (randommode)
-    SRAND (seed);
+    printf("seed: %d\n", seed) ;
 
   if (chimpmode) {
     setchimpmode (YES);
@@ -421,9 +433,16 @@ main (int argc, char **argv)
   if (usesamples != NULL) {
     poplistname = NULL;
     setsamp (indivmarkers, numindivs, usesamples);
-
-
   }
+
+  if (fillmissingpoplistname != NULL) {  
+   printf("seed: %d\n", seed) ;
+   ZALLOC(fpops, numindivs, char *) ; 
+   nfpops = loadlist(fpops, fillmissingpoplistname) ;
+   t = fillmiss(snpmarkers, indivmarkers, numsnps, numindivs, fpops, nfpops) ;
+   printf("%10d missing genotypes filled\n", t) ;
+  }
+
   if (poplistname != NULL) {
     ZALLOC (eglist, numindivs, char *);
     numeg = loadlist (eglist, poplistname);
@@ -436,6 +455,7 @@ main (int argc, char **argv)
   }
   else
     setstatus (indivmarkers, numindivs, "Case");
+
 
   numsnps = rmsnps (snpmarkers, numsnps, deletesnpoutname);
   numindivs = rmindivs (snpmarkers, numsnps, indivmarkers, numindivs);
@@ -641,6 +661,7 @@ output:        eurout
   getint (ph, "minvalpop:", &minvalpop);
 
   getstring (ph, "poplistname:", &poplistname);
+  getstring (ph, "fillmissingpoplistname:", &fillmissingpoplistname);
   getstring (ph, "newsnpname:", &newsnpname);
   getint (ph, "newignore:", &newignore);
   getstring (ph, "newindivname:", &newindivname);
@@ -1118,5 +1139,96 @@ testmisspop(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int numindivs, 
  freeup(pops, numindivs) ; 
  free2Dint(&valcnt, numsnps) ;
  return ndelete ; 
+
+}
+
+int count_column(SNP *cupt, int *xtypes, int numindivs, int **ncount, int *nmiss, int npops) 
+// ncount npops x 3     nmiss ncount long   must be pre-allocated
+{
+    int i, k, g  ;
+
+    if (cupt -> ignore)  return -1 ;
+
+    iclear2D(&ncount, npops, 3, 0) ;
+    ivzero(nmiss, npops) ;
+
+    for (i=0; i<numindivs; ++i) { 
+     k = xtypes[i]  ; 
+     if (k<0) continue ; 
+     if (k>= npops) fatalx("(count_column) overflow from xtypes\n") ;  
+     g = getgtypes(cupt, i) ;
+     if (g<0) {    
+      ++nmiss[k] ;
+      continue ;
+     }
+     ++ncount[k][g] ; 
+    }
+
+   return intsum(nmiss, npops) ; 
+
+}
+
+int fillmiss(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char **fpops, int nfpops) 
+
+{
+
+   int *xtypes, i, j, k, g, tmiss, g1, g2, l ; 
+   int top, bot ;
+   Indiv *indx ; 
+   SNP *cupt ;
+   int **ncount, *nmiss, *nc ;
+   int nfill = 0 ;
+   double y ; 
+
+   if (nfpops == 0) return 0 ; 
+   if (fpops == NULL) return 0 ; 
+
+   ZALLOC(xtypes, numindivs, int) ; 
+   ZALLOC(nmiss, nfpops, int) ; 
+
+   for (i=0; i<numindivs; ++i) {  
+    indx = indivmarkers[i] ; 
+    k = indxindex(fpops, nfpops, indx -> egroup) ; 
+    xtypes[i] = k ; 
+   }
+
+   ncount = initarray_2Dint(nfpops, 3, 0) ;  // 0, 1 2  count
+
+   for (j=0; j<numsnps; ++j) { 
+    cupt = snpmarkers[j] ; 
+    if (cupt -> ignore) continue ;
+
+    tmiss  = count_column(cupt, xtypes, numindivs, ncount, nmiss, nfpops) ;
+
+    for (k=0; k<nfpops; ++k) {  
+     if (cupt -> ignore) break ; 
+     if (tmiss==0) break ; 
+     nc = ncount[k] ; 
+     bot = 2*intsum(nc, 3) ;         
+     if (bot==0) {  
+      cupt -> ignore = YES;  
+      continue ;
+     }
+    if (nmiss[k] <= 0) continue ;  // no fill in needed
+     top = 2*nc[2] + nc[1] ; 
+     y = (double) top / (double) bot ; 
+// now fill in 
+     for (i=0; i<numindivs; ++i) { 
+      if (xtypes[i] != k) continue ; 
+      g = getgtypes(cupt, i) ;
+      if (g>=0) continue ; 
+      g1 = prob1(y) ; 
+      g2 = prob1(y) ; 
+      putgtypes(cupt, i, g1 + g2) ;
+      ++nfill ;
+     }
+    } 
+   }
+
+   free2Dint(&ncount, nfpops) ; 
+   free(xtypes) ;
+   free(nmiss) ;
+
+   return nfill ;
 
 }

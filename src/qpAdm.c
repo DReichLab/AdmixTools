@@ -21,7 +21,7 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "650" 
+#define WVERSION   "810" 
 // best analysis added
 // hires added
 // chrom: 23 added
@@ -36,6 +36,8 @@
 // check for nested model.  
 // best logic changed if infeasibles 
 // better treatment of boundary case (nl=1) 
+// instem added
+// numchrom added
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -63,6 +65,7 @@ int gfromp = NO;		// genetic distance from physical
 int xchrom = -1;
 int zchrom = -1;
 // if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
+int lopos, hipos ; 
 
 int allsnps = NO;
 
@@ -71,10 +74,11 @@ double *chitot;
 char *popleft, *popright;
 char **popllist, **poprlist;
 
+char *instem = NULL ; 
+char *indivname = NULL;
 char *genotypename = NULL;
 char *snpname = NULL;
 char *snpoutfilename = NULL;
-char *indivname = NULL;
 char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
@@ -168,10 +172,14 @@ main (int argc, char **argv)
   int dim, b1, b2;
   double pval ;
   double lfudge ; 
+  int numchromp ;  
+  int pos ;
 
 
   F4INFO **f4info, *f4pt, *f4pt2, **g4info, *ggpt;
 
+
+  lopos = -1 ; hipos = BIGINT - 1 ;  
 
   readcommands (argc, argv);
   printf ("## qpAdm version: %s\n", WVERSION);
@@ -180,7 +188,13 @@ main (int argc, char **argv)
   if (parname == NULL)
     return 0;
 
+  numchromp = numchrom+ 1 ;
+
   setinbreed (inbreed);
+
+  if (instem != NULL) { 
+   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
+  } 
 
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
@@ -197,15 +211,21 @@ main (int argc, char **argv)
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
     chrom = cupt->chrom;
+    pos = nnint(cupt -> physpos) ;
+
     if ((xchrom > 0) && (chrom != xchrom))
       cupt->ignore = YES;
+
+    if ((xchrom > 0) && (pos < lopos)) cupt -> ignore = YES ; 
+    if ((xchrom > 0) && (pos > hipos)) cupt -> ignore = YES ; 
+
     if ((zchrom > 0) && (chrom == zchrom))
       cupt->ignore = YES;
     if (chrom == 0)
       cupt->ignore = YES;
-    if (chrom > 23)
+    if (chrom > numchromp)
       cupt->ignore = YES;
-    if ((chrom == 23) && (xchrom != 23))
+    if ((chrom == numchromp) && (xchrom != numchromp))
       cupt->ignore = YES;
   }
 
@@ -339,7 +359,8 @@ main (int argc, char **argv)
   ivclear (bcols, -1, ncols);
   for (k = 0; k < ncols; k++) {
     cupt = xsnplist[k];
-    bcols[k] = cupt->tagnumber;
+    t = bcols[k] = cupt->tagnumber;
+    if (t>=xnblocks) fatalx("bad logic bug: %d %d %d\n", k, t, xnblocks) ;
   }
 
   lbase = 0;
@@ -383,7 +404,7 @@ main (int argc, char **argv)
 
 
   y = doq4vecb (ymean, yvar, counts, bcols,
-		nrows, ncols, lbase, xind, nl, rbase, rlist, nr, nblocks);
+		nrows, ncols, lbase, xind, nl, rbase, rlist, nr, xnblocks);
 // y is jackknife dof 
   printf ("dof (jackknife): %9.3f\n", y);
   printf ("numsnps used: %d\n", nsnpused);
@@ -769,6 +790,7 @@ readcommands (int argc, char **argv)
   ph = openpars (parname);
   dostrsub (ph);
 
+  getstring (ph, "instem:", &instem);
   getstring (ph, "genotypename:", &genotypename);
   getstring (ph, "snpname:", &snpname);
   getstring (ph, "indivname:", &indivname);
@@ -784,6 +806,9 @@ readcommands (int argc, char **argv)
   getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "chrom:", &xchrom);
   getint (ph, "nochrom:", &zchrom);
+  getint (ph, "numchrom:", &numchrom);
+  getint (ph, "lopos:", &lopos);
+  getint (ph, "hipos:", &hipos);
   getint (ph, "maxrank:", &maxrank);
   getint (ph, "hires:", &hires);
   getint (ph, "allsnps:", &allsnps);
@@ -865,7 +890,7 @@ bnum = bcols[col];
 if (bnum < 0)
 continue;
 if (bnum >= nblocks)
-fatalx ("lobotgic bug\n");
+ fatalx ("logic bug:: %d %d %d\n", col, bnum, nblocks);
 
 vzero (f4, dim);
 vzero (f4bot, dim);

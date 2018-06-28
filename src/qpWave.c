@@ -23,11 +23,12 @@
 /** 
  // like qp4wave but all left pops analyzed together
  // chrom: 23 now supported
- // bugrix in doq4vecb (same as qpAdm)
+ // bugfix in doq4vecb (same as qpAdm)
+ // instem:   
 */
 
 
-#define WVERSION   "400"
+#define WVERSION   "410"
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -62,10 +63,11 @@ double *chitot;
 char *popleft, *popright;
 char **popllist, **poprlist;
 
+char *instem = NULL ; 
+char *indivname = NULL;
 char *genotypename = NULL;
 char *snpname = NULL;
 char *snpoutfilename = NULL;
-char *indivname = NULL;
 char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
@@ -147,6 +149,10 @@ main (int argc, char **argv)
 
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
+
+  if (instem != NULL) { 
+   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
+  } 
 
   numsnps =
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
@@ -397,6 +403,7 @@ readcommands (int argc, char **argv)
   ph = openpars (parname);
   dostrsub (ph);
 
+  getstring (ph, "instem:", &instem);
   getstring (ph, "genotypename:", &genotypename);
   getstring (ph, "snpname:", &snpname);
   getstring (ph, "indivname:", &indivname);

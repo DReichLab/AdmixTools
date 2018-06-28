@@ -10,6 +10,7 @@ static double fastdupthresh = 0.75;
 static double fastdupkill = 0.75;
 static int snptab = NO;
 
+#define MAXSTR 256
 
 int hashit (char *str);
 
@@ -1032,7 +1033,6 @@ kurtosis (double *a, int n)
 int
 getlist (char *name, char **list)
 {
-#define MAXSTR 128
 #define MAXFF 5
   FILE *fff;
   char line[MAXSTR];
@@ -1291,4 +1291,28 @@ int cmap(SNP **snpmarkers, int numsnps)
    }
    return NO ;
 }
+void setinfiles(char **pind, char **psnp, char **pgeno, char *stem) 
+{
+  char ss[MAXSTR] ; 
+
+  snprintf(ss, MAXSTR, "%s.ind", stem) ; 
+  fcheckr(ss) ; 
+  *pind = strdup(ss) ; 
+
+  snprintf(ss, MAXSTR, "%s.snp", stem) ; 
+  fcheckr(ss) ; 
+  *psnp = strdup(ss) ; 
+
+
+  snprintf(ss, MAXSTR, "%s.geno", stem) ; 
+  fcheckr(ss) ; 
+  *pgeno = strdup(ss) ; 
+
+  printf("input files set from %s\n", stem) ; 
+
+
+
+}
+
+
 

@@ -12,7 +12,7 @@
 
 #define MAXSTR 512 
 #define LONGSTR 10000
-#define MAXFF  50
+#define MAXFF  200
 #define MAXCH  100
 #define MTCHROM 90 
 #define XYCHROM 91
