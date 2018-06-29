@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>
+#include <libgen.h>
+
 #include <nicklib.h>
 #include <getpars.h>
 
@@ -13,6 +15,20 @@ char *oname = NULL;
 
 int verbose = NO;
 char *grabp (int argc, char **argv);
+
+int usage (char *prog, int exval);
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] -x <nam> -p <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters <file> .\n");
+  (void)fprintf(stderr, "   -x <nam>    ... extract value of parameter <nam> from param file.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+}
 
 int
 main (int argc, char **argv)
@@ -42,9 +58,14 @@ grabp (int argc, char **argv)
   char *parname = NULL, *xname = NULL;
   static char *xval = NULL;
 
-  while ((i = getopt (argc, argv, "p:x:V")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
+  while ((i = getopt (argc, argv, "hp:x:V")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
 
     case 'p':
       parname = strdup (optarg);
@@ -58,9 +79,8 @@ grabp (int argc, char **argv)
       verbose = YES;
       break;
 
-    case '?':
-      printf ("Usage: bad params.... \n");
-      fatalx ("bad params\n");
+    default:
+      usage(basename(argv[0]), 1);
     }
   }
 

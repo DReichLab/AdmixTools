@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <limits.h>
 #include <math.h>
+#include <libgen.h>
+
 #include <nicklib.h>
 
 #define MAXSTR 512
@@ -12,6 +14,20 @@ double mean;
 
 void readcommands (int argc, char **argv);
 void callwtjack (char *iname, char *oname);
+
+int usage (char *prog, int exval);
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] -i <file> -o <file> \n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -i <file>   ... use <file> as infile.\n");
+  (void)fprintf(stderr, "   -o <file>   ... use <file> as outfile.\n");
+  (void)fprintf(stderr, "   -m <val>    ... use <val> as mean value.\n");
+
+  exit(exval);
+};
 
 int
 main (int argc, char **argv)
@@ -25,8 +41,14 @@ readcommands (int argc, char **argv)
 {
   int i;
 
-  while ((i = getopt (argc, argv, "i:o:m:")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
+  while ((i = getopt (argc, argv, "hi:o:m:")) != -1) {
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
+      break;
 
     case 'i':
       iname = strdup (optarg);
@@ -40,9 +62,8 @@ readcommands (int argc, char **argv)
       mean = atof (optarg);
       break;
 
-    case '?':
-      printf ("Usage: bad params.... \n");
-      fatalx ("bad params\n");
+    default:
+      usage(basename(argv[0]), 0);
     }
   }
 }
