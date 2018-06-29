@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -162,6 +163,28 @@ void dumpit (char *dumpname, double *ff3, double *ff3var, char **eglist,
 	     int numeg);
 void checkpd (double *a, int n);
 void dumpf3 (char *dumpf3name, double **btop, double **bbot, int nblock);
+
+int usage (char *prog, int exval);
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -f <nam>    ... use <nam> sa fixname.\n");
+  (void)fprintf(stderr, "   -b <val>    ... use <va> as base value.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -g <>   ... .\n");
+  (void)fprintf(stderr, "   -s <val>   ... use <val> as seed.\n");
+  (void)fprintf(stderr, "   -o <>   ... .\n");
+  (void)fprintf(stderr, "   -l <val>    ... use <val> as lambda scale.\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+  (void)fprintf(stderr, "   -x          ... toggle doAnalysis ON.\n");
+
+  exit(exval);
+};
+
 
 int
 main (int argc, char **argv)
@@ -835,9 +858,14 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n, t;
 
-  while ((i = getopt (argc, argv, "f:b:p:g:s:o:l:vVx")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
+  while ((i = getopt (argc, argv, "hf:b:p:s:l:vVx")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
 
     case 'p':
       parname = strdup (optarg);
@@ -861,7 +889,7 @@ readcommands (int argc, char **argv)
 
     case 'v':
       printf ("version: %s\n", WVERSION);
-      break;
+      exit(0);
 
     case 'x':
       doanalysis = NO;
@@ -871,9 +899,8 @@ readcommands (int argc, char **argv)
       verbose = YES;
       break;
 
-    case '?':
-      printf ("Usage: bad params.... \n");
-      fatalx ("bad params\n");
+    default:
+      usage(basename(argv[0]), 1);
     }
   }
 

@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -144,6 +145,23 @@ void gettreelen (double *tlenz, double *tlen, double **f2, double **abx,
 void regesttree (double *ans, double *xn, double xd);
 void ckdups (char **list, int n);
 void printbadql (char ***qlist, int tt, char **eglist, int numeg);
+
+
+int usage (char *prog, int exval);
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -l <val>    ... use <val> as low value.\n");
+  (void)fprintf(stderr, "   -H <val>    ... use <val> as high value.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+};
 
 
 int
@@ -699,15 +717,20 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "l:h:p:vV")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
+  while ((i = getopt (argc, argv, "hl:H:p:vV")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
 
     case 'l':
       locount = atoi (optarg);
       break;
 
-    case 'h':
+    case 'H':
       hicount = atoi (optarg);
       break;
 
@@ -717,15 +740,14 @@ readcommands (int argc, char **argv)
 
     case 'v':
       printf ("version: %s\n", WVERSION);
-      break;
+      exit(0);
 
     case 'V':
       verbose = YES;
       break;
 
-    case '?':
-      printf ("Usage: bad params.... \n");
-      fatalx ("bad params\n");
+    default:
+      usage(basename(argv[0]), 1);
     }
   }
 
