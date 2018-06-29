@@ -41,6 +41,9 @@ src/qpreroot
 src/rolloff
 src/rolloffp
 src/tables
+src/mergeit
+src/qp4diff
+src/qpgbug
 pdoc.aux
 pdoc.dvi
 pdoc.log
