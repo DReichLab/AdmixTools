@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -203,7 +204,20 @@ int setsamp (Indiv ** indivmarkers, int numindivs, char *usesamples);
 int testmisspop(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int numindivs, int minvalpops)   ;
 int fillmiss(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char **fpops, int nfpops)  ;
 
+int usage (char *prog, int exval); 
 
+int
+usage (char *prog, int exval)
+{
+  
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+};
 
 int
 main (int argc, char **argv)
@@ -554,10 +568,13 @@ readcommands (int argc, char **argv)
   char str[5000];
   char *tempname;
   int n;
-
-  while ((i = getopt (argc, argv, "p:vV")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+  while ((i = getopt (argc, argv, "hp:vV")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
 
     case 'p':
       parname = strdup (optarg);
@@ -565,18 +582,16 @@ readcommands (int argc, char **argv)
 
     case 'v':
       printf ("version: %s\n", WVERSION);
-      break;
+      exit(0);
 
     case 'V':
       verbose = YES;
       break;
 
-    case '?':
-      printf ("Usage: bad params.... \n");
-      fatalx ("bad params\n");
+    default:
+        usage(basename(argv[0]), 1);
     }
   }
-
 
   pcheck (parname, 'p');
   printf ("parameter file: %s\n", parname);

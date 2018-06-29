@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -103,6 +104,28 @@ void dump1 (FILE * dumpfile, double *ww, int n);
 void loadpars (char *loadname, double *www, int nwts, double *xxans,
 	       int nedge);
 void read1 (FILE * loadfile, double *ww, int n);
+
+int usage (char *prog, int exval);
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -r <nam>    ... use <nam> as root name.\n");
+  (void)fprintf(stderr, "   -g <nam>    ... use <nam> as graph name.\n");
+  (void)fprintf(stderr, "   -o <nam>    ... use <nam> as out graph name.\n");
+  (void)fprintf(stderr, "   -d <nam>    ... use <nam> as dot graph name.\n");
+  (void)fprintf(stderr, "   -s <nam>    ... use <nam> as script name.\n");
+  (void)fprintf(stderr, "   -x <nam>    ... delete population <nam>.\n");
+  (void)fprintf(stderr, "   -H          ... toggle hash calculation ON.\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+};
+
 
 int
 main (int argc, char **argv)
@@ -243,9 +266,14 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "p:r:g:o:d:x:s:hvVt")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
+  while ((i = getopt (argc, argv, "p:r:g:o:d:x:s:HvVt")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
 
     case 'p':
       parname = strdup (optarg);
@@ -275,7 +303,7 @@ readcommands (int argc, char **argv)
       delpop = strdup (optarg);
       break;
 
-    case 'h':
+    case 'H':
       calchash = YES;
       break;
 
@@ -287,15 +315,14 @@ readcommands (int argc, char **argv)
 
     case 'v':
       printf ("version: %s\n", WVERSION);
-      break;
+      exit(0);
 
     case 'V':
       verbose = YES;
       break;
 
-    case '?':
-      printf ("Usage: bad params.... \n");
-      fatalx ("bad params\n");
+    default:
+      usage(basename(argv[0]), 1);
     }
   }
 
