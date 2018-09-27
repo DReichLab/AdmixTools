@@ -40,8 +40,15 @@ void setpopsizes(int *sizes, char **eglist, int numeg) ;
 void putewts(double *ewts)  ;
 void getewts(double *ewts)  ;
 void getezero(int *zpat)  ;
+void addnode (char *nodename, char *edgename, double breakval) ; 
+int calcscript(char **string) ;
+void readadmix(char *gname) ;
+void writeadmix(char *gname) ;
 int  getrootlabel(char *sss) ;
 void getancnames(char **names) ;
+void setepar(int a, int b, double val, double theta)  ;
+void setapar(int a, int b, int c, double val)  ;
+void setgtime(double *time) ; 
 
 void setallsnpsmode(int mode)  ;
 void loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg) ;
@@ -198,12 +205,15 @@ double ff3val(double *ff3, int a, int b, int c, int n)  ;
 
 // graph stuff
 int loadgraph(char *readit, char ***peglist)   ;
-void readadmix(char *gname) ;
-void writeadmix(char *gname) ;
 void dumpgraph(char *gname) ;
 void dumpdotgraph(char *gdotname) ;
 void dumpdotgraph_title(char *gdotname, char *title) ;
 int  grdof() ;
+
+void getkidinfo(int vind, int *k1, int *k2, double *tau1, double *tau2, double *th1, double *th2) ;
+int getmixinfo(int vind, int *k1, int *k2, double *tmix) ; 
+int isfixed(int vind, int isleft) ;
+
 void getgmix(double **vmix, int *lmix, int *nmix) ;
 void putgmix(double **vmix) ; 
 void getpwts(double *pwts, double *awts, int *nrows, int *nedge, int *nanc) ;
@@ -212,11 +222,11 @@ int getedgelock(int *lock, double *vals) ;
 void getenames(char **enames) ; 
 void findename(char *ss, int n) ;
 void findvname(char *ss, int n) ;
+void getvnames (char **vnames) ;
 void setsimp(double *ww, int n) ;
 int edgenum(char *edgename) ;
 void addvertex(char *vertname)  ;   
 void freegraph() ; 
-void addnode (char *nodename, char *edgename, double breakval) ; 
 void addedgenode(char *nodename, char *n2name, char *edgename, char *newedgename, char *label, double breakval, double eval) ;
 void getpops(char **eelist, int *npops) ;
 void addmixedge(char **nodes, char **edgenames, char *newedgename, 
@@ -227,13 +237,13 @@ int findlabel(char *label) ;
 
 int getnumanc() ; 
 int getnumedge() ; 
+int getnumvertex() ;  
 void reroot(char *nodename)  ;
 
 int hashgraph()  ;
 void hashg(int knum, int *hashvals) ;
 void setispath() ;
 void setincidence(int *x) ;
-int calcscript(char **string) ;
 
 void copystringsd(char **eglist, char **neweglist, int numeg, int  xdel) ;
 int loadeglist(char ***pxeglist, int xnumeg) ;

@@ -28,8 +28,9 @@
 */
 
 
-#define WVERSION   "310"
+#define WVERSION   "320"
 // diffmode added
+// xdata supported
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -51,6 +52,7 @@ int chisqmode = NO;		// approx p-value better to use F-stat
 int missingmode = NO;
 int dotpopsmode = YES;
 int noxdata = YES;		/* default as pop structure dubious if Males and females */
+int xdata = NO;		
 int pcorrmode = NO;
 int pcpopsonly = YES;
 int nostatslim = 10;
@@ -193,6 +195,11 @@ main (int argc, char **argv)
   if (parname == NULL)
     return 0;
 
+  if (xdata) noxdata = NO ; 
+  if (xchrom == (numchrom + 1)) noxdata = NO;
+
+  if (noxdata == NO) printf("X used!\n") ;
+
   nostatslim = MAX (nostatslim, 3);
   setinbreed (inbreed);
 
@@ -215,7 +222,9 @@ main (int argc, char **argv)
       cupt->ignore = YES;
     if (chrom == 0)
       cupt->ignore = YES;
-    if (chrom >= 23)
+    if (chrom > (numchrom+1))
+      cupt->ignore = YES;
+    if ((noxdata) && (chrom == (numchrom + 1)))
       cupt->ignore = YES;
   }
 
@@ -466,6 +475,8 @@ readcommands (int argc, char **argv)
   getint (ph, "popsizelimit:", &popsizelimit);
   getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "chrom:", &xchrom);
+  getint (ph, "noxdata:", &noxdata);
+  getint (ph, "xdata:", &xdata);
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");

@@ -25,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "420"
+#define WVERSION   "435"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -35,6 +35,8 @@
 // missing pop now just error message
 // inbreed bug in f3 score snps dropped unnecessarily
 // code cleanup (graph stuff deleted) and numchrom
+// outgroupmode  -- no denominator
+// count of non mono snps bugfix
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -59,6 +61,7 @@ int popsizelimit = -1;
 int gfromp = NO;		// genetic distance from physical 
 int jackweight = YES;
 int pubjack = NO;
+int outgroupmode = NO;
 
 double blgsize = 0.05;		// block size in Morgans */ double *chitot ;
 int xchrom = -1;
@@ -178,8 +181,13 @@ main (int argc, char **argv)
 
   char ***plists;
   int nplist, trun;
+  double ymem; 
 
   readcommands (argc, argv);
+
+  cputime(0) ;
+  calcmem(0) ;
+
   printf ("## qp3Pop version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
@@ -256,7 +264,8 @@ main (int argc, char **argv)
     dopop3 (plists[trun], xsnplist, ncols, nblocks);
   }
 
-  printf ("##end of qp3Pop\n");
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of qp3Pop: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
   return 0;
 
 }
@@ -430,6 +439,7 @@ readcommands (int argc, char **argv)
   getdbl (ph, "blgsize:", &blgsize);
   getint (ph, "numchrom:", &numchrom);
   getint (ph, "inbreed:", &inbreed);
+  getint (ph, "outgroupmode:", &outgroupmode);
 
   getint (ph, "noxdata:", &noxdata);
   t = -1;
@@ -708,8 +718,8 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
     if (ybot < -0.5)
       continue;
     if (ret<0) continue ;
-    if ((dzeromode == NO) && (ybot <= 0.001))
-      continue;
+    if (outgroupmode) ybot = 0.001 ;   
+//  if ((dzeromode == NO) && (ybot <= 0.001)) continue;
     if (snpdetailsname != NULL) {
 
       finfo (xn + 0, xmean + 0, xh + 0, 0);
@@ -731,6 +741,8 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
 
 
     }
+
+    if (outgroupmode) ybot = 0.001 ;   
 
     btop[bnum] += ytop;
     bbot[bnum] += ybot;
@@ -782,3 +794,4 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
   return totnum;
 
 }
+

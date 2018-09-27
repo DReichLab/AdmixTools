@@ -25,7 +25,7 @@
 */
 
 
-#define WVERSION   "751"
+#define WVERSION   "755"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -69,6 +69,7 @@ int chisqmode = NO;             // approx p-value better to use F-stat
 int missingmode = NO;
 int dotpopsmode = YES;
 int noxdata = YES;              /* default as pop structure dubious if Males and females */
+int xdata = NO;              /* default as pop structure dubious if Males and females */
 int pcorrmode = NO;
 int pcpopsonly = YES;
 int nostatslim = 10;
@@ -247,6 +248,7 @@ main (int argc, char **argv)
    setinfiles(&indivname, &snpname, &genotypename, instem) ; 
   } 
 
+  if (xdata) noxdata = NO ; 
   if (xchrom == (numchrom + 1)) noxdata = NO;
 
   if (!bankermode)
@@ -255,6 +257,7 @@ main (int argc, char **argv)
 //else printf("no fancynorm used\n") ;
   setjquart (NO, jackweight, jackquart);
 
+  if (noxdata == NO) printf("X used!\n") ;
   nostatslim = MAX (nostatslim, 3);
 
   setinbreed (inbreed);
@@ -579,7 +582,7 @@ main (int argc, char **argv)
               printf ("%6s", " - ");
             }
             if (printssize) {
-              printf ("%6d ", sz[0]);
+              printf (" %6d ", sz[0]);
               printf ("%6d ", sz[1]);
               printf ("%6d ", sz[2]);
             }
@@ -657,14 +660,13 @@ main (int argc, char **argv)
     }
 
     if (printssize) {
-      printf ("%6d ", sz[0]);
+      printf (" %6d ", sz[0]);
       printf ("%6d ", sz[1]);
       printf ("%6d ", sz[2]);
     }
     printnl ();
 
   }
-
 
 
   ymem = calcmem(1)/1.0e6 ;
@@ -762,6 +764,7 @@ readcommands (int argc, char **argv)
   getint (ph, "numchrom:", &numchrom);
 
   getint (ph, "noxdata:", &noxdata);
+  getint (ph, "xdata:", &xdata);
   getint (ph, "colcalc:", &colcalc);
   getint (ph, "inbreed:", &inbreed);
   getint (ph, "printssize:", &printssize);

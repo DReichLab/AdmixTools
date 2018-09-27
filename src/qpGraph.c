@@ -24,7 +24,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "6412"   
+#define WVERSION   "6450"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -2263,6 +2263,7 @@ listsubset (int **x, int n, int k)
   return t;
 
 }
+
 
 int
 loadbad2 (int *bad2arr, char **eglist, int numeg, char *fname)

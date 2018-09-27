@@ -112,7 +112,14 @@ double genhpt(int a, int b, int *lt, int *rt)  ;
 void gentail(double **ltail, double **rtail, double **hp, int a, int b)  ;
 void setthresh(int *thresh, double **tail, int a, int b, double stat, int mode)  ; 
 void bj2x(int *type, int a, int b, double *plpv, double *prpv, double *ppv)  ; 
+
 void mlebeta(double *a, int n, double *p1, double *p2);
 void estbpars(double *a, int n, double *p1, double *p2);
 void mleb(double *p1, double *p2, double u, double v) ;
+
+int  loadmptable(double ***mptable) ; 
+
+int qinterp(double *a, double *b, int n, double val, double *ans)  ;
+double quartile(double *b, int n, double q) ;
+
 

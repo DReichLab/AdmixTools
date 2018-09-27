@@ -963,6 +963,17 @@ printmatl (double *a, int m, int n)
 }
 
 void
+printmatlx (double *a, int m, int n)
+
+/** 
+ print a matrix n wide m rows  
+ no final \n
+*/
+{
+  printmatwlx (a, m, n, 5);
+}
+
+void
 printmatwl (double *a, int m, int n, int w)
 
 /** 
@@ -980,6 +991,27 @@ printmatwl (double *a, int m, int n, int w)
       }
     }
     printf ("\n");
+  }
+}
+
+void
+printmatwlx (double *a, int m, int n, int w)
+
+/** 
+ print a matrix n wide m rows  w to a row
+ 15.9f format
+ No final \n
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      printf ("%15.9f ", a[i * n + j]);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        printf ("  ...\n");
+      }
+    }
   }
 }
 
@@ -1293,6 +1325,15 @@ fixit (int *a, double *b, int n)
     a[i] = nnint (b[i]);
   }
 }
+void
+fixitl (long *a, double *b, int n)
+{
+  int i;
+  for (i = 0; i < n; i++) {
+    a[i] = lrint (b[i]);
+  }
+}
+
 
 int
 findfirst (int *a, int n, int val)
@@ -2538,6 +2579,13 @@ floatitl (double *a, long *b, int n)
   }
 }
 
+void
+lvsp (long *a, long *b, long c, int n)
+{
+  int i;
+  for (i = 0; i < n; i++)
+    a[i] = b[i] + c;
+}
 
 
 void

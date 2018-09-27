@@ -1924,3 +1924,103 @@ int getfline(char *ss, char *fname, int maxstr)
 
 }
 
+int
+numcolsq (char *name)
+// number of cols : and , stripped 
+#define MAXCOLS 1000 
+{
+  FILE *fff;
+  char line[MAXSTR];
+  char *spt[MAXSTR];
+  char *sx;
+  int nsplit, num = 0;
+
+  if (name == NULL)
+    fatalx ("(numlines)  no name");
+  openit (name, &fff, "r");
+  while (fgets (line, MAXSTR, fff) != NULL) {
+    subcolon(line) ;
+    nsplit = splitup (line, spt, MAXCOLS);
+    if (nsplit == 0)
+      continue;
+    sx = spt[0];
+    if (sx[0] == '#') {
+      freeup (spt, nsplit);
+      continue;
+    }
+    freeup (spt, nsplit);
+    fclose (fff);
+    return nsplit;
+  }
+  return -1 ;
+}
+
+int
+getxxq (double **xx, int maxrow, int numcol, char *fname)
+// : and , stripped
+{
+
+  char line[MAXSTR];
+  char *spt[MAXFF];
+  char *sx;
+  int nsplit, i, j, num = 0, maxff;
+  FILE *fff;
+  int nbad = 0;
+
+  if (fname == NULL)
+    fff = stdin;
+  else {
+    openit (fname, &fff, "r");
+  }
+  maxff = MAX (MAXFF, numcol);
+
+  while (fgets (line, MAXSTR, fff) != NULL) {
+    subcolon(line) ;
+    nsplit = splitup (line, spt, maxff);
+    if (nsplit == 0) {
+      freeup (spt, nsplit);
+      continue;
+    }
+    sx = spt[0];
+    if (sx[0] == '#') {
+      freeup (spt, nsplit);
+      continue;
+    }
+    if (nsplit < numcol) {
+      ++nbad;
+      if (nbad < 10)
+        printf ("+++ bad line: nsplit: %d numcol: %d\n%s\n", nsplit, numcol,
+                line);
+      continue;
+    }
+    if (num >= maxrow)
+      fatalx ("too much data\n");
+    for (i = 0; i < numcol; i++) {
+      xx[i][num] = atof (spt[i]);
+    }
+    freeup (spt, nsplit);
+    ++num;
+  }
+  if (fname != NULL)
+    fclose (fff);
+  return num;
+}
+
+
+int copyfs(char *infile, FILE *fff) 
+// copy file  to stream
+{
+  char line[MAXSTR];
+  int num = 0;
+  FILE *ggg ; 
+
+  openit(infile, &ggg, "r") ;
+  while (fgets (line, MAXSTR, ggg) != NULL) {
+    fprintf(fff, "%s", line) ; 
+    ++num ; 
+  }
+
+  fclose(ggg) ;
+  return num ;
+}
+

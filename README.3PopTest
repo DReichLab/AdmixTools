@@ -30,6 +30,15 @@ popfilename:  list_qp3test (contains 3 populations on each line <Source1 (A)> <S
 inbreed: YES  
 ## Use if target pop is inbred OR (and crucially) if target is pseudo-diploid
 
+*** NEW *** 
+By default f_3 output is normalized by estimatated heterozygosity 
+of the target.   This doesn't work if the target has no hets as can 
+happen in "outgroup f_3" mode.  In this case set:
+outgroupmode: YES
+when the f-3 denominator is set to an arbitrary .001
+
+
+
 
 DESCRIPTION OF OUTPUT FILE:
 The program will write all the output to stdout. The output file prints the parfile entered by the user, the number of populations included in the popfilename (nplist), the number of blocks for block jackknife, the number of snps included in the run and the results.

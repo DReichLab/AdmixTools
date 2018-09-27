@@ -21,7 +21,7 @@ endif
 ND = nicksrc
 NLIB = $(ND)/libnick.a
 
-PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave dowtjack expfit.sh qpBound qpGraph qpreroot qpff3base qpDpart qp4diff qpF4ratio qpgbug grabpars rolloff rolloffp convertf mergeit
+PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart ##  gcount kimf
 ## rolloff* convertf mergeit from .../o2src
 
 PROGS2 = rexpfit.r  wtjack.pl 
@@ -47,6 +47,10 @@ qp3Pop: $(NLIB) qp3Pop.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 qp4diff: $(NLIB) qp4diff.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 qpF4ratio: $(NLIB) qpF4ratio.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
+qpF4ratio: $(NLIB) qpF4ratio.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
+qpf4diff: $(NLIB) f4diff.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 rolloff: $(NLIB) rolloff.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
@@ -105,4 +109,8 @@ qpGraph: $(NLIB) qpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o
 qpgbug: $(NLIB) qpgbug.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 qpreroot: qpreroot.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
+gcount: gcount.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
+kimf: kimf.o gslkim.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 

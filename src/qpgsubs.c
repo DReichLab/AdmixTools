@@ -14,8 +14,6 @@
 
 #define WVERSION "2000"
 #define MAXA  10
-#define MAXSTR 256
-#define MAXFF  10
 
 extern int verbose;
 extern int isinit;
@@ -680,7 +678,8 @@ trivgraph (char *rootname)
   addvertex (rootname);
 }
 
-void getmixinfo(int vind, int *k1, int *k2, double *tmix) 
+int getmixinfo(int vind, int *k1, int *k2, double *tmix) 
+// return -1 if fixed
 {
   NODE *node ;
 
@@ -692,7 +691,32 @@ void getmixinfo(int vind, int *k1, int *k2, double *tmix)
  *k2 = node -> windex[1] ; 
  *tmix = node  -> wmix[0] ;
 
+ if (node -> isfixed) return -1 ;
+ return 0 ; 
+
 }
+
+int isfixed(int vind, int isleft) 
+{
+  NODE *node, *tnode;
+  EDGE *tedge ; 
+
+  node = &vlist[vind] ;
+
+  if (isleft)  {
+   tnode = (NODE *) node->left;
+   tedge = (EDGE *) node->eleft;
+  }
+  else   {
+   tnode = (NODE *) node->right;
+   tedge = (EDGE *) node->eright;
+  }
+
+  if ((tnode != NULL) && (tedge -> isfixed)) return YES; 
+  return NO ; 
+
+
+} 
 
 void getkidinfo(int vind, int *k1, int *k2, double *tau1, double *tau2, double *th1, double *th2) 
 {
@@ -701,6 +725,7 @@ void getkidinfo(int vind, int *k1, int *k2, double *tau1, double *tau2, double *
 
   *k1 = *k2 = -1 ; 
   *tau1 = *tau2 = -1 ;
+  *th1 = *th2 = -1 ;
 
   node = &vlist[vind] ;
 
@@ -727,6 +752,8 @@ void setapar(int a, int b, int c, double val)
 {
   NODE *node1, *node2 ;     
   node1 = &vlist[a];
+
+  if (node1 -> isfixed) return ;
 
   if (node1 -> windex[0] == b) { 
    node1 -> wmix[0] = val ;       
@@ -769,6 +796,7 @@ void setepar(int a, int b, double val, double theta)
 
   if (node2 == (NODE *) node1 -> left) { 
    tedge = (EDGE *) node1 -> eleft ;
+   if (tedge -> isfixed) return ; 
    tedge -> val = val ;
    tedge -> theta = theta ;
    return ;
@@ -776,6 +804,7 @@ void setepar(int a, int b, double val, double theta)
 
   if (node2 == (NODE *) node1 -> right) { 
    tedge = (EDGE *) node1 -> eright ;
+   if (tedge -> isfixed) return ; 
    tedge -> val = val ;
    tedge -> theta = theta ;
    return ;
@@ -1133,7 +1162,6 @@ loadgraph (char *rname, char ***peglist)
 
   freegraph ();
 
-  if (rname == NULL)  fatalx("no graph!\n") ;
   numedge = numvertex = numadmix = numpops = 0;
 
   ZALLOC (egnum, maxnodes, int);
@@ -1258,6 +1286,8 @@ int
 readit (char *cname)
 // main input routine for graph
 {
+#define MAXSTR 128
+#define MAXFF  10
   FILE *fff;
   char line[MAXSTR + 1], c;
   char *spt[MAXFF], *sx, *s1, *s2;
@@ -1439,7 +1469,7 @@ readit (char *cname)
       sx = spt[nsplit - 1];
       t = strcmp (sx, "lock");
       if (t == 0) {
-	node->isfixed = 1;
+	node->isfixed = YES;
 	getadwts (spt, ssx, ww, nsplit - 1, &nt);
       }
       else
@@ -1610,7 +1640,7 @@ dumpdotgraph_title (char *graphdotname, char *title)
   char *sss = NULL;
 
   if (graphdotname == NULL) return;
-//  printf ("graphdotname:  %s\n", graphdotname);
+//printf ("graphdotname:  %s\n", graphdotname);
   fflush (stdout);
   openit (graphdotname, &fff, "w");
 
@@ -1736,112 +1766,6 @@ pedge (FILE * fff, NODE * anode, NODE * bnode, double val, double theta, int mod
   freestring (&ss3);
 }
 
-void readadmix(char *admixname) 
-{
-
-  NODE *node, *xnode, *xroot;
-  EDGE *edge;
-  int k, j, t, tt, vind, kk;
-  int *dd, *ind;
-  double y ; 
-  FILE *fff;
-
-  char line[MAXSTR + 1], c;
-  char *spt[MAXFF], *sx, *s1, *s2;
-  int nsplit, n = 0;
-  int okline;
-  double cc[2] ;
-
- if (admixname == NULL) return ;
-
-   openit (admixname, &fff, "r");
-
-  line[MAXSTR] = '\0';
-  while (fgets (line, MAXSTR, fff) != NULL) {
-    nsplit = splitup (line, spt, MAXFF);
-    if (nsplit < 6)   {  
-     freeup(spt, nsplit) ;
-     continue ; 
-    }
-
-    t = strcmp("admix", spt[0]) ; 
-    if (t != 0)   {  
-     freeup(spt, nsplit) ;
-     continue ; 
-    }
-
-    kk = vertexnum (spt[1]) ;    
-    if (kk < 0)
-     fatalx("vertex %s not found!\n") ;  
-     node = &vlist[kk] ; 
-      
-    t = 2 ; 
-    cc[0] = atof(spt[4]) ;
-    cc[1] = atof(spt[5]) ;
-    bal1(cc,2) ; 
-    ++n ; 
-
-    for (j = 0; j < t; ++j) {
-      vind = node->windex[j];
-      xnode = &vlist[vind];
-      tt = strcmp(xnode -> name, spt[j+2]) ; 
-      if (tt != 0) fatalx("node mismatch: %s\n", line) ;
-      node -> wmix[j] = cc[j] ;  
-    }
-    freeup(spt, nsplit) ;
-   
-  }
-  fclose(fff) ;
-  printf("## (readadmix) %d admix entries read\n", n) ;
-}
-
-void writeadmix(char *admixname) 
-{
-
-  FILE *fff;
-  NODE *node, *xnode, *xroot;
-  EDGE *edge;
-  int k, j, t, vind, kk, n;
-  int *dd, *ind;
-  char sform[10], sformx[10] ;  
-
- if (admixname == NULL) return ;
-
-  if (hires) {
-    strcpy (sform, " %12.6f");
-    strcpy (sformx, ":%.6f") ; 
-  }
-  else {
-    strcpy (sform, " %9.3f");
-    strcpy (sformx, ":%.3f") ; 
-  }
-
-  openit (admixname, &fff, "w");
-
-  n = 0 ;
-  for (k = 0; k < numvertex; ++k) {
-    node = &vlist[k] ;
-    if (node->isdead) continue;
-    t = node->numwind;
-    if (t == 0) continue;
-    fprintf (fff, "admix %12s  ", node->name);
-    for (j = 0; j < t; ++j) {
-      vind = node->windex[j];
-      xnode = &vlist[vind];
-      fprintf (fff, "%10s ", xnode->name);
-    }
-    for (j = 0; j < t; ++j) {
-      fprintf (fff, sform, node->wmix[j]);
-    }
-    fprintf (fff, "\n");
-    ++n ; 
-  }
-  fclose(fff) ;
-  printf("## (writeadmix) %d admix entries written\n", n) ;
-}
-
-
-
 void
 dumpgraph (char *graphname)
 {
@@ -1934,7 +1858,7 @@ dumpgraph (char *graphname)
       fprintf (fff, " %12s", node->name);
       fprintf (fff, " %12s", xnode->name);
       fprintf (fff, sform, edge->val);
-      if (edge -> theta >= 0) { 
+      if (edge -> theta > 0) { 
         fprintf (fff, sformx, edge->theta);
       }
       fprintf (fff, "\n");
@@ -2472,6 +2396,8 @@ int
 qreadit (char *cname)
 // main input routine for graph (new format)
 {
+#define MAXSTR 128
+#define MAXFF  10
   FILE *fff;
   char line[MAXSTR + 1], c;
   char *spt[MAXFF], *sx, *s1, *s2;
@@ -2936,5 +2862,94 @@ int calcscript(char **string)
   free(vtable) ; 
   return n ;  
 
+}
+
+
+void readadmix(char *admixname) 
+{
+
+  NODE *node, *xnode, *xroot;
+  EDGE *edge;
+  int k, j, t, tt, vind, kk;
+  int *dd, *ind;
+  double y ; 
+  FILE *fff;
+
+  char line[MAXSTR + 1], c;
+  char *spt[MAXFF], *sx, *s1, *s2;
+  int nsplit, n = 0;
+  int okline;
+  double cc[2] ;
+
+ if (admixname == NULL) return ;
+
+   openit (admixname, &fff, "r");
+
+  line[MAXSTR] = '\0';
+  while (fgets (line, MAXSTR, fff) != NULL) {
+    nsplit = splitup (line, spt, MAXFF);
+    if (nsplit < 6)   
+      continue;
+    kk = vertexnum (spt[1]) ;    
+    if (kk < 0)
+     fatalx("vertex %s not found!\n") ;  
+     node = &vlist[kk] ; 
+      
+    t = 2 ; 
+    cc[0] = atof(spt[4]) ;
+    cc[1] = atof(spt[5]) ;
+    bal1(cc,2) ; 
+
+    for (j = 0; j < t; ++j) {
+      vind = node->windex[j];
+      xnode = &vlist[vind];
+      tt = strcmp(xnode -> name, spt[j+1]) ; 
+      if (tt != 0) fatalx("node mismatch: %s\n", line) ;
+      node -> wmix[j] = cc[j] ;  
+    }
+  }
+  fclose(fff) ;
+}
+
+void writeadmix(char *admixname) 
+{
+
+  FILE *fff;
+  NODE *node, *xnode, *xroot;
+  EDGE *edge;
+  int k, j, t, vind, kk;
+  int *dd, *ind;
+  char sform[10], sformx[10] ;  
+
+ if (admixname == NULL) return ;
+
+  if (hires) {
+    strcpy (sform, " %12.6f");
+    strcpy (sformx, ":%.6f") ; 
+  }
+  else {
+    strcpy (sform, " %9.3f");
+    strcpy (sformx, ":%.3f") ; 
+  }
+   openit (admixname, &fff, "w");
+
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k];
+    node = &vlist[kk];
+    if (node->isdead) continue;
+    t = node->numwind;
+    if (t == 0) continue;
+    fprintf (fff, "admix %12s  ", node->name);
+    for (j = 0; j < t; ++j) {
+      vind = node->windex[j];
+      xnode = &vlist[vind];
+      fprintf (fff, "%10s ", xnode->name);
+    }
+    for (j = 0; j < t; ++j) {
+      fprintf (fff, sform, node->wmix[j]);
+    }
+    fprintf (fff, "\n");
+  }
+  fclose(fff) ;
 }
 

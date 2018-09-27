@@ -83,6 +83,9 @@ int  filehash(char *name) ;
 char *mytemp (char *qqq) ; 
 void printslurmenv ()  ; 
 int getfline(char *ss, char *fname, int maxstr) ;
+int copyfs(char *infile, FILE *fff)  ;
+int getxxq(double **xx, int maxrow, int numcol, char *fname) ; 
+int numcolsq (char *name) ;
 
 
 #define ZALLOC(item,n,type)      if ((item = (type *)calloc((n),sizeof(type))) == NULL) \

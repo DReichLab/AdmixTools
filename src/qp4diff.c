@@ -28,7 +28,7 @@
 */
 
 
-#define WVERSION   "310" 
+#define WVERSION   "315" 
 
 // overlap NO added
 // allsnps: YES and instem: added
@@ -185,10 +185,16 @@ int main(int argc, char **argv)
   char ***plists ; 
   char *px ;
   int nplist = 0, trun, nplisth ;
+  double ymem ;
 
 
   readcommands(argc, argv) ;
+
+  cputime(0) ;
+  calcmem(0) ;
+
   printf("## qp4diff version: %s\n", WVERSION) ;
+
   if (parname == NULL) return 0 ;
   xverbose = verbose ;
   if (xverbose) printf("verbose set\n") ;
@@ -228,7 +234,7 @@ int main(int argc, char **argv)
   num = readpopx(popfilename, plists, 8) ;
   nplist = num ;
   printf("nplist: %d\n", nplist) ;
-  if (nplist == 0) return ;
+  if (nplist == 0) return 0 ;
 
 
   ZALLOC(eglist, nplist*8, char *)  ;  
@@ -346,8 +352,9 @@ int main(int argc, char **argv)
 
 
 
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of qp4diff: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
 
-  printf("## end of run\n") ;
   return 0 ;
 }
 

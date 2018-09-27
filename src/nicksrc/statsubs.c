@@ -2896,6 +2896,133 @@ void mleb(double *p1, double *p2, double u, double v)
 
 }
 
+int loadmptable(double ***mptab) 
+// return number of rows in table 
+{
+
+ int n, nr, nc, i, j, t ; 
+ static double **tab ; 
+
+ n = MPTABSIZE ; 
+ 
+ nr = n/6 ; nc = 6 ; 
+
+ tab = initarray_2Ddouble(nc, nr, 0) ; 
+ t = 0 ; 
+ for (i=0; i<nr ; ++i) { 
+  for (j=0; j<nc ; ++j) { 
+   tab[j][i] = MPTABLE[t] ;
+   ++t ; 
+ }} 
+ 
+ *mptab = tab ; 
+ return nr ; 
+/** 
+ 0  g 
+ 1 lq
+ 2 med
+ 3 up
+ 4 r 
+ 5 r/tau = sqrt(g) 
+*/
+
+}
+
+int qinterp(double *a, double *b, int n, double val, double *ans) 
+/**
+ a and b are matched values 
+ sort a and corresponding b  Set val as linear combo of 2 a values 
+ returnlinear combo of corresponding b values 
+ called by quartile 
+ return approx index in sorted list.  -1 if lo n+1000 if hi
+*/
+
+{ 
+ 
+ double *xa, *xb ; 
+ int *ind, k, x  ; 
+ double y1,y2, yy ;
+
+ ZALLOC(xa, n+2, double) ; 
+ ZALLOC(xb, n+2, double) ; 
+ ZALLOC(ind, n+2, int) ; 
+
+ copyarr(a, xa+1, n) ; 
+ copyarr(b, xb+1, n) ; 
+
+ 
+ sortit(xa+1, ind, n) ; 
+
+ for (k=0; k<n ;  ++k) { 
+  x = ind[k] ; 
+  xb[k+1] = b[x] ; 
+ } 
+
+ xb[0] = xb[1] ; 
+ xb[n+1] = xb[n] ; 
+ xa[0] = xa[1]  -  1.0e20 ; 
+ xa[n+1] = xa[n] + 1.0e20 ; 
+
+ x = firstgtx(val, xa, n+2) ;  
+
+ if (x<=1) { 
+  *ans = xb[0] ;
+  free(xa) ; 
+  free(xb) ; 
+  free(ind) ; 
+  return -1 ; 
+ }
+ if (x==(n+1)) { 
+  *ans = xb[n] ;
+  free(xa) ; 
+  free(xb) ; 
+  free(ind) ; 
+  return n + 1000 ;
+ }
+ y1 = xa[x] - val ; 
+ y2 = val - xa[x-1] ; 
+ yy = y1 + y2 ; 
+
+ y1 /= yy ; 
+ y2 /= yy ; 
+ 
+ 
+ *ans = y1*xb[x-1] + y2*xb[x] ;  
+
+  free(xa) ; 
+  free(xb) ; 
+  free(ind) ; 
+    
+  return x ;
+
+}
+double quartile(double *x, int n, double q) 
+{
+  double *a, *b, val, ans ; 
+  int i;
+
+  if (n==1) return b[0] ; 
+
+  ZALLOC(a, n, double) ;  
+  ZALLOC(b, n, double) ;  
+
+  for (i = 0; i < n; i++) {
+    a[i] = (double) i;
+  }
+
+  val = q * (double) (n-1) ; 
+  copyarr(x, b, n) ; 
+  sortit(b, NULL, n) ;
+
+  qinterp(a, b, n, val, &ans) ;
+
+  free(a) ; 
+  free(b) ; 
+
+  return ans ; 
 
 
 
+ free(a) ; 
+
+}
