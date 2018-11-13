@@ -21,7 +21,7 @@ endif
 ND = nicksrc
 NLIB = $(ND)/libnick.a
 
-PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart ##  gcount kimf
+PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart convertf mergeit ##  gcount kimf
 ## rolloff* convertf mergeit from .../o2src
 
 PROGS2 = rexpfit.r  wtjack.pl 
