@@ -186,7 +186,11 @@ fatalx (char *fmt, ...)
 
   fprintf (stderr, "fatalx:\n%s", Estr);
   fflush (stderr);
+#ifdef USER_EXIT
+  exit(1);
+#else
   abort ();
+#endif
 }
 
 int

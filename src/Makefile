@@ -2,17 +2,20 @@ HOMEL=$(PWD)
 TOP=../bin
 BIN=$(HOMEL)/../bin
 
+# uncomment in order for binaries to exit with 1 instead of abort and core dump generation
+#NO_CORE= -DUSER_EXIT=1
+
 override LDLIBS += -lgsl -lopenblas -lm -lnick
 # Some Linux distributions require separate lapacke library
 # override LDLIBS += -llapacke
 override LDFLAGS += -L./nicksrc
-override CFLAGS += -c -g -p -Wimplicit -I./ -I./nicksrc
+override CFLAGS += -c -g -p -Wimplicit -I./ -I./nicksrc $(NO_CORE)
 # Mac additions using homebrew installations
 #override CFLAGS += -I/usr/local/opt/openblas/include -I/usr/local/opt/gsl/include
 #override LDFLAGS += -L/usr/local/opt/openblas/lib -L/usr/local/opt/gsl/lib
 # Harvard Medical School O2 cluster additions
 ifdef SLURM_CONF
-override CFLAGS += -I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include
+override CFLAGS += -I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include $(NO_CORE)
 override LDFLAGS += -L/n/app/openblas/0.2.19/lib -L/n/app/gsl/2.3/lib/
 TOP=../bin
 BIN=$(HOMEL)/../bin
