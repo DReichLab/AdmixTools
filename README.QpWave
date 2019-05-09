@@ -33,6 +33,13 @@ popleft:       left population list (1 per line)
 popright:      right population list (1 per line) 
 details:       YES 
 
+## optional parameters:
+allsnps: YES
+When set to YES, the maximum number of snps available for each f4 statistic are used. By default, 
+only the intersect of snps across all Left and Right populations are used.
+
+chrom: Only use snps in the specified chromosome.
+
 DESCRIPTION OF OUTPUT FILE:
 The program will write all the output to stdout. The output file prints the parfile entered by the user, 
 number of snps and individuals, jackknife block size, number of blocks for jackknife and the results.
@@ -55,6 +62,11 @@ target as a linear combination of the other populations of popleft.
 
 details:   YES/NO 
 is a new option (not available in qpWave) 
+allsnps: YES
+When set to YES, the maximum number of snps available for each f4 statistic are used. By default, 
+only the intersect of snps across all Left and Right populations are used.
+
+chrom: Only use snps in the specified chromosome.
 
 .../examples/qpAdm.log has annotations ### manually added to explain output
 
