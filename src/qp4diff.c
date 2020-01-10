@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -28,10 +29,11 @@
 */
 
 
-#define WVERSION   "315" 
+#define WVERSION   "400" 
 
 // overlap NO added
 // allsnps: YES and instem: added
+// firstf4mult added (Mark request) 
 
 #define MAXFL  50   
 #define MAXSTR  512
@@ -43,6 +45,7 @@ int xverbose ;
 int qtmode = NO ;
 int colcalc = YES ;
 int hires = NO ;
+int fancyf4 = NO;
 
 Indiv **indivmarkers;
 SNP **snpmarkers ;
@@ -90,12 +93,14 @@ char  *snpoutfilename = NULL ;
 char *badsnpname = NULL ;
 char *popfilename = NULL ;
 char *outliername = NULL ;
+char *blockname = NULL;
 int inbreed  = NO ; 
 double lambdascale ;  
 int *f2ind, *ind2f, ng2, nh2 ;
 
 int ldregress = 0 ;
 double ldlimit = 9999.0 ;  /* default is infinity */
+double firstf4mult = 1.0 ; 
 /* we only consider markers as in possible LD if gdis <= ldlimit */
 
 char *outputname = NULL ;
@@ -108,7 +113,7 @@ void doq4diff(double *q4rat, double *q4ratsig, int ***counts, int *bcols,
  int nrows, int ncols, int *xtop, int *xbot, int numeg, int nblocks) ;
 
 
-int getf4(int **xx, int *indx, double *ans) ;
+int usage (char *prog, int exval); 
 
 int main(int argc, char **argv)
 {
@@ -186,6 +191,7 @@ int main(int argc, char **argv)
   char *px ;
   int nplist = 0, trun, nplisth ;
   double ymem ;
+  int numchromp ; 
 
 
   readcommands(argc, argv) ;
@@ -195,19 +201,26 @@ int main(int argc, char **argv)
 
   printf("## qp4diff version: %s\n", WVERSION) ;
 
+  numchromp = numchrom+1 ;
   if (parname == NULL) return 0 ;
   xverbose = verbose ;
   if (xverbose) printf("verbose set\n") ;
   if (allsnps == YES) overlap = NO ; 
   if (allsnps == NO) overlap = YES ; 
+  if (fancyf4) printf("fancyf4 on\n") ;  
+  if (fancyf4==NO) printf("fancyf4 off\n") ;  
 
   if (instem != NULL) { 
    setinfiles(&indivname, &snpname, &genotypename, instem) ; 
   } 
 
+  y = fabs(firstf4mult-1.0) ; 
+  if (y>.0001) printf("*** firstf4mult: %9.3f ***\n", firstf4mult) ;
+  
 
   nostatslim = MAX(nostatslim, 3) ;
   setinbreed(inbreed) ;
+  setfancyf4(fancyf4) ; 
 
   if (outputname != NULL)  openit(outputname, &ofile, "w") ;
 
@@ -226,7 +239,7 @@ int main(int argc, char **argv)
     chrom = cupt -> chrom ;
     if ((xchrom>0) && (chrom != xchrom)) cupt -> ignore = YES ;
     if (chrom == 0) cupt -> ignore = YES ;
-    if (chrom >= 23) cupt -> ignore = YES ;
+    if (chrom >= numchromp) cupt -> ignore = YES ;
   }
 
   nplist = numlines(popfilename) ;
@@ -301,10 +314,6 @@ int main(int argc, char **argv)
   setmgpos(snpmarkers, numsnps, &maxgendis) ;  
   if ((maxgendis < .00001) || (gfromp == YES)) setgfromp(snpmarkers, numsnps) ;
 
-  nblocks = numblocks(snpmarkers, numsnps, blgsize) ;
-  ZALLOC(blstart, nblocks, int) ;
-  ZALLOC(blsize, nblocks, int) ;
-//  printf("number of blocks for moving block jackknife: %d\n", nblocks) ;
 
   ZALLOC(xsnplist, numsnps, SNP *) ;
   ZALLOC(tagnums, numsnps, int) ;
@@ -316,9 +325,11 @@ int main(int argc, char **argv)
   ncols = loadsnpx(xsnplist, snpmarkers, numsnps, indivmarkers) ;
 
   printf("snps: %d  indivs: %d\n", ncols, nrows) ;
-  setblocks(blstart, blsize, &xnblocks, xsnplist, ncols, blgsize)  ;
+  nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
+
 // loads tagnumber
-  printf("number of blocks for moving block jackknife: %d\n", xnblocks) ;
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
+  xnblocks = nblocks += 10 ; 
 
   ZALLOC(counts, ncols, int **) ;          
   for (k=0; k<ncols; ++k) { 
@@ -367,10 +378,15 @@ void readcommands(int argc, char **argv)
   char *tempname ;
   int n ;
 
-  while ((i = getopt (argc, argv, "p:vV")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+  while ((i = getopt (argc, argv, "p:vVh")) != -1) {
 
     switch (i)
       {
+
+     case 'h':
+      usage(basename(argv[0]), 0);
+      break;
 
       case 'p':
 	parname = strdup(optarg) ;
@@ -416,7 +432,9 @@ void readcommands(int argc, char **argv)
    getint(ph, "nostatslim:", &nostatslim) ; 
    getint(ph, "popsizelimit:", &popsizelimit) ; 
    getint(ph, "gfromp:", &gfromp) ;  // gen dis from phys
-   getint(ph, "chrom:", &xchrom) ;
+   getint(ph, "fancyf4:", &fancyf4) ;
+   getint(ph, "numchrom:", &numchrom) ;
+   getdbl(ph, "firstf4mult:", &firstf4mult) ;
 
    printf("### THE INPUT PARAMETERS\n");
    printf("##PARAMETER NAME: VALUE\n");
@@ -552,7 +570,7 @@ int readpopx(char *pname, char ***plists, int npops)
    }
    if (nsplit < npops) fatalx("length mismatch %s\n", line) ;
    ZALLOC(plists[num], npops+1, char *) ;
-   plists[num][npops] == NULL ;
+   plists[num][npops] = NULL ;
    pp = plists[num] ;
    for (t=0; t<npops; ++t) {  
     pp[t] = strdup(spt[t]) ;
@@ -604,6 +622,7 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
     if (bnum<0) continue ;
     if (bnum>=nblocks) fatalx("logic bug\n") ;
     ret = getf4(counts[col], xtop1, &y1) ;
+    y1 *= firstf4mult ;
     if (ret == 2) fatalx("bad pop\n") ;
     if (ret>=0) { 
      btop1[bnum] += y1 ;
@@ -698,10 +717,14 @@ doq4diff(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
    totnum = 0 ;
    for (col=0; col<ncols;  ++col)  {
     ret = getf4(counts[col], xtop, &y1) ;
+
+    y1 *= firstf4mult ; 
     if (ret < 0) continue ;
-    if (ret == 2) fatalx("bad pop in numerator\n") ;
+    if (ret == 2) fatalx("bad pop\n") ;
+
     ret = getf4(counts[col], xbot, &y2) ;
     if (ret < 0) continue ;
+    if (ret == 2) fatalx("bad pop\n") ;
 
     bnum = bcols[col] ;  
     if (bnum<0) continue ;
@@ -853,48 +876,15 @@ doq4ratdiff(double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 
 }
 
-
-double hfix(int *x) 
-{
-// correction factor counts in x
-  double ya, yb, yt, h ;
-  ya = (double) x[0] ; 
-  yb = (double) x[1] ;
-  yt = ya + yb ; 
-  if (yt<=1.5) fatalx("(hfix)\n") ;
-  h = ya*yb/(yt*(yt-1.0)) ;
-  return h/yt ;
-}
-
-int getf4(int **xx, int *indx, double *ans) 
+int usage (char *prog, int exval)
 {
 
-   int a, i ; 
-   double y0, y1, ytot, ff[4] ;
-   double h0, h1 ; 
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
 
-   *ans = 0.0 ;
-   for (i=0; i<4; ++i)  {
-     a = indx[i] ;
-     if (a<0) {  
-      *ans = 1.0 ;
-      return 2 ;
-     }
-     y0 = (double) xx[a][0] ;
-     y1 = (double) xx[a][1] ;
-     ytot = y0+y1 ;
-     if (ytot <= 0.0) return -1 ;
-     ff[i] = y0/ytot ;
-   }
-   *ans = (ff[0]-ff[1]) * (ff[2]-ff[3]) ;
-   a = indx[0] ; 
-   h0 = hfix(xx[a]) ;  
-   a = indx[1] ; 
-   h1 = hfix(xx[a]) ;  
-   if (indx[0] == indx[2]) *ans -= h0 ;
-   if (indx[0] == indx[3]) *ans += h0 ;
-   if (indx[1] == indx[3]) *ans -= h1 ;
-   if (indx[1] == indx[2]) *ans += h1 ;
-   return 1 ;
+  exit(exval);
+};
 
-}

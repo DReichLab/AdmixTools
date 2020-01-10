@@ -10,6 +10,7 @@ void invperm(int *a, int *b, int n) ;
 int ipcompit (int *a1, int *a2)  ;
 int comparr(double *a, double *b, int len)  ;
 int compiarr(int *a, int *b, int len)  ;
+int complarr(long *a, long *b, int len)  ;
 void ipsortit(int **a, int *ind, int len, int rlen)  ;
 void ipsortitp(int **a, int *ind, int len, int rlen, int *pp)  ;
 void setorder (int *pp, int rlen) ;

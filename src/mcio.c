@@ -35,6 +35,7 @@ extern int hashcheck;		//!< user parameter (check input file hashes against inpu
 extern int outputall;
 extern int sevencolumnped;
 static int dofreeped = YES;
+static int hiresgendis = NO ; 
 
 int tempnum = 0;
 int tempfake = 0;
@@ -81,6 +82,11 @@ int calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind,
 		int *pihash, int *pshash);
 
 /* ---------------------------------------------------------------------------------------------------- */
+void sethiressnp() 
+{
+  hiresgendis = YES ; 
+  printf("hiressnp set!\n") ; 
+}
 void 
 setoldsnpformat() 
 {
@@ -884,14 +890,8 @@ loadsnps (SNP ** snpm, SNPDATA ** snpraw,
     cupt->aftrue = cupt->af_freq = fraw;
     cupt->aa_aftrue = cupt->aa_af_freq = fraw;
 
-    if (sdpt->alleles != NULL) {
-      cupt->alleles[0] = sdpt->alleles[0];
-      cupt->alleles[1] = sdpt->alleles[1];
-    }
-    else {
-      cupt->alleles[0] = '1';
-      cupt->alleles[1] = '2';
-    }
+    cupt->alleles[0] = sdpt->alleles[0];
+    cupt->alleles[1] = sdpt->alleles[1];
 
     n0 = sdpt->nn[2];
     n1 = sdpt->nn[3];
@@ -1645,6 +1645,7 @@ clearsnp (SNP * cupt)
   cupt->gpnum = 0;
   cupt->pcupt = NULL;
   cupt->tagnumber = -1;
+  cupt -> diplike = NULL ;
 
   charclear (cupt->cchrom, CNULL, 7);
   strcpy (cupt->cchrom, "");
@@ -1659,7 +1660,7 @@ rmindivs (SNP ** snpm, int numsnps, Indiv ** indivmarkers, int numindivs)
   // squeeze out ignore
   // dangerous bend.  Of course indivmarkers indexing will change
   int n = 0, g, i, k;
-  int x;
+  int x, t;
   Indiv *indx;
   SNP *cupt;
 
@@ -1668,6 +1669,7 @@ rmindivs (SNP ** snpm, int numsnps, Indiv ** indivmarkers, int numindivs)
   for (k = 0; k < numindivs; ++k) {
     if (indivmarkers[k]->ignore == YES)
       continue;			// don't store
+
     if (n == k) {		// if no ignored found yet, 
       ++n;			//   next unused is next element
       continue;			//   and no need to copy
@@ -1679,13 +1681,17 @@ rmindivs (SNP ** snpm, int numsnps, Indiv ** indivmarkers, int numindivs)
     indx->idnum = n;
     for (i = 0; i < numsnps; i++) {
       cupt = snpm[i];
+
+      cupt = snpm[i];
       if (cupt->gtypes == NULL)
-	break;
+	continue;
       if (cupt->ignore)
 	continue;		// copy only genotypes of non-ignored SNPs
       g = getgtypes (cupt, k);
       putgtypes (cupt, n, g);
-    }
+    if (cupt -> diplike != NULL) { 
+     copyarr(cupt -> diplike[k], cupt -> diplike[n], 3) ; 
+    }} 
     ++n;
   }
 
@@ -1793,6 +1799,7 @@ clearind (Indiv ** indm, int numind)
     indx->Xlambda_mode = indx->lambda_mode = lp1 / lp2;
     indx->thetatrue = -1.0;	// silly value
     indx->qval = indx->rawqval = 0.0;
+    indx -> ishaploid = NO ;
   }
   cleartg (indm, numind);
 }
@@ -1936,6 +1943,7 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
   double ppos;
   SNP *cupt;
   char ss[10];
+  char sformat[20] ; 
   FILE *xfile;
   int numvcase, numvcontrol;
   char c;
@@ -1947,6 +1955,13 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
   }
   else
     xfile = stdout;
+
+  strcpy(sformat, "%15.6f %15.0f") ;  
+
+  if (hiresgendis) 
+   strcpy(sformat, "%15.9f %15.0f") ;  
+
+  
 
   if (tersemode == NO) {
     fprintf (xfile, "\n");
@@ -1983,7 +1998,7 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
       fprintf (xfile, "%15.0f %15.0f", cupt->genpos, ppos);
     }
     else {
-      fprintf (xfile, "%15.6f %15.0f", cupt->genpos, ppos);
+      fprintf (xfile, sformat, cupt->genpos, ppos);
     }
 
     if (tersemode) {
@@ -2295,6 +2310,57 @@ getindvals (char *fname, Indiv ** indivmarkers, int numindivs)
 }
 
 int
+getblocks (char *fname, SNP ** snpm, int numsnps)
+{
+  // nmax block
+  char line[MAXSTR];
+  char *spt[MAXFF], *sx;
+  int nsplit, num = 0;
+  int skipit, k;
+  int block, tmax = -1  ;
+
+  FILE *fff;
+
+  if (fname == NULL) return 0 ;
+  for (k = 0; k < numsnps; ++k) {
+    snpm[k]->tagnumber = -1 ;  
+  }
+  openit (fname, &fff, "r");
+  while (fgets (line, MAXSTR, fff) != NULL) {
+    nsplit = splitup (line, spt, MAXFF);
+    if (nsplit == 0) {
+      continue;
+    }
+    sx = spt[0];
+    skipit = NO;
+    skipit = setskipit (sx);
+    k = snpindex (snpm, numsnps, sx);
+    if (k < 0)
+      skipit = YES;
+    if (skipit == NO) {
+      if (nsplit > 1) {
+	sx = spt[1];
+	block = atoi(sx);
+        tmax = MAX(tmax, block) ;
+	snpm[k]->tagnumber = block;
+	++num;
+      }
+    }
+    freeup (spt, nsplit);
+    continue;
+  }
+  fclose (fff);
+  fflush (stdout);
+
+  for (k = 0; k < numsnps; ++k) {
+    block = snpm[k] -> tagnumber ; 
+    if (block < 0) snpm[k] -> ignore = YES ; 
+  }
+
+  return tmax ;
+}
+
+int
 getweights (char *fname, SNP ** snpm, int numsnps)
 {
   // number of real lines 
@@ -2532,7 +2598,7 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
   FILE *fff;
   char *line = NULL, c;
   char *spt[2], *sx;
-  int nsplit, rownum = 0, k, num;
+  int nsplit, rownum = 0, k, num, t;
   int maxstr, maxff = 2;
   int nind, nsnp, len;
   double y;
@@ -2542,6 +2608,8 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
   SNP *cupt;
   Indiv *indx;
   int nbad = 0;
+  double ytime1, ytime2, yend ; 
+  int pubtime = NO ; 
 
 
   packmode = YES;
@@ -2567,6 +2635,8 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
 
   rownum = 0;
   pbuff = packgenos;
+  ytime1 = cputime(1) ; 
+
   while (fgets (line, maxstr, fff) != NULL) {
     nsplit = splitup (line, spt, maxff);
     if (nsplit == 0)
@@ -2587,6 +2657,19 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
     num = snpord[rownum];
     cupt = snpm[num];
     ++rownum;
+
+    t = rownum % 100000 ; 
+    if (t==0) { 
+      ytime2 = cputime(1) - ytime1 ; 
+      yend = ytime2 * (double) (numsnps - rownum) / (double) rownum ; 
+      yend *= 1.0e-6 ; 
+      if (yend>1800) pubtime = YES ; 
+      if (pubtime) { 
+       fprintf(stderr, "%8d snps processed.  Estimated time to completion: %6.0f seconds", rownum, yend) ;
+       fflush(stderr) ;
+      }
+    }
+
     if (cupt == NULL)
       continue;
 
@@ -2675,7 +2758,14 @@ calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind, int *pihash,
     arrx[num] = strdup (indx->ID);
     ++num;
   }
+
   *pihash = hasharr (arrx, num);
+
+ if (verbose) { 
+  printf("zz+++\n") ; 
+  printstrings(arrx, num) ; 
+  printf("%x\n", *pihash) ; 
+ }
 
   freeup (arrx, num);
   free (arrx);
@@ -2794,7 +2884,7 @@ inpack (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
   fdes = open (gname, O_RDONLY);
   if (fdes < 0) {
     perror ("open failure");
-    fatalx ("(ispack) bad open %s\n", gname);
+    fatalx ("(inpack) bad open %s\n", gname);
   }
   t = read (fdes, buff, rlen);
   if (t < 0) {
@@ -3256,6 +3346,179 @@ outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
     return;
   }
 }
+
+
+long loadprobpack(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char *bigbuff) 
+
+{
+  SNP *cupt ;
+  int rl2, i, j, x ;  
+  int sval;
+  double yy, ww[3] ;   
+  unsigned char *buff ; 
+  unsigned short bb[2] ; 
+  long numx = 0 ;
+
+  
+  
+  buff = (unsigned char *) bigbuff ;
+  rl2 = 4 ; 
+  sval = (1 <<16 ) -1 ; 
+
+  for (i=0; i<numsnps; i++) { 
+   cupt = snpmarkers[i] ; 
+   cupt -> scount = 1 ; 
+   for (j=0; j<numindivs; ++j) {
+     copyarr(cupt -> diplike[j], ww, 3) ;
+     bb[0] = bb[1] = sval ; 
+     if (ww[0] > -0.5) {     
+      bal1(ww, 3) ; 
+      yy = (double) sval * ww[0] ;  x = nnint(yy) ; bb[0] = (unsigned short) x ;
+      yy = (double) sval * ww[2] ;  x = nnint(yy) ; bb[1] = (unsigned short) x ;
+     }
+     memcpy(buff, bb, rl2) ;
+     buff += rl2 ;  
+     ++numx ;
+  }}
+
+  return numx ; 
+
+}
+void
+outprobx (char *pname, SNP ** snpm,  Indiv ** indiv, int numsnps, int numindivs, char *bigbuff) 
+// bigbbuff already loaded
+{
+
+  char **arrx;
+  int n, num, ihash, shash, i, g, j, k, t;
+  int nind, nsnp, irec;
+  Indiv *indx;
+  SNP *cupt;
+  unsigned char *buff;
+  int fdes, ret;
+  char *packit;
+  int rl1, rl2, aa[3]  ; 
+  unsigned short bb[2] ;  
+  double ww[3], yy ; 
+  int sval, x, plen ;  
+  
+// dipscore and scount set 
+
+  if (pname == NULL) return ; 
+
+  calcishash (snpm, indiv, numsnps, numindivs, &ihash, &shash);
+
+  rl1 = 48 ; rl2 = 4 ; 
+  ZALLOC (buff, rl1, unsigned char);
+  sprintf ((char *) buff, "PROB %7d %7d %x %x", numindivs, numsnps, ihash, shash);
+
+  ridfile (pname);
+  fdes = open (pname, O_CREAT | O_TRUNC | O_RDWR, 0666);
+
+  if (fdes < 0) {
+    perror ("bad outprobx");
+    fatalx ("open failed for %s\n", pname);
+  }
+  if (verbose)
+    printf ("file %s opened\n", pname);
+
+  ret = write (fdes, buff, rl1);
+  if (ret < 0) {
+    perror ("write failure");
+    fatalx ("(outprobx) bad write (header)");
+  }
+
+  plen = numindivs*numsnps*rl2 ; 
+
+    ret = write (fdes, bigbuff, plen);	// print out all SNPs in packed data buffer
+    if (ret < 0) {
+      perror ("write failure");
+      fatalx ("(outprobx) bad write");
+    }
+  close (fdes);
+  free (buff);
+}
+
+void
+outprob (char *pname, SNP ** snpm,  Indiv ** indiv, int numsnps) 
+// single individual ?? 
+{
+
+  char **arrx;
+  int n, num, ihash, shash, i, g, j, k, t;
+  int nind, nsnp, irec;
+  Indiv *indx;
+  SNP *cupt;
+  unsigned char *buff;
+  int fdes, ret;
+  char *packit;
+  int rl1, rl2, aa[3]  ; 
+  unsigned short bb[2] ;  
+  double ww[3], yy ; 
+  int sval, x, numind = 1 ;  
+  
+// dipscore and scount set 
+
+  if (pname == NULL) return ; 
+
+  n = numind;
+
+  calcishash (snpm, indiv, numsnps, numind, &ihash, &shash);
+
+  rl1 = 48 ; rl2 = 4 ; 
+  ZALLOC (buff, rl1, unsigned char);
+  sprintf ((char *) buff, "PROB %7d %7d %x %x", numind, numsnps, ihash, shash);
+
+  ridfile (pname);
+  fdes = open (pname, O_CREAT | O_TRUNC | O_RDWR, 0666);
+
+  if (fdes < 0) {
+    perror ("bad outprob");
+    fatalx ("open failed for %s\n", pname);
+  }
+  if (verbose)
+    printf ("file %s opened\n", pname);
+
+  ret = write (fdes, buff, rl1);
+  if (ret < 0) {
+    perror ("write failure");
+    fatalx ("(outprob) bad write (header)");
+  }
+
+  irec = 1;
+  sval = (1<<16) - 1 ; 
+  for (i = 0; i < numsnps; i++) {
+    cupt = snpm[i];
+      if (ignoresnp (cupt)) continue;
+      if (cupt->isrfake) continue;
+    cclear (buff, 0X00, rl2);
+    bb[0] = bb[1] = sval ;  // pattern if no reads
+    vclear(ww, 1.0/3.0, 3) ;
+    if (cupt -> scount > 0) { // 
+     vexp(ww, cupt -> dipscore, 3) ; 
+     bal1(ww, 3) ; 
+     yy = (double) sval * ww[0] ;  x = nnint(yy) ; bb[0] = (unsigned short) x ; 
+     yy = (double) sval * ww[2] ;  x = nnint(yy) ; bb[1] = (unsigned short) x ; 
+    }
+    memcpy(buff, bb, rl2) ;  
+    t = i % 100000 ; 
+    if (t==-1) { 
+     printf("zzprob: %20s %3d ", cupt -> ID, cupt -> scount) ; 
+     printmatx(ww, 1, 3) ; 
+     printf("  %6d %6d", bb[0], bb[1]) ;  
+     printnl() ; 
+    }
+
+    ret = write (fdes, buff, rl2);	// print out all SNPs in packed data buffer
+    if (ret < 0) {
+      perror ("write failure");
+      fatalx ("(outprob) bad write");
+    }
+  }
+  close (fdes);
+  free (buff);
+}
+
 
 /* ---------------------------------------------------------------------------------------------------- */
 void
@@ -4692,6 +4955,13 @@ clearpackgenos ()
   packgenos = NULL;
 }
 
+void
+freepackgenos ()
+{
+  if (packgenos != NULL) free(packgenos) ; 
+  packgenos = NULL;
+}
+
 
 /* ---------------------------------------------------------------------------------------------------- */
 void
@@ -5637,3 +5907,101 @@ ckdup (char **eglist, int n)
     fatalx ("dup population found!\n");
   }
 }
+
+long
+inprob (char *pname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
+{
+ int rl2 = 4 ;
+ packlen = rl2*numsnps ; 
+ ZALLOC (packgenos, packlen, char);
+ clearepath (packgenos);
+
+ return  inprobx (pname, snpm, indiv, numsnps, numind, packgenos) ;
+
+}
+long
+inprobx (char *pname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind, char *packp)
+{
+
+  char **arrx, junk[10];
+  int n, num, ihash, shash, i, g, j, k;
+  long t;
+  int xihash, xshash, xnsnp, xnind;
+  int nind, nsnp, irec;
+  Indiv *indx;
+  SNP *cupt;
+  double y;
+  unsigned char *buff;
+  int fdes, ret;
+  char *packit, *pbuff;
+  int rl1, rl2, rlen ; 
+  long plen ; 
+
+  nind = n = numind;
+  nsnp = calcishash (snpm, indiv, numsnps, numind, &ihash, &shash);
+
+//  printf("zzind: %s %x\n", indiv[0] -> ID, ihash) ;  
+
+  rl1 = 48 ; 
+  rl2 = 4*numind ;  
+  rlen = rl1 ;
+
+  ZALLOC (buff, rlen, unsigned char);
+  // open binary file and check readability
+  fdes = open (pname, O_RDONLY);
+  if (fdes < 0) {
+    perror ("open failure");
+    fatalx ("(inprob) bad open %s\n", pname);
+  }
+  t = read (fdes, buff, rlen);
+  if (t < 0) {
+    perror ("read failure");
+    fatalx ("(inprob) bad read");
+  }
+
+  if (pordercheck && (snpordered == NO))
+    failorder ();
+
+  // check for file modification
+  if (hashcheck) {
+    sscanf ((char *) buff, "PROB %d %d %x %x", &xnind, &xnsnp, &xihash,
+	    &xshash);
+    if (xnind != nind)
+      fatalx ("OOPS number of individuals %d != %d in input files\n", nind,
+	      xnind);
+    if (xnsnp != nsnp)
+      fatalx ("OOPS number of SNPs %d != %d in input file: %s\n", nsnp, xnsnp,
+	      pname);
+
+    if (xshash != shash)
+      fatalx ("OOPS snp file has changed since PTOB file was created %x %x\n", shash, xshash);
+
+    if (xihash != ihash)
+      fatalx ("OOPS indiv file has changed since PROB file was created %x %x\n", ihash, xihash);
+  }
+
+  plen = rl2 * nsnp;
+  cclear ((unsigned char *) packp, 0XFF, plen);
+
+
+  t = bigread (fdes, packp, plen);
+  if (t < 0) {
+    perror ("read failure");
+    fatalx ("(inprob) bad data read");
+  }
+  if (t != plen) {
+    perror ("read failure (length mismatch)");
+    printf ("numsnps: %d  nsnp (from geno file): %d\n", numsnps, nsnp);
+    fatalx ("(inprob) bad data read (length mismatch) %ld %ld\n", t, plen);
+  }
+  else
+    printf ("packed PROB file: %s read OK\n", pname);
+
+  free (buff);
+  close (fdes);
+
+  printf ("end of inprob\n");
+  fflush (stdout);
+  return plen ; 
+}
+

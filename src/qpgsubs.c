@@ -21,6 +21,7 @@ extern int hires;
 static int totpop = 0;
 static int *ispath = NULL;
 static int ispathlen = 0;
+static int outformat = 1 ;   
 // ispath [x*numvertex=y] = 1 iff path from x -> y
 
 char *bugstring ; 
@@ -585,6 +586,11 @@ destroyg ()
   ispathlen = 0;
   numedge = numvertex = numadmix = numpops = 0;
 
+}
+
+void setoutformat(int xxx) 
+{
+  outformat = xxx ;
 }
 
 void
@@ -1176,6 +1182,7 @@ loadgraph (char *rname, char ***peglist)
 
   node = root ();
   node->isroot = YES;
+//  printf("zzroot: %s %d\n", node -> name, node -> gnode) ;
   node->ancestornumber = 0 ;
   node -> numadaughter = 0 ;
   // printf("numvertex: %d  root: %s\n", numvertex, node -> name) ;
@@ -1183,10 +1190,24 @@ loadgraph (char *rname, char ***peglist)
   ZALLOC (eglist, MAXG, char *);
   for (k = 0; k < numvertex; ++k) {
     node = &vlist[k];
+//  printf("zznode: %s\n", node -> name) ;
+    tnode = (NODE *) node -> left ; 
+/**
+    if (tnode != NULL) {
+     tnode -> parent = (struct NODE *) node ; 
+     printf("left:: %s %d\n", tnode-> name, tnode -> gnode) ;
+    }
+    tnode = (NODE *) node -> right ; 
+    if (tnode != NULL) { 
+      tnode -> parent = (struct NODE *) node ; 
+      printf("right:: %s %d\n", tnode-> name, tnode -> gnode) ;
+    }
+*/
     if ((node -> isadmix == NO) && (node -> parent == NULL)) { 
      if (node -> isroot == NO) { 
       ++numanc ;
       node -> ancestornumber = numanc ;
+//    printf("zzanc: %s %d\n", node -> name, node -> gnode) ; 
      }
     }
 
@@ -1325,8 +1346,11 @@ readit (char *cname)
     okline = NO;
     kret = strcmp (sx, "vertex");
     if (kret == 0) {
+      sx = spt[1] ; 
+      t = vindex (sx, vlist, n);
+      if (t>=0) fatalx("duplicate vertex: %s\n", sx) ;
       node = &vlist[n];
-      node->name = strdup (spt[1]);
+      node->name = strdup (sx);
       ++n;
       if (nsplit>2) node -> time = atof(spt[2]) ;
       okline = YES;
@@ -1337,7 +1361,7 @@ readit (char *cname)
       t = vindex (sx, vlist, n);
       if (t < 0)
 	fatalx ("bad label: %s\n", sx);
-      sx = spt[2];
+      if (nsplit >=3) sx = spt[2];
       tnode = &vlist[t];
       tnode->label = strdup (sx);
       if (nsplit >= 4) {
@@ -1766,6 +1790,134 @@ pedge (FILE * fff, NODE * anode, NODE * bnode, double val, double theta, int mod
   freestring (&ss3);
 }
 
+
+void
+dumpgraphnew (char *graphname)
+{
+
+  FILE *fff;
+  NODE *node, *xnode, *xroot;
+  EDGE *edge;
+  int k, j, t, vind, kk;
+  int *dd, *ind;
+  char sform[10], sformx[10] ;  
+  char sss[100] ;
+  double y ; 
+
+  if (hires) {
+    strcpy (sform, " %12.6f");
+    strcpy (sformx, ":%.6f") ; 
+  }
+  else {
+    strcpy (sform, " %9.3f");
+    strcpy (sformx, ":%.3f") ; 
+  }
+  if (graphname == NULL)
+    fff = stdout;
+  else
+    openit (graphname, &fff, "w");
+
+/** 
+ we process vertices from the root 
+*/
+  node = root() ; 
+  fprintf(fff, "root  %s\n", node -> name) ;
+  
+  setdistances ();
+  ZALLOC (dd, numvertex, int);
+  ZALLOC (ind, numvertex, int);
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k];
+    dd[k] = node->distance;
+  }
+  isortit (dd, ind, numvertex);	// ind stores indices in distance order
+
+  //1 dump vertex
+  for (k = 0; k < numvertex; ++k) {
+    break ; 
+    kk = ind[k];
+    node = &vlist[kk];
+    if (node -> isroot) continue ; 
+    if (node->distance == HUGEDIS)
+      fprintf (fff, "##");
+    y = node -> time ; 
+    if (y<0) y=-1 ;
+    fprintf (fff, "vertex %12s %9.0f\n", node->name, y) ; 
+  }
+  //2 dump label
+  for (k = 0; k < numvertex; ++k) {
+    kk = ind[k];
+    node = &vlist[kk];
+    if (node->isdead)
+      continue;
+    if (node->label == NULL)
+      continue;
+    fprintf (fff, "label %12s", node->name);
+    fprintf (fff, " %20s", node->label);
+    t = node->popsize;
+    if ((totpop > 0) || (t > 0)) {
+      fprintf (fff, " %5d", t);
+    }
+    fprintf (fff, "\n");
+  }
+// dump ledge, redge 
+  for (k = 0; k < numvertex; ++k) {
+    kk = ind[k];
+    node = &vlist[kk];
+    if (node->isdead)
+      continue;
+    edge = (EDGE *) node->eleft;
+
+    if (edge != NULL) {
+      xnode = (NODE *) node->left;
+      fprintf (fff, "edge %12s", edge->name);
+      fprintf (fff, " %12s", node->name);
+      fprintf (fff, " %12s", xnode->name);
+      fprintf (fff, sform, edge->val);
+      if (edge -> theta >= 0) { 
+        fprintf (fff, sformx, edge->theta);
+      }
+      fprintf (fff, "\n");
+    }
+    edge = (EDGE *) node->eright;
+
+    if (edge != NULL) {
+      edge->val = MAX (edge->val, 0.0);
+      xnode = (NODE *) node->right;
+      fprintf (fff, "edge %12s", edge->name);
+      fprintf (fff, " %12s", node->name);
+      fprintf (fff, " %12s", xnode->name);
+      fprintf (fff, sform, edge->val);
+      if (edge -> theta > 0) { 
+        fprintf (fff, sformx, edge->theta);
+      }
+      fprintf (fff, "\n");
+    }
+  }
+  for (k = 0; k < numvertex; ++k) {
+    kk = ind[k];
+    node = &vlist[kk];
+    if (node->isdead)
+      continue;
+    t = node->numwind;
+    if (t == 0)
+      continue;
+    fprintf (fff, "admix %12s  ", node->name);
+    for (j = 0; j < t; ++j) {
+      vind = node->windex[j];
+      xnode = &vlist[vind];
+      fprintf (fff, "%10s ", xnode->name);
+    }
+    for (j = 0; j < t; ++j) {
+      fprintf (fff, sform, node->wmix[j]);
+    }
+    fprintf (fff, "\n");
+  }
+  if (graphname != NULL)
+    fclose (fff);
+  free (dd);
+  free (ind);
+}
 void
 dumpgraph (char *graphname)
 {
@@ -1778,6 +1930,11 @@ dumpgraph (char *graphname)
   char sform[10], sformx[10] ;  
   char sss[100] ;
   double y ; 
+
+  if (outformat == 2) { 
+   dumpgraphnew(graphname) ; 
+   return ; 
+  }
 
   if (hires) {
     strcpy (sform, " %12.6f");
@@ -2793,6 +2950,7 @@ int calcscript(char **string)
   int na[10], nb[10], isleaf, ispub ;  
   NODE *node, *son, *daughter ;
   char sss[MAXSTR] ;
+  int pubroot = NO ; 
 
   nv = numvertex ;
   ZALLOC(vtable, nv, int) ; 
@@ -2836,6 +2994,7 @@ int calcscript(char **string)
        sprintf(string[n], "root: %s", node -> name) ; 
        ++n ;
        vtable[kroot] = -3 ;
+       pubroot = YES ; 
     }
    for (k=0; k<nv; ++k) { 
     if (vtable[k] == -3) continue ; 
@@ -2858,6 +3017,8 @@ int calcscript(char **string)
        }
      }
     }
+
+  if (pubroot == NO) printf("### warning.  graph not connected\n") ; 
 
   free(vtable) ; 
   return n ;  

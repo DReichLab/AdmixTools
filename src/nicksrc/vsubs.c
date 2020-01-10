@@ -523,6 +523,9 @@ void
 copyarr (double *a, double *b, int n)
 {
   int i;
+
+  if (a==b) return ; 
+
   for (i = 0; i < n; i++) {
     b[i] = a[i];
   }
@@ -910,6 +913,29 @@ printmat (double *a, int m, int n)
   printmatw (a, m, n, 5);
 }
 
+
+void
+printmatwxfile (double *a, int m, int n, int w, FILE *fff)
+
+/** 
+ print a matrix n wide m rows  w to a row
+ no final nl
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      fprintf (fff, "%9.3f ", a[i * n + j]);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        fprintf (fff, "  ...\n");
+      }
+    }
+    if (i < (m - 1))
+      fprintf (fff, "\n");
+  }
+}
+
 void
 printmatwx (double *a, int m, int n, int w)
 
@@ -972,6 +998,56 @@ printmatlx (double *a, int m, int n)
 {
   printmatwlx (a, m, n, 5);
 }
+
+void printmatlfile(double *a, int m, int n, FILE *fff) 
+{
+
+ printmatwlfile(a, m, n, n, fff) ;
+
+}
+
+void
+printmatwlxfile (double *a, int m, int n, int w, FILE *fff)
+
+/** 
+ print a matrix n wide m rows  w to a row
+ 15.9f format  No final newline 
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      fprintf (fff, "%15.9f ", a[i * n + j]);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        fprintf (fff, "  ...\n");
+      }
+    }
+  }
+}
+
+
+void
+printmatwlfile (double *a, int m, int n, int w, FILE *fff)
+
+/** 
+ print a matrix n wide m rows  w to a row
+ 15.9f format
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      fprintf (fff, "%15.9f ", a[i * n + j]);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        fprintf (fff, "  ...\n");
+      }
+    }
+    fprintf (fff, "\n");
+  }
+}
+
 
 void
 printmatwl (double *a, int m, int n, int w)
@@ -2144,6 +2220,15 @@ dekodeitb (int *xx, int kode, int len, int base)
 
 }
 
+void copycol(double *x, double **a, int n, int col) 
+{
+  int i ; 
+  for (i=0; i<n; ++i) { 
+   x[i] = a[i][col] ;
+  }
+
+}
+
 void
 floatit2D (double **a, int **b, int nrows, int ncols)
 {
@@ -2329,6 +2414,7 @@ dekodeitbb (int *xx, int kode, int len, int *baselist)
 
 
 long expmod(long a, long b, long n) 
+// a^b mod n 
 { 
  int t ; 
  long ax=1, bx, z, z2 ; 
@@ -2653,6 +2739,22 @@ long lpow2(int n)
 
 }
 
+double cputimes (int mode, int clock) 
+{
+  static double tt[10] ; 
+
+  if (clock >= 10) fatalx("clock out of bounds\n") ;
+
+ if (mode==0) {  
+  tt[clock] = clocktime() ;
+  return 0 ;
+ }
+
+ return clocktime() - tt[clock] ; 
+
+}
+
+
 double cputime (int mode) 
 {
   static double ttt=0 ; 
@@ -2698,6 +2800,37 @@ double exp1minus(double x)
    bot *= (double) n ; 
  }
  return ans ;
+}
+
+double vnorm(double *a, int n) 
+{
+   double y ;  
+   y = asum2(a, n)/ (double) n ; 
+
+   if (y==0.0) return y ; 
+   return sqrt(y) ;
+
+} 
+
+void vin(double *a, double *b, int n) 
+// invert in unit sphere  
+{
+  double y ; 
+  y = asum2(b, n) ; 
+  if (y==0.0) fatalx("(inv) zero vectro\n") ;
+  vst(a, b, 1.0/y, n) ;
+}
+
+int visnan(double *a, int n)  
+{ 
+ int k, ret ; 
+
+ for (k=0; k<n; ++k) { 
+  if (isnan(a[k])) return YES ;
+ }
+
+ return NO ;
+
 }
 
 

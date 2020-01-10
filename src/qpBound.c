@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -134,6 +135,7 @@ void dof2score (double *f3score, double *f3scoresig, SNP ** xsnplist,
 		int nblocks);
 void estjackq (double *pjest, double *pjsig, double *btop, double *bbot,
 	       double *wjack, int nblocks);
+int usage (char *prog, int exval); 
 
 int
 main (int argc, char **argv)
@@ -446,9 +448,15 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n, t;
 
-  while ((i = getopt (argc, argv, "f:b:p:g:s:o:vVx")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+  while ((i = getopt (argc, argv, "f:b:p:g:s:o:vVxh")) != -1) {
 
     switch (i) {
+
+    case 'h':
+     usage(basename(argv[0]), 0);
+     break;
+
 
     case 'p':
       parname = strdup (optarg);
@@ -873,3 +881,21 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
     fclose (fff);
 
 }
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -f <nam>    ... use <nam> as snp details name.\n");
+  (void)fprintf(stderr, "   -b <val>    ... use <val> as base value.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -g <>       ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -s <val>    ... use <val> as seed value.\n");
+  (void)fprintf(stderr, "   -o <nam>    ... give <nam> to produced out graph.\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+  (void)fprintf(stderr, "   -x          ... toggle analysis  mode ON.\n");
+
+  exit(exval);
+};
+

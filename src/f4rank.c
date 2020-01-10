@@ -243,7 +243,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 // vfix is m long
 {
   int d = m * n, dd;
-  int f, i, j, k, l, a, b, s, t, r1, r2, k1, k2, u1, u2;
+  int nfix, f, i, j, k, l, a, b, s, t, r1, r2, k1, k2, u1, u2;
   int iter, numiter = 20, ret;
   double *ww, *varinv;
   double T2, tail;
@@ -257,7 +257,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 
   int nf;
 
-  t = intsum (vfix, m);
+  nfix = t = intsum (vfix, m);
   if (t > rank)
     fatalx ("(ranktestfix) too many fixed variables\n");
   ZALLOC (vfl, m * rank, double);
@@ -273,7 +273,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
       l = vl[nf] = j * rank + k;	// column k
 // variables to force to zero
       if (verbose)
-	printf ("zzvl %d %9.3f\n", nf, vl[nf], vfl[nf]);
+	printf ("zzvl %d %d %9.3f\n", nf, vl[nf], vfl[nf]);
       ++nf;
     }
     ++k;
@@ -421,6 +421,12 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
       printf ("iter A: %d %9.3f\n", iter, y1);
   }
 
+    if (nfix == -1) { 
+     printf("zzf ") ;  printimat(vfix, 1, m) ; 
+     printimat(vl, 1, nf) ; 
+     printmat(coeffs, adim, adim) ;  
+     printmatw(ans, 1, adim, adim) ; 
+    }
   if (pA != NULL)
     copyarr (A, pA, adim);
   if (pB != NULL)
@@ -450,14 +456,22 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 {
   int d = m * n, dd;
   int i, j, a, b, s, t, r1, r2, k1, k2, u1, u2;
-  int iter, numiter = 20;
+  int iter, numiter = 20, retkode;
   double *ww, *varinv;
   double T2, tail;
   double *A, *B, *wleft, *wright, *mt, *evecs, *xmean;
-  double y, y0, y1;
+  double z, y, y0, y1;
   int adim, bdim, tdim;
   double *coeffs, *rhs, *ans;
 
+
+  if (rank==m) { 
+// full rank nothing serious to do) 
+   y1 = 0 ; 
+   if (pA != NULL)  setidmat(pA, m) ; 
+   if (pB != NULL)  copyarr(mean, pB, m*n) ;
+   return y1 ; 
+  }
 
 
   dd = d * d;
@@ -556,7 +570,8 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
     }
     
     addscaldiag(coeffs, yscale, bdim) ;
-    solvit (coeffs, rhs, bdim, ans);
+    retkode = solvit (coeffs, rhs, bdim, ans);
+    if (retkode < 0) fatalx("bad ranktest B\n") ;
 
     copyarr (ans, B, bdim);
     normab (A, B, m, n, rank);
@@ -581,7 +596,8 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 	      for (r2 = 0; r2 < rank; ++r2) {
 		k2 = j * rank + r2;
 		u2 = r2 * n + t;
-		coeffs[k1 * adim + k2] += y * B[u1] * B[u2];
+		z = coeffs[k1 * adim + k2] += y * B[u1] * B[u2];
+                if (isnan(z)) fatalx("bad coeffs %d %d %9.3f %9.3f %9.3f\n", u1, u2, B[u1], B[u2], y) ;
 	      }
 	    }
 	  }
@@ -596,7 +612,8 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 
     vzero (ans, adim);
     addscaldiag(coeffs, yscale, adim) ;
-    solvit(coeffs, rhs, adim, ans);
+    retkode = solvit(coeffs, rhs, adim, ans);
+    if (retkode < 0) fatalx("bad ranktest A\n") ;
 
     copyarr (ans, A, adim);
     normab (A, B, m, n, rank);
@@ -640,8 +657,13 @@ normab (double *A, double *B, int m, int n, int rank)
 // not needed but seems like good practice.  Makes answer canonical
 {
   int i, r;
-  double y, *bpt;
+  double z, y, *bpt;
+  double *wa, *wb ; 
 
+  ZALLOC(wa, rank*n, double) ;
+  ZALLOC(wb, rank*n, double) ;
+  copyarr(A, wa, rank*n) ; 
+  copyarr(B, wb, rank*n) ; 
   for (r = 0; r < rank; ++r) {
     bpt = B + r * n;
     y = asum2 (bpt, n);
@@ -651,9 +673,18 @@ normab (double *A, double *B, int m, int n, int rank)
       y = -y;
     vst (bpt, bpt, 1.0 / y, n);
     for (i = 0; i < m; ++i) {
-      A[i * rank + r] *= y;
+      z = A[i * rank + r] *= y;
+      if (isnan(z)) {
+       printf("bad normab :: %d %d %d %15.9f\n", r, i, n, y) ; 
+       printmat(wa, rank, n) ; 
+       printnl() ; 
+       printmat(wb, rank, n) ; 
+       fatalx("bad normab\n")  ;
+      }
     }
   }
+  free(wa) ;
+  free(wb) ;
 }
 
 void

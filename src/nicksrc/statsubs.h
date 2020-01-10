@@ -23,6 +23,7 @@ double probks(double lam) ;
 double nordis(double z) ;
 double ndens(double val, double mean, double sig) ;
 double ntail(double z) ;
+void tailstats(double *x, double a, int isupper) ; 
 double zprob(double p) ;
 void setzptable() ;
 double z2x2(double *a) ;
@@ -52,6 +53,7 @@ double gammprob(double x, double p, double lam)  ;
 double bprob(double p, double a, double b)  ;
 double lbeta(double a, double b)  ;
 double poissloglike(int kk, double mean) ;
+double poissexp(int kk, double mean) ;
 double dirmult(double *pp, int *aa, int len) ;
 double dawson(double t) ;
 
@@ -118,8 +120,12 @@ void estbpars(double *a, int n, double *p1, double *p2);
 void mleb(double *p1, double *p2, double u, double v) ;
 
 int  loadmptable(double ***mptable) ; 
+double wynn(double *v, int n, double *acc, int *nacc) ;
+double *vwynn(double **vv, int n, int dim, double **acc, int *nacc) ;
 
+double rad2deg(double rad) ; 
+double deg2rad(double deg) ; 
+
+double quartile(double *x, int n, double q)  ;
 int qinterp(double *a, double *b, int n, double val, double *ans)  ;
-double quartile(double *b, int n, double q) ;
-
-
+double truncexpmean(double m, double thresh, int isupper) ;

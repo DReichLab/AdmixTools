@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -19,7 +20,7 @@
 #include "qpsubs.h"
 
 
-#define WVERSION   "110"
+#define WVERSION   "200"
 // outpop NONE forced 
 // print number of samples / pop
 // popfilename added 
@@ -31,7 +32,7 @@
 // nzdata;  require 10 blocks with abba/baba counts
 // xmode ;  call countpopsx which deals with gender on X
 // syntactic sugar (strip :) in popfilename  
-// numchrm added
+// numchrom added
 // instem: 
 
 #define MAXFL  50
@@ -100,6 +101,7 @@ char *badsnpname = NULL;
 char *poplistname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
+char *blockname = NULL;
 char *outpop = NULL;
 // list of outliers
 int fullmode = NO;
@@ -122,6 +124,7 @@ void setcolprobs(double **colprobs, int ***counts, int ncols, int numeg) ;
 void  patternscore (double *pysc, double *pysig,   char **pattern, double **colprobs, int *egindex, 
  int ncols, int numeg, int *bcols, int nblocks) ;
 
+int usage (char *prog, int exval); 
 
 int
 main (int argc, char **argv)
@@ -330,10 +333,6 @@ main (int argc, char **argv)
   if ((maxgendis < .00001) || (gfromp == YES))
     setgfromp (snpmarkers, numsnps);
 
-  nblocks = numblocks (snpmarkers, numsnps, blgsize);
-  ZALLOC (blstart, nblocks, int);
-  ZALLOC (blsize, nblocks, int);
-
   ZALLOC (xsnplist, numsnps, SNP *);
   ZALLOC (tagnums, numsnps, int);
 
@@ -344,10 +343,12 @@ main (int argc, char **argv)
   ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
-  setblocks (blstart, blsize, &xnblocks, xsnplist, ncols, blgsize);
+  nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
 // loads tagnumber
-  printf ("number of blocks for jackknife: %d\n", xnblocks);
-  nblocks = xnblocks;
+
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
+  xnblocks = nblocks += 10 ; 
+
 
   printf ("nrows, ncols: %d %d\n", nrows, ncols);
   ZALLOC (counts, ncols, int **);
@@ -426,15 +427,21 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "l:h:p:vV")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
+  while ((i = getopt (argc, argv, "L:H:p:hvV")) != -1) {
 
     switch (i) {
 
-    case 'l':
+    case 'h':
+      usage(basename(argv[0]), 0);
+      break ;  
+
+    case 'L':
       locount = atoi (optarg);
       break;
 
-    case 'h':
+    case 'H':
       hicount = atoi (optarg);
       break;
 
@@ -509,6 +516,7 @@ readcommands (int argc, char **argv)
   getint (ph, "fmode:", &fmode);
   getlongstring (ph, "pattern:", &rawpattern);
   getdbl (ph, "fscale:", &fscale);
+  getstring (ph, "blockname:", &blockname);
 
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -693,4 +701,17 @@ void  patternscore (double *pysc, double *pysig,  char **pattern, double **colpr
  return ;
 
 
+}
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -L <val>    ... use <val> as low count value.\n");
+  (void)fprintf(stderr, "   -H <val>    ... use <val> sa high count value.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
 }

@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -25,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "435"
+#define WVERSION   "600"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -81,6 +82,7 @@ char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
 char *snpdetailsname = NULL;
+char *blockname = NULL;
 FILE *fff;
 
 char *dumpname = NULL;
@@ -133,6 +135,7 @@ void dof2score (double *f3score, double *f3scoresig, SNP ** xsnplist,
 void estjackq (double *pjest, double *pjsig, double *btop, double *bbot,
 	       double *wjack, int nblocks);
 
+int usage (char *prog, int exval); 
 int
 main (int argc, char **argv)
 {
@@ -247,18 +250,16 @@ main (int argc, char **argv)
     setplimit (indivmarkers, numindivs, eglist, numeg, popsizelimit);
   }
 
-
-  nblocks = numblocks (snpmarkers, numsnps, blgsize);
-  ZALLOC (blstart, nblocks, int);
-  ZALLOC (blsize, nblocks, int);
-  printf ("number of blocks for block jackknife: %d\n", nblocks);
-
   ZALLOC (xsnplist, numsnps, SNP *);
 
   ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
 
   printf ("snps: %d\n", ncols);
-  setblocks (blstart, blsize, &xnblocks, xsnplist, ncols, blgsize);
+  nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
+
+// loads tagnumber
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
+  xnblocks = nblocks += 10 ; 
 
   for (trun = 0; trun < nplist; ++trun) {
     dopop3 (plists[trun], xsnplist, ncols, nblocks);
@@ -381,9 +382,14 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n, t;
 
-  while ((i = getopt (argc, argv, "f:b:p:s:vV")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+  while ((i = getopt (argc, argv, "f:b:p:s:vVh")) != -1) {
 
     switch (i) {
+
+    case 'h':
+     usage(basename(argv[0]), 0);
+      break;
 
     case 'p':
       parname = strdup (optarg);
@@ -459,6 +465,7 @@ readcommands (int argc, char **argv)
   getint (ph, "pubjack:", &pubjack);
   getstring (ph, "dumpname:", &dumpname);
   getstring (ph, "loadname:", &loadname);
+  getstring (ph, "blockname:", &blockname);
   getdbl (ph, "jackquart:", &jackquart);
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -794,4 +801,19 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
   return totnum;
 
 }
+
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -f <nam>    ... use <nam> as snp details name.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -s <val>    ... use <val> as base value.\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+};
 

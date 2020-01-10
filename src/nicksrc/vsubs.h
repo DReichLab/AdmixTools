@@ -87,6 +87,8 @@ void printmatwfile(double *a, int m, int n, int w, FILE *fff) ;
 void printmatx(double *a, int m, int n) ;
 void printmat(double *a, int m, int n) ;
 void printmatwx(double *a, int m, int n, int w) ;
+void printmatwxfile (double *a, int m, int n, int w, FILE *fff) ;
+
 void printmatw(double *a, int m, int n, int w) ;
 void printmatl(double *a, int m, int n) ;
 void printmatwl(double *a, int m, int n, int w) ;
@@ -100,6 +102,9 @@ void fixit(int *a, double *b, int n) ;
 void fixitl(long *a, double *b, int n) ;
 void rndit(double  *a, double *b, int n) ;
 void printimatw(int *a, int m, int n, int w) ;
+void printmatwlfile (double *a, int m, int n, int w, FILE *fff) ;
+void printmatwlxfile (double *a, int m, int n, int w, FILE *fff) ;
+void printmatlfile(double *a, int m, int n, FILE *fff)  ;
 void printimatx(int *a, int m, int n) ;
 void printimat1(int *a, int m, int n) ;
 void printimat1x(int *a, int m, int n) ;
@@ -179,6 +184,7 @@ void iswap (int *pa, int *pb) ;
 void cswap(char *c1, char *c2) ;
 
 
+void copycol(double *x, double **a, int n, int col)  ;
 void floatit2D(double **a, int **b, int nrows, int ncols)  ; 
 void copyarr2D(double **a, double **b, int nrows, int ncols) ;  // a input b output
 void copyiarr2D(int **a, int **b, int nrows, int ncols) ;  // a input b output
@@ -216,6 +222,10 @@ long modinv(long a, long base) ;
 long lpow2(int n) ; 
 double exp1minus(double x) ;
 
+double cputimes (int mode, int clock) ;
 double cputime (int mode) ;
 double calcmem (int mode) ;
+double vnorm(double *a, int n) ; 
+void vin(double *a, double *b, int n)  ;
 
+int visnan(double *a, int n) ; 

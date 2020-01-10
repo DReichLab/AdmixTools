@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -25,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "330"
+#define WVERSION   "331"
 
 // phylipname added  (f2 stats)
 // dumpname added  (binary file) 
@@ -162,6 +163,7 @@ void dumpit (char *dumpname, double *ff3, double *ff3var, char **eglist,
 	     int numeg);
 void checkpd (double *a, int n);
 void dumpf3 (char *dumpf3name, double **btop, double **bbot, int nblock);
+int usage (char *prog, int exval);
 
 int
 main (int argc, char **argv)
@@ -459,6 +461,7 @@ main (int argc, char **argv)
 
   printf ("lambdascale: %9.3f\n", lambdascale);
 
+  printf("statistics multiplied by 1000\n") ;
 
   printf ("fst:");
   printnl ();
@@ -835,9 +838,13 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n, t;
 
-  while ((i = getopt (argc, argv, "f:b:p:g:s:o:l:vVx")) != -1) {
+  while ((i = getopt (argc, argv, "f:b:p:g:s:o:l:vVxh")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
+      break ; 
 
     case 'p':
       parname = strdup (optarg);
@@ -1222,7 +1229,7 @@ dumpf3 (char *dumpf3name, double **btop, double **bbot, int nblock)
 
   ridfile (dumpf3name);
   fdes = open (dumpf3name, O_CREAT | O_TRUNC | O_RDWR, 006);
-  cclear (sss, CNULL, SQ);
+  cclear ((unsigned char *) sss, CNULL, SQ);
   sprintf (sss, "numeg: %d nblock: %d nh2: %d", numeg, nblock, nh2);
   ret = write (fdes, sss, SQ * sizeof (char));
   if (ret < 0) {
@@ -1230,7 +1237,7 @@ dumpf3 (char *dumpf3name, double **btop, double **bbot, int nblock)
     fatalx ("bad write:  %s", sss);
   }
   for (k = 0; k < numeg; ++k) {
-    cclear (sss, CNULL, SQ);
+    cclear ((unsigned char *) sss, CNULL, SQ);
     strncpy (sss, eglist[k], SQ);
     ret = write (fdes, sss, SQ * sizeof (char));
     if (ret < 0) {
@@ -1266,7 +1273,7 @@ dumpit (char *dumpname, double *ff3, double *ff3var, char **eglist, int numeg)
 
   ridfile (dumpname);
   fdes = open (dumpname, O_CREAT | O_TRUNC | O_RDWR, 006);
-  cclear (sss, CNULL, SQ);
+  cclear ((unsigned char *) sss, CNULL, SQ);
   sprintf (sss, "numeg: %d", numeg);
   ret = write (fdes, sss, SQ * sizeof (char));
   if (ret < 0) {
@@ -1274,7 +1281,7 @@ dumpit (char *dumpname, double *ff3, double *ff3var, char **eglist, int numeg)
     fatalx ("bad write:  %s", sss);
   }
   for (k = 0; k < numeg; ++k) {
-    cclear (sss, CNULL, SQ);
+    cclear ((unsigned char *) sss, CNULL, SQ);
     strncpy (sss, eglist[k], SQ);
     ret = write (fdes, sss, SQ * sizeof (char));
     if (ret < 0) {
@@ -1312,3 +1319,24 @@ checkpd (double *a, int n)
   free (b);
   free (d);
 }
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -f <nam>    ... use <nam> sa fixname.\n");
+  (void)fprintf(stderr, "   -b <val>    ... use <va> as base value.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -g <>   ... .\n");
+  (void)fprintf(stderr, "   -s <val>   ... use <val> as seed.\n");
+  (void)fprintf(stderr, "   -o <>   ... .\n");
+  (void)fprintf(stderr, "   -l <val>    ... use <val> as lambda scale.\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+  (void)fprintf(stderr, "   -x          ... toggle doAnalysis ON.\n");
+
+  exit(exval);
+};
+
+

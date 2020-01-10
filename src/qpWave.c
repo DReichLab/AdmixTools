@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -25,16 +26,17 @@
  // chrom: 23 now supported
  // bugfix in doq4vecb (same as qpAdm)
  // instem:   
+ // cleaned up boundary case (m=n in ranktest) 
 */
 
 
-#define WVERSION   "410"
+#define WVERSION   "600"
 
 #define MAXFL  50
 #define MAXSTR  512
 #define MAXPOPS 100
 
-double yscale = 0.0 ; 
+double yscale = 0.0001 ; 
 
 char *parname = NULL;
 char *trashdir = "/var/tmp";
@@ -57,6 +59,7 @@ int xchrom = -1;
 // if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
 
 int allsnps = NO;
+int fancyf4 = YES;
 
 double blgsize = 0.05;		// block size in Morgans */
 double *chitot;
@@ -71,6 +74,7 @@ char *snpoutfilename = NULL;
 char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
+char *blockname = NULL;
 int inbreed = NO;
 double lambdascale;
 
@@ -93,6 +97,7 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
 	  int *rlist, int nr, int nblocks);
 
 int getf4 (int **xx, int *indx, double *ans);
+int usage (char *prog, int exval);
 
 int
 main (int argc, char **argv)
@@ -130,6 +135,7 @@ main (int argc, char **argv)
   int a, b, x, t, col;
   double T2, dof;
   int *xind;
+  int numchromp ; 
 
 
   int ***counts, **ccc;
@@ -145,6 +151,8 @@ main (int argc, char **argv)
   if (parname == NULL)
     return 0;
 
+  numchromp = numchrom + 1 ; 
+
   setinbreed (inbreed);
 
   if (outputname != NULL)
@@ -154,11 +162,13 @@ main (int argc, char **argv)
    setinfiles(&indivname, &snpname, &genotypename, instem) ; 
   } 
 
+
   numsnps =
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
 
   numindivs = getindivs (indivname, &indivmarkers);
   setindm (indivmarkers);
+  setfancyf4(fancyf4) ; 
 
   k = getgenos (genotypename, snpmarkers, indivmarkers,
 		numsnps, numindivs, nignore);
@@ -170,9 +180,9 @@ main (int argc, char **argv)
       cupt->ignore = YES;
     if (chrom == 0)
       cupt->ignore = YES;
-    if (chrom > 23)
+    if (chrom > numchromp)
       cupt->ignore = YES;
-    if ((chrom == 23) && (xchrom != 23))
+    if ((chrom == numchromp) && (xchrom != numchromp))
       cupt->ignore = YES;
   }
 
@@ -262,11 +272,6 @@ main (int argc, char **argv)
   if ((maxgendis < .00001) || (gfromp == YES))
     setgfromp (snpmarkers, numsnps);
 
-  nblocks = numblocks (snpmarkers, numsnps, blgsize);
-  nblocks += 10;
-  ZALLOC (blstart, nblocks, int);
-  ZALLOC (blsize, nblocks, int);
-
   ZALLOC (xsnplist, numsnps, SNP *);
   ZALLOC (tagnums, numsnps, int);
 
@@ -277,9 +282,10 @@ main (int argc, char **argv)
   ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
-  setblocks (blstart, blsize, &xnblocks, xsnplist, ncols, blgsize);
-// loads tagnumber
-  printf ("number of blocks for block jackknife: %d\n", xnblocks);
+  nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
+
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
+  xnblocks = nblocks += 10 ; 
 
   ZALLOC (counts, ncols, int **);
   for (k = 0; k < ncols; ++k) {
@@ -370,9 +376,15 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "p:vV")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
+  while ((i = getopt (argc, argv, "p:vVh")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
+      break ; 
 
     case 'p':
       parname = strdup (optarg);
@@ -414,12 +426,16 @@ readcommands (int argc, char **argv)
   getstring (ph, "outputname:", &outputname);
   getstring (ph, "badsnpname:", &badsnpname);
   getdbl (ph, "blgsize:", &blgsize);
+  getint (ph, "numchrom:", &numchrom);
 
   getint (ph, "popsizelimit:", &popsizelimit);
   getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "chrom:", &xchrom);
   getint (ph, "maxrank:", &maxrank);
   getint (ph, "allsnps:", &allsnps);
+  getint (ph, "fancyf4:", &fancyf4);
+  getdbl (ph, "diagplus:", &yscale);
+  getstring (ph, "blockname:", &blockname);
 
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -560,91 +576,15 @@ nsnpused = totnum;
 return (y1 * y1) / y2;	// a natural estimate for degrees of freedom in F-test. 
 
 }
-
-
-double
-hfix (int *x)
-{
-// correction factor counts in x
-  double ya, yb, yt, h;
-  ya = (double) x[0];
-  yb = (double) x[1];
-  yt = ya + yb;
-  if (yt <= 1.5)
-    fatalx ("(hfix)\n");
-  h = ya * yb / (yt * (yt - 1.0));
-  return h / yt;
-}
-
-
-int
-getf4 (int **xx, int *indx, double *ans)
+int usage (char *prog, int exval)
 {
 
-int a, i;
-double ya, yb,  y0, y1, ytot, ff[4];
-double h0, h1;
-int isok, f4mode ;
-// f4mode == NO => f2, or f3
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
 
-*ans = 0.0;
-if (indx == NULL) {
-*ans = 1.0;
-return 2;
-}
-
-isok = f4mode = YES ; 
-
- if (indx[0] == indx[2]) f4mode = NO ;
- if (indx[0] == indx[3]) f4mode = NO ;
- if (indx[1] == indx[2]) f4mode = NO ;
- if (indx[1] == indx[3]) f4mode = NO ;
-
-for (i = 0; i < 4; ++i) {
- ff[i] = -10*(i+1) ;  // silly value ;
- a = indx[i];
- if (a < 0) {
-  *ans = 1.0;
-  return 2;
- }
-
-
- *ans - 0 ;
- y0 = (double) xx[a][0];
- y1 = (double) xx[a][1];
- ytot = y0 + y1;
- if (ytot <= 0.0) {
-  isok = NO ;
-  continue ;
- }
- ff[i] = y0 / ytot;
-}
-if ((isok == NO) && (f4mode == NO)) return -1 ;
-
-ya = fabs(ff[0]-ff[1])  ;  
-yb = fabs(ff[2]-ff[3])  ;  
-
-if (f4mode && (MIN(ya, yb) < .00001)) { 
- return 1 ; 
-}
-if (isok == NO) return -1 ;
-
-*ans = (ff[0] - ff[1]) * (ff[2] - ff[3]);
-if (f4mode == YES) return 1 ;
-
-a = indx[0];
-h0 = hfix (xx[a]);
-a = indx[1];
-h1 = hfix (xx[a]);
-if (indx[0] == indx[2])
-*ans -= h0;
-if (indx[0] == indx[3])
-*ans += h0;
-if (indx[1] == indx[3])
-*ans -= h1;
-if (indx[1] == indx[2])
-*ans += h1;
-return 1;
-
-}
+  exit(exval);
+};
 

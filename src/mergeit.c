@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <globals.h>
@@ -14,7 +15,7 @@
 #include "admutils.h"
 #include "mcio.h"
 
-#define WVERSION   "2450"
+#define WVERSION   "2600"
 #define MAXFL  50
 #define MAXSTR  512
 
@@ -25,6 +26,8 @@
 // and better code for mergeit routine (overflow bug in cclear)
 // malexhet added
 // polarmode added both input files assumed polarized
+// O2 version
+// .prob aware
 
 char *trashdir = "/var/tmp";
 extern int verbose;
@@ -37,15 +40,21 @@ int numi1, numi2;
 char *snp1 = NULL;
 char *ind1 = NULL;
 char *geno1 = NULL;
+char *xprob1 = NULL;
 
 char *snp2 = NULL;
 char *ind2 = NULL;
 char *geno2 = NULL;
+char *xprob2 = NULL;
+
+int probmode = NO ;
 
 char *indoutfilename = NULL;
 char *snpoutfilename = NULL;
 char *genooutfilename = NULL;
 char *badsnpname = NULL;
+char *proboutfilename = NULL ; 
+
 
 int packout = -1;
 int tersem = YES;
@@ -85,6 +94,7 @@ void outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
                int ogmode);
 int checkmatch (SNP * cupt1, SNP * cupt2);
 
+int usage (char *prog, int exval); 
 int
 mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
          int nums1, int nums2, int numi1, int numi2);
@@ -117,10 +127,21 @@ main (int argc, char **argv)
   int numgenolist;
   int maxmiss;
   int sorder[2];
+  double ymem ; 
+
+  unsigned char *packp, *packp1, *packp2 ; 
+  long plen, plen1, plen2 ;  
+  int numx ; 
+  int rl2 = 4 ; 
+
+
 
   tersem = YES;                 // no snp counts
 
   readcommands (argc, argv);
+
+  cputime(0) ;
+  calcmem(0) ;
 
   setomode (&outputmode, omode);
   packmode = YES;
@@ -130,6 +151,16 @@ main (int argc, char **argv)
   if (polarmode) {
     strandcheck = NO;
     printf ("polarmode set!\n");
+  }
+
+  if (proboutfilename != NULL) { 
+   probmode = YES ; 
+   if (xprob1 == NULL) fatalx("proboutfilename set but not prob1\n") ;
+   if (xprob2 == NULL) fatalx("proboutfilename set but not prob2\n") ;
+   if (allowdups) { 
+    fatalx("dups + .prob processing not yet supprted\n") ; 
+   } 
+   printf("probmode set!\n") ;
   }
 
   nums1 = getsnps (snp1, &snpm1, 0.0, NULL, &nignore, numrisks);
@@ -208,8 +239,48 @@ main (int argc, char **argv)
   numi1 = rmindivs(snpm1, nums1, indm1, numi1)  ; 
   numi2 = rmindivs(snpm2, nums2, indm2, numi2)  ; 
 */
+  if (probmode) { 
+    plen1 = nums1*(numi1+numi2)*rl2 ;  
+    plen2 = nums2*numi2*rl2 ;  
+    ZALLOC(packp1, plen1, unsigned char) ;
+    ZALLOC(packp2, plen2, unsigned char) ;
+    inprobx (xprob1,  snpm1, indm1, nums1, numi1, packp1) ;
+    inprobx (xprob2,  snpm2, indm2, nums2, numi2, packp2) ;
+
+ packp = packp1 ; 
+ if (xprob1 != NULL)  {
+  for (i=0; i<nums1; i++) {
+   cupt = snpm1[i] ;
+   cupt -> probbuff = packp + i*numi1*rl2 ;
+   cupt -> diplike = initarray_2Ddouble(numi1+numi2, 3, -1) ;
+   
+   for (j=0; j<numi1; ++j) { 
+     indx = indm1[j] ; 
+     if (indx -> ignore) continue ;  
+     indx = indm1[j] ; 
+     if (indx -> ignore) continue ; 
+     loaddiplike(cupt -> diplike[j], cupt -> probbuff + j*rl2) ; 
+   } 
+  }} 
+
+ packp = packp2 ; 
+ if (xprob2 != NULL)  {
+  for (i=0; i<nums2; i++) {
+   cupt = snpm2[i] ;
+   cupt -> probbuff = packp + i*numi2*rl2 ;
+   cupt -> diplike = initarray_2Ddouble(numi2, 3, -1) ;
+   for (j=0; j<numi2; ++j) { 
+     indx = indm2[j] ; 
+     if (indx -> ignore) continue ; 
+     loaddiplike(cupt -> diplike[j], cupt -> probbuff + j*rl2) ; 
+   } 
+  }} 
+ }
+
+
 
   packg2 = (unsigned char *) getpackgenos ();
+
   numindivs =
     mergeit (snpm1, snpm2, &indm1, indm2, nums1, nums2, numi1, numi2);
 
@@ -217,7 +288,7 @@ main (int argc, char **argv)
   numsnps = nums1;
   indivmarkers = indm1;
 
-  free (packg1);
+  free (packg1);  // point here is to free packed data after mergeit 
   free (packg2);
 
 //  numsnps = rmsnps(snpmarkers, numsnps, NULL) ;
@@ -227,7 +298,14 @@ main (int argc, char **argv)
   outfiles (snpoutfilename, indoutfilename, genooutfilename,
             snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
 
-  printf ("##end of mergeit run\n");
+  if (probmode) {
+   numx = loadprobpack(snpmarkers, indivmarkers, numsnps, numindivs, packp1) ; 
+   outprobx(proboutfilename, snpmarkers, indivmarkers, numsnps, numindivs, packp1) ; 
+  }
+
+
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of mergeit: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
   return 0;
 }
 
@@ -353,6 +431,8 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
   while ((i = getopt (argc, argv, "p:vVf")) != -1) {
 
     switch (i) {
@@ -388,14 +468,17 @@ readcommands (int argc, char **argv)
   getstring (ph, "geno1:", &geno1);
   getstring (ph, "snp1:", &snp1);
   getstring (ph, "ind1:", &ind1);
+  getstring (ph, "prob1:", &xprob1);
 
   getstring (ph, "geno2:", &geno2);
   getstring (ph, "snp2:", &snp2);
   getstring (ph, "ind2:", &ind2);
+  getstring (ph, "prob2:", &xprob2);
 
   getstring (ph, "indoutfilename:", &indoutfilename);
   getstring (ph, "snpoutfilename:", &snpoutfilename);
   getstring (ph, "genooutfilename:", &genooutfilename);
+  getstring (ph, "proboutfilename:", &proboutfilename);
   getstring (ph, "outputformat:", &omode);
 
   getint (ph, "malexhet:", &malexhet);
@@ -484,6 +567,7 @@ mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
       if (g < 0)
         g = 3;
       wbuff ((unsigned char *) buff, tt, g);
+      if (probmode) copyarr(cupt1 -> diplike[t], cupt1 -> diplike[tt], 3) ; 
       ++tt;
     }
     for (t = 0; t < numi2; ++t) {
@@ -493,6 +577,7 @@ mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
       if (g < 0)
         g = 3;
       wbuff ((unsigned char *) buff, tt, g);
+      if (probmode) copyarr(cupt2 -> diplike[t], cupt1 -> diplike[tt], 3) ; 
       ++tt;
     }
     cupt1->ngtypes = numindivs;
@@ -502,3 +587,17 @@ mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
   *pindm1 = indivmarkers;
   return numindivs;
 }
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -f          ... toggle phasemode ON.\n");
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+};
+

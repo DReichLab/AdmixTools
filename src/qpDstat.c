@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -25,7 +26,7 @@
 */
 
 
-#define WVERSION   "755"
+#define WVERSION   "900"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -111,6 +112,7 @@ char *badsnpname = NULL;
 char *poplistname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
+char *blockname = NULL;
 char *outpop = NULL;
 // list of outliers
 int fullmode = NO;
@@ -145,6 +147,8 @@ void gettreelen (double *tlenz, double *tlen, double **f2, double **abx,
 void regesttree (double *ans, double *xn, double xd);
 void ckdups (char **list, int n);
 void printbadql (char ***qlist, int tt, char **eglist, int numeg);
+
+int usage (char *prog, int exval);
 
 
 int
@@ -397,10 +401,6 @@ main (int argc, char **argv)
   if ((maxgendis < .00001) || (gfromp == YES))
     setgfromp (snpmarkers, numsnps);
 
-  nblocks = numblocks (snpmarkers, numsnps, blgsize);
-  ZALLOC (blstart, nblocks, int);
-  ZALLOC (blsize, nblocks, int);
-
   ZALLOC (xsnplist, numsnps, SNP *);
   ZALLOC (tagnums, numsnps, int);
 
@@ -411,10 +411,16 @@ main (int argc, char **argv)
   ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
-  setblocks (blstart, blsize, &xnblocks, xsnplist, ncols, blgsize);
+  nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
+
 // loads tagnumber
-  printf ("number of blocks for jackknife: %d\n", xnblocks);
-  nblocks = xnblocks;
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
+  xnblocks = nblocks += 10 ; 
+
+/**
+  tt = xsnplist[1000] -> tagnumber ; 
+  if (tt>nblocks) fatalx("yuck!\n") ; 
+*/
 
   printf ("nrows, ncols: %d %d\n", nrows, ncols);
   ZALLOC (counts, ncols, int **);
@@ -466,7 +472,8 @@ main (int argc, char **argv)
   ivclear (bcols, -1, ncols);
   for (k = 0; k < ncols; k++) {
     cupt = xsnplist[k];
-    bcols[k] = cupt->tagnumber;
+    tt = bcols[k] = cupt->tagnumber;
+    if (tt>nblocks) fatalx("bad tagnumber!\n") ; 
   }
 
   setabx (abx, bax, counts, ncols, numeg);
@@ -701,15 +708,20 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "l:h:p:vV")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+  while ((i = getopt (argc, argv, "L:H:p:hvV")) != -1) {
 
     switch (i) {
 
-    case 'l':
+    case 'h':
+      usage(basename(argv[0]), 0);
+      break ;  
+
+    case 'L':
       locount = atoi (optarg);
       break;
 
-    case 'h':
+    case 'H':
       hicount = atoi (optarg);
       break;
 
@@ -783,6 +795,7 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "xmode:", &xmode);
   getint (ph, "f4mode:", &f4mode);
+  getstring (ph, "blockname:", &blockname);
 
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -1381,3 +1394,18 @@ ckdups (char **list, int n)
     }
   }
 }
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -L <val>    ... use <val> as low value.\n");
+  (void)fprintf(stderr, "   -H <val>    ... use <val> as high value.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+};
+
+

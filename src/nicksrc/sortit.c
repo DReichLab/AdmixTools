@@ -7,7 +7,7 @@
 #include "vsubs.h"
 
 /** 
- a simple sort routine
+ a simple set of sort routines
 */
 
 static double *ttt;

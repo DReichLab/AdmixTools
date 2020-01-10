@@ -8,6 +8,7 @@
 
 #include "nicklib.h"
 #include "getpars.h"
+#include "strsubs.h" 
 
 /** 
  a very simple keyword parameter cracker 
@@ -72,8 +73,8 @@ openpars (char *fname)
         fatalx ("duplicate parameter: %s\n", ww);
       ppars[npars] = strdup (ww);
 
-      striptrail (rest, ' ');   /* no trailing blanks */
       stripcomment (rest);
+      striptrail (rest, ' ');   /* no trailing blanks */
       pdata[npars] = strdup (rest);
       ++npars;
 
@@ -95,11 +96,11 @@ openpars (char *fname)
 
 
   for (i = 0; i < npars; i++) {
+
     pp->ppars[i] = strdup (ppars[i]);
     pp->pdata[i] = strdup (pdata[i]);
-
-
-    /*  printf("zz: %d %s %s\n",i,ppars[i],pp->ppars[i]) ; */
+    striplead(pp -> pdata[i], ' ') ;
+//  printf("zz: %d %s %s\n",i,ppars[i],pp->ppars[i]) ; 
 
   }
 
@@ -446,3 +447,4 @@ dostrsub (phandle * pp)
     dostrsub (pp);
 
 }
+

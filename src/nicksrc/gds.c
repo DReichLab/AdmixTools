@@ -452,7 +452,7 @@ ranpoiss1 (double xm)
 
 void
 genmultgauss (double *rvec, int num, int n, double *covar)
-// rvec contains num mvg variates
+// rvec contains num mvg variates.  Mean 0
 {
   double *cf;
   ZALLOC (cf, n * n, double);
@@ -657,8 +657,8 @@ prob1 (double p)
   if ((p < 0) || (p > 1))
     fatalx ("(prob1) bad p %12.6f\n", p);
   z = DRAND2 ();
-  if (z < p)
-    return YES;
+
+  if (z < p) return YES;
 
   return NO;
 }
@@ -731,21 +731,17 @@ rejnorm (double lo, double hi)
   int iter = 0, iterlim = 1000 * 1000;
   double y;
 
+  if (lo==hi)  return lo ;
+  if (lo>hi) fatalx("(rejnorm) bad bounds\n") ;
+
   for (;;) {
     ++iter;
     if (iter == iterlim)
       fatalx ("(rejnorm) looping\n");
     y = gauss ();
-    if (lo >= 0)
-      y = abs (y);
-    if (hi <= 0)
-      y = -abs (y);
-    if (y < lo)
-      continue;
-    if (y > hi)
-      continue;
-    return y;
+    if ((lo<=y) && (y<=hi)) return y ;  
   }
+  return 0 ;
 }
 
 
@@ -777,6 +773,29 @@ ranboundnorm (double lo, double hi)
 
 }
 
+double rtrunc2(double thresh)
+// Botev and Ecuyer.  Algorithm 5
+{
+
+  double a, c, q, u, v, x, y ;
+  int iter = 0 ;
+
+  a = thresh ;
+  c = a*a/2 ;
+
+  for (;;) {
+   u = DRAND2() ;
+   v = DRAND2() ;
+   if (u==0.0) continue ;
+   x = c - log(u) ;
+   y = v*v*x ;
+   if (y > a) continue ;
+   return sqrt(2*x) ;
+  }
+
+}
+
+
 double
 rantruncnorm (double T, int upper)
 // random normal | > T (upper = 1)
@@ -789,6 +808,8 @@ rantruncnorm (double T, int upper)
   y = ntail (T);
   if (y > 0.1)
     return rejnorm (T, 1.0e6);
+  if (T>5.0) return rtrunc2(T) ;
+
   u = DRAND2 ();
   if (u == 0.0)
     u = 0.5;                    // tiny hack   

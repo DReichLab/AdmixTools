@@ -16,6 +16,7 @@ double pdinv(double *cinv, double *coeff, int n) ;
 double logdet(double *mat, int n) ;
 int choldc (double *a, int n, double p[]);
 void cholsl (double *a, int n, double p[], double b[], double x[]);
+int isposdef (double *a, int n) ;
 void cholesky(double *cf, double *a, int n) ;
 void pmat(double *mat, int n)   ;
 void imulmat(int *a, int *b, int *c, int a1, int a2, int a3) ;

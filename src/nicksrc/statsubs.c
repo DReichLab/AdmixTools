@@ -24,7 +24,7 @@ static int numbox = QSIZE * ZLIM;
 
 
 
-static double zzprob (double zval);
+static double zzprob (double pval);
 static double znewt (double z, double ptail);
 
 static double ltlg1 (double a, double x);
@@ -87,13 +87,35 @@ ntail (double zval)
       return q;
     }
 
-  pi = 2.0 * acos (0.0);
+  pi = PI; 
 
   t = exp (-0.5 * zval * zval);
   t /= (sqrt (2.0 * pi) * zval);
 
   return t;
 
+}
+void tailstats(double *x, double a, int isupper) 
+// P(z>a) and conditional mean and variance if isupper = YES
+{
+  double p0, y1, y2, m, z1, z2 ;
+
+  if (isupper == NO) { 
+   tailstats(x, -a, YES) ; 
+   x[1] = -x[1] ; 
+   return ; 
+  }
+  p0 = x[0] = ntail(a) ; 
+  y1 = exp(-a*a/2.0) / sqrt(2.0*PI) ; 
+//  printf("zz %12.6f %12.6f\n", p0, y1) ;  
+  y2 = a*y1 + p0 ; 
+  z1 = m = x[1] = y1/p0 ; 
+  z2 = x[2] = y2/p0 - m*m ; 
+  if (!isfinite(z1) || (!isfinite(z2))) {
+   x[1] = a ; 
+   x[2] = 0 ; 
+  }
+  return ; 
 }
 
 double
@@ -365,8 +387,7 @@ z2x2 (double *a)
 	      fatalx ("(conchi) zero row or column sum\n");
 	    }
 	  y = a[k] - ee;
-	  if (k == 0)
-	    dev00 = y;
+	  if (k == 0) dev00 = y;
 	  chsq += (y * y) / ee;
 	}
     }
@@ -972,6 +993,7 @@ hwstat (double *x)
 
 double
 bprob (double p, double a, double b)
+// beta log density 
 {
   double q, yl;
   q = 1.0 - p;
@@ -1975,13 +1997,6 @@ bpars (double *a, double *b, double mean, double var)
   xb = x * (1 - m);
 
 
-/**
-  ym = xa/(xa+xb) ;  
-  yv = xa*xb/((xa+xb)*(xa+xb)*(xa+xb+1)) ;
-  printf("%9.3f %9.3f\n", mean, ym) ;  
-  printf("%9.3f %9.3f\n", var, yv) ;
-*/
-
   *a = xa;
   *b = xb;
 
@@ -1997,6 +2012,7 @@ bmoments (double a, double b, double *mean, double *var)
   x = a + b;
   *mean = a / x;
   *var = (a * b) / (x * x * (x + 1));
+
 
 }
 
@@ -2773,7 +2789,7 @@ void mlebeta(double *a, int n, double *p1, double *p2)
   int k, num=0 ;
 
   a1 = a2 = 0 ;
-  estbpars(a, n,  p1, p2) ; //  initial momen ts estimator
+  estbpars(a, n,  p1, p2) ; //  initial moments estimator
   for (k=0; k<n; ++k) {
    if (a[k] <= 0.0) continue ;
    if (a[k] >= 1.0) continue ;
@@ -2932,7 +2948,7 @@ int qinterp(double *a, double *b, int n, double val, double *ans)
 /**
  a and b are matched values 
  sort a and corresponding b  Set val as linear combo of 2 a values 
- returnlinear combo of corresponding b values 
+ return linear combo of corresponding b values 
  called by quartile 
  return approx index in sorted list.  -1 if lo n+1000 if hi
 */
@@ -3026,3 +3042,179 @@ double quartile(double *x, int n, double q)
  free(a) ; 
 
 }
+double poissexp(int k, double mean)
+// expected value of # k hits mean m
+{
+ double y ; 
+ y = -mean ; 
+ y += (double) k * log (mean) ; 
+ y -= logfac(k) ; 
+
+ return exp(y) ; 
+
+}
+
+double wynn(double *v, int n, double *acc, int *nacc)
+{
+ double *x0, *x1, *xn, y ;
+ double t, amax, amin, tlast, normlim ;
+ int iter = 0, j, nn, isok  ;
+
+ normlim = vnorm(v,n) * 1.0e-8  ; 
+ vmaxmin(v, n, &amax, &amin) ;
+ if (amax<=amin) {
+  vclear(acc, amax, n/2) ;
+  *nacc = n/2 ;
+  return amax ;
+ }
+
+ ZALLOC(x0, n, double) ;
+ ZALLOC(x1, n, double) ;
+ ZALLOC(xn, n, double) ;
+ copyarr(v, x1, n) ;
+ nn = n ;
+ tlast = acc[0] = v[n-1] ; 
+ for (;;) {
+  for (j=0; (j+1) < nn ; ++j) {
+   isok = YES ;
+   y = x1[j+1] - x1[j] ; 
+   if (fabs(y) < normlim) { 
+    isok = NO ;  break ; 
+   }
+   t = x0[j+1] + 1.0/y ;
+   xn[j] = t ;
+  }
+  if (isok == NO) break ;
+  --nn ;
+  if (nn<2) break ;
+  copyarr(x1, x0, n) ;
+  copyarr(xn, x1, n) ;
+
+  for (j=0; (j+1) < nn ; ++j) {
+   isok = YES ;
+   y = x1[j+1] - x1[j] ; 
+   if (fabs(y) < normlim) { 
+    isok = NO ;  break ; 
+   }
+   t = x0[j+1] + 1.0/y ;
+   xn[j] = t ;
+  }
+  if (isok == NO) break ;
+  --nn ;
+  if (nn<2) break ;
+  copyarr(x1, x0, n) ;
+  copyarr(xn, x1, n) ;
+  tlast = acc[iter] = t ;
+  ++iter ;
+ }
+ free(x0) ; free(x1) ; free(xn) ;
+ *nacc = iter ;
+ return tlast ;
+}
+
+double *vwynn(double **vv, int n, int dim, double **acc, int *nacc)
+{
+ double **x0, **x1, **xn, *tt, *ans ;
+ double t, amax, amin, tlast, normlim ;
+ int iter = 0, j, nn, isok   ;
+ double *ww, *ww2, y ; 
+
+ ans = tt = NULL ;
+ *nacc = 0 ;   
+ if (n==0) return ans ; 
+ ans = tt = vv[n-1] ;
+ normlim = 0 ; 
+ for (j=0; j<n; ++j) { 
+  normlim += vnorm(vv[j], dim) ; 
+ }
+ normlim *= (1.0e-8) / (double) n ;  
+ x0 = initarray_2Ddouble(n, dim, 0) ;
+ x1 = initarray_2Ddouble(n, dim, 0) ;
+ xn = initarray_2Ddouble(n, dim, 0) ;
+ ZALLOC(ww, dim, double) ;
+ ZALLOC(ww2, dim, double) ;
+
+ copyarr2D(vv, x1, n, dim) ;
+ nn = n ;
+ for (;;) {
+  for (j=0; (j+1) < nn ; ++j) {
+   vvm(ww, x1[j+1], x1[j], dim) ; 
+   vabs(ww2, ww,  dim) ; 
+   vmaxmin(ww2, dim, NULL, &y) ; 
+   isok = YES ;
+   if (y < normlim) { 
+    isok = NO ;  break ; 
+   }
+   vin(ww, ww, dim) ;
+   vvp(xn[j], x0[j+1], ww, dim) ; 
+    tt = xn[j] ; 
+  }
+  if (isok == NO) break ;
+  --nn ;
+  if (nn<2) break ;
+  copyarr2D(x1, x0, n, dim) ;
+  copyarr2D(xn, x1, n, dim) ;
+
+  for (j=0; (j+1) < nn ; ++j) {
+   vvm(ww, x1[j+1], x1[j], dim) ; 
+   vabs(ww2, ww,  dim) ; 
+   vmaxmin(ww2, dim, NULL, &y) ; 
+   isok = YES ;
+   if (y < normlim) { 
+    isok = NO ;  break ; 
+   }
+   vin(ww, ww, dim) ;
+   vvp(xn[j], x0[j+1], ww, dim) ; 
+   tt = xn[j] ; 
+  }
+  if (isok == NO) break ;
+  --nn ;
+  if (nn<2) break ;
+  copyarr2D(x1, x0, n, dim) ;
+  copyarr2D(xn, x1, n, dim) ;
+  copyarr(tt, acc[iter], dim) ; 
+  ans = tt = acc[iter] ; 
+  ++iter ;
+ }
+ free2D(&x0, n) ; free2D(&x1, n) ; free2D(&xn, n);
+ free(ww) ;
+ free(ww2) ;
+ *nacc = iter ;
+
+ return ans ;
+}
+
+double rad2deg(double rad) 
+{
+  return rad*360.0/(2.0*pi()) ; 
+}
+
+double deg2rad(double deg) 
+{
+  return deg*2.0*pi()/360.0 ; 
+
+}
+
+
+double truncexpmean(double m, double thresh, int isupper) 
+// mean of truncated exponential of mean m 
+{
+
+
+  double t, x, z ; 
+
+  if (m==0) return 0 ; 
+
+  t = thresh/m ; 
+
+
+  if (isupper) return m*(t+1.0) ; 
+
+  z = exp(-t) ; 
+  x = 1 - t*z/(1-z) ; 
+
+  return m*x ; 
+
+
+}
+

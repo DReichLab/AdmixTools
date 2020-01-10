@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -24,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "651"
+#define WVERSION   "700"
 
 // gsimplify option added
 // calctime added  
@@ -103,6 +104,7 @@ void dump1 (FILE * dumpfile, double *ww, int n);
 void loadpars (char *loadname, double *www, int nwts, double *xxans,
 	       int nedge);
 void read1 (FILE * loadfile, double *ww, int n);
+int usage (char *prog, int exval);
 
 int
 main (int argc, char **argv)
@@ -241,11 +243,21 @@ readcommands (int argc, char **argv)
   phandle *ph;
   char str[5000];
   char *tempname;
-  int n;
+  int n, t;
 
-  while ((i = getopt (argc, argv, "p:r:g:o:d:x:s:hvVt")) != -1) {
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+  while ((i = getopt (argc, argv, "p:r:g:o:d:x:s:HhvVtf")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
+      break ; 
+
+    case 'f':
+      setoutformat(2) ;
+      break;
+
 
     case 'p':
       parname = strdup (optarg);
@@ -275,15 +287,9 @@ readcommands (int argc, char **argv)
       delpop = strdup (optarg);
       break;
 
-    case 'h':
+    case 'H':
       calchash = YES;
       break;
-
-/** 
-    case 's':
-      gsimp = YES;
-      break;
-*/
 
     case 'v':
       printf ("version: %s\n", WVERSION);
@@ -323,7 +329,31 @@ readcommands (int argc, char **argv)
   getstring (ph, "edgename:", &edgename);
   getdbl (ph, "valbreak:", &valbreak);
   getint(ph, "calctime:", &calctime) ;
+  t = 1 ; 
+  getint(ph, "outformat:", &t) ;
+  setoutformat(t) ; 
 
   writepars (ph);
 
 }
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -r <nam>    ... use <nam> as root name.\n");
+  (void)fprintf(stderr, "   -g <nam>    ... use <nam> as graph name.\n");
+  (void)fprintf(stderr, "   -o <nam>    ... use <nam> as out graph name.\n");
+  (void)fprintf(stderr, "   -d <nam>    ... use <nam> as dot graph name.\n");
+  (void)fprintf(stderr, "   -s <nam>    ... use <nam> as script name.\n");
+  (void)fprintf(stderr, "   -x <nam>    ... delete population <nam>.\n");
+  (void)fprintf(stderr, "   -H          ... toggle hash calculation ON.\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+  (void)fprintf(stderr, "   -f          ... new output format (edge not ledge etc.\n") ; 
+
+  exit(exval);
+};
+

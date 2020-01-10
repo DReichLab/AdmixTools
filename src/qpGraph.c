@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -24,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "6450"   
+#define WVERSION   "6600"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -58,6 +59,7 @@
 // instem added
 // new version of qpgsubs (kimfit)
 // admixout, admixin 
+// dumpfstats added (for MIT, Dimitris, Julia) 
 
 
 #define MAXFL  50
@@ -75,6 +77,7 @@ int gsldetails = NO;
 double gslprecision = .00001;
 int tersemode = NO;
 char *f3name = NULL;
+int optit = YES ; 
 
 Indiv **indivmarkers;
 SNP **snpmarkers;
@@ -92,6 +95,7 @@ int allsnpsmode = NO;
 int inbreed = NO;
 int initmixnum = -1;
 int initverbose = NO ;
+int numscorit = 0 ;
 
 double blgsize = 0.05;          // block size in Morgans */ double *chitot ;
 double diag = 0.0;
@@ -114,9 +118,12 @@ char *graphname = NULL;
 char *graphoutname = NULL;
 char *graphdotname = NULL;
 char *poplistname = NULL;
-char *outliername = NULL;
 char *phylipname = NULL;
+char *blockname = NULL;
+
 char *dottitle = NULL ;
+char *outliername = NULL ; 
+char *fstatsname = NULL ; 
 
 char *admixout = NULL;
 char *admixin  = NULL;
@@ -206,6 +213,8 @@ int nbad2 (int a, int b, int c, int d);
 void wtov (double *vv, double **ww, int n);
 void vtow (double *vv, double **ww, int n);
 void loadppwts (double *ppwts, double *pwts, int n, double *awts, int nanc) ; 
+void   dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;
+int usage (char *prog, int exval);
 
 int
 main (int argc, char **argv)
@@ -298,6 +307,7 @@ main (int argc, char **argv)
   int bad2 = NO;
   int callinitv = YES ;
 
+  double ymem ; 
 
   readcommands (argc, argv);
 
@@ -546,9 +556,12 @@ outpop:    (not present)
 
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
-  setblocks (blstart, blsize, &xnblocks, xsnplist, ncols, blgsize);
+ nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
 
-  nblocks = xnblocks;
+// loads tagnumber
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
+  xnblocks = nblocks += 10 ; 
+
 
   zz = initarray_2Ddouble (numeg * numeg, ncols, 0.0);
   qplist = initarray_2Dint (numeg * numeg * numeg * numeg, 4, 0);
@@ -657,6 +670,7 @@ outpop:    (not present)
   doff3 (ff3, ff3var, xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks,
          lambdascale);
 // side effect vvar made
+   dumpfstats(fstatsname, ff3, ff3var, eglist, numeg, ind2f, basenum) ; 
 
   if (badpop2name != NULL) {
 
@@ -821,16 +835,18 @@ outpop:    (not present)
       fatalx ("qpGraph: only binary admixture supported\n");
   }
 
-  if (initmixnum < 0)
+  if (initmixnum < 0) {
     t = (int) pow (2, nmix);
-  initmixnum = MAX (100 * nmix, 20 * t);
+  }  
+
+  if (initmixnum>0) initmixnum = MAX (100 * nmix, 20 * t);
 
   if (loadname != NULL) callinitv = NO ;
   if (admixin != NULL) callinitv = NO ;
 
   if (callinitv) {
     y = initvmix (wwtemp, nwts, initmixnum);    // side effect sets vmix
-//  printf ("initial admix wts:  score: %9.3f\n", y);
+    printf ("callinitv set. initial admix wts:  score: %9.3f\n", y);
     getwww (vmix, wwtemp, nwts);
     putgmix (vmix);
   }
@@ -893,7 +909,7 @@ outpop:    (not present)
   y = scorit (wwtemp, nwts, &y1, ww2);
   printf ("initial score: %9.3f\n", y);
 
-  if (nmix > 0) {
+  if ((nmix > 0)  && (optit==YES)) {
 
     wtov (vgsl, vmix, nmix);
     printf ("init  vg:\n");
@@ -917,8 +933,10 @@ outpop:    (not present)
   dof -= (nwts - nmix);
   
   ytail = rtlchsq (dof, y);
+   
   printf (" final score: %12.3f  dof: %d nominal p-val %12.6f\n",
           y, dof, ytail);
+  printf("number of graph evaluations: %d\n", numscorit) ;
 
 
   calcfit (ff3fit, ww2, numeg);
@@ -943,8 +961,8 @@ outpop:    (not present)
   fflush(stdout) ;
   writeadmix(admixout) ;
 
-  y = 1.0e-6 * (double)  calcmem(1) ; 
-  printf ("## end of qpGraph time: %9.3f seconds memory: %9.3f Mbytes\n", cputime(1), y) ; 
+  ymem = 1.0e-6 * (double)  calcmem(1) ; 
+  printf ("## end of qpGraph time: %9.3f seconds memory: %9.3f Mbytes\n", cputime(1), ymem) ; 
   return 0;
 }
 
@@ -1195,8 +1213,6 @@ printfit (double *ww)
             t = numqq (a, b, c, d);
             fprintf (outff, "%d ", t);
             fprintf (outff, "\n");
-
-            printnl ();
           }
         }
       }
@@ -1441,6 +1457,7 @@ scorit (double *www, int n, double *pfix, double *ans)
   double tt[MAXG] ;
 
   ++ncall;
+  ++numscorit ;
   if (n != intsum (lmix, nmix))
     fatalx ("dimension bug\n");
 
@@ -1777,6 +1794,8 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n, t;
 
+  if (argc == 1) { usage(basename(argv[0]), 1); }
+
   while ((i = getopt (argc, argv, "z:p:g:s:o:d:x:l:vV")) != -1) {
 
     switch (i) {
@@ -1846,6 +1865,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "graphoutname:", &graphoutname);
   getstring (ph, "graphdotname:", &graphdotname);
   getstring (ph, "phylipname:", &phylipname);
+  getstring (ph, "fstatsname:", &fstatsname);
   getstring (ph, "outpop:", &outpop);
   getstring (ph, "output:", &outputname);
   getstring (ph, "badsnpname:", &badsnpname);
@@ -1867,6 +1887,7 @@ readcommands (int argc, char **argv)
   getint (ph, "fulloutlier:", &fulloutlier);
   getint (ph, "gsldetails:", &gsldetails);
   getint (ph, "terse:", &tersemode);
+  getint (ph, "optit:", &optit);
   getdbl (ph, "precision:", &gslprecision);
   getstring (ph, "badpop2name:", &badpop2name);
   getstring (ph, "weightname:", &weightname);
@@ -1892,6 +1913,8 @@ readcommands (int argc, char **argv)
   getint (ph, "fstdmode:", &fstdmode);
   getstring (ph, "dumpname:", &dumpname);
   getstring (ph, "loadname:", &loadname);
+  getstring (ph, "outliername:", &outliername);
+  getstring (ph, "blockname:", &blockname);
   getint (ph, "hires:", &hires);
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -2158,6 +2181,8 @@ initvmix (double *wwinit, int nwts, int numiter)
 
 //verbose = YES ;
   ybest = scorit (ww, nwts, NULL, ww2);
+  printf("initvmix called.  big iterations: %d\n", numiter) ;
+  printf("start score: %9.3f\n", ybest) ;  
   if (verbose)
     printf ("initv: %4d %9.3f\n", -1, ybest);
     calcfit (ff3fit, ww2, numeg);
@@ -2362,3 +2387,61 @@ vtow (double *vv, double **ww, int n)
     ww[k][1] = 1.0 - y;
   }
 }
+void   dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) 
+{
+   FILE *fff ;
+   int a, b, nh2, k, x, u, v, c, d ; 
+   double y1, y2 ; 
+
+   if (fstatsname == NULL) return ; 
+
+   openit(fstatsname, &fff, "w") ; 
+   fprintf(fff, "##fbasis.  basepop: %s ::  f3*1000 covar*1000000\n", eglist[basenum]) ;  
+   
+   nh2 = numeg * (numeg - 1);
+   nh2 /= 2;
+   for (u=0; u<nh2; ++u) { 
+     x = indx[u];
+     a = x / numeg;
+     b = x % numeg;
+     y1 = ff3[a*numeg+b]*1000 ; 
+     fprintf(fff, "%15s %15s  ", eglist[a], eglist[b]) ; 
+     fprintf(fff, "%9.3f\n", y1) ;
+   }
+   for (u=0; u<nh2; ++u) { 
+    for (v=u; v<nh2; ++v) { 
+     x = indx[u];
+     a = x / numeg;
+     b = x % numeg;
+     x = indx[v];
+     c = x / numeg;
+     d = x % numeg;
+     y2 = dump4 (ff3var, a, b, c, d, numeg) * 1000 * 1000 ;
+     fprintf(fff, "%15s %15s   ",  eglist[a], eglist[b]) ; 
+     fprintf(fff, "%15s %15s   ",  eglist[c], eglist[d ]) ; 
+     fprintf(fff, "%9.3f\n", y2) ;
+   }}
+
+   fclose(fff) ; 
+
+}
+
+int usage (char *prog, int exval)
+{
+
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -z <val>    ... use <val> as Z threshold.\n");
+  (void)fprintf(stderr, "   -s <val>    ... use <val> seed.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -g <nam>    ... use <nam> as graph name.\n");
+  (void)fprintf(stderr, "   -o <nam>    ... use <nam> au out graph.\n");
+  (void)fprintf(stderr, "   -d <nam>    ... use <nam> for graph dot name.\n");
+  (void)fprintf(stderr, "   -x <nam>    ... use <nam> as oulier name.\n");
+  (void)fprintf(stderr, "   -l <val>    ... use <val> as lambda scale value.\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+
+  exit(exval);
+};
+

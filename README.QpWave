@@ -22,7 +22,7 @@ logfile: Name of the logfile. The logfile contains the output of the run.
 parfile: Name of parameter file
 
 qpWave gives evidence of the number of admixture flows between the left and right populations,
- and should be run as a precursor to qpAdm (see below).
+ and should usually be run as a precursor to qpAdm (see below).
 
 DESCRIPTION OF EACH PARAMETER in parfile:
 
@@ -32,6 +32,13 @@ indivname:     input indiv file    (in eigenstrat format)
 popleft:       left population list (1 per line) 
 popright:      right population list (1 per line) 
 details:       YES 
+
+allsnps: YES
+## default NO 
+When set to YES, the maximum number of snps available for each f4 statistic are used. By default,
+only the intersect of snps across all Left and Right populations are used.
+
+chrom: Only use snps in the specified chromosome.
 
 DESCRIPTION OF OUTPUT FILE:
 The program will write all the output to stdout. The output file prints the parfile entered by the user, 

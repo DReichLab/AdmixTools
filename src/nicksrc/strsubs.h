@@ -17,6 +17,7 @@ void fatalx( char *fmt, ...) ;
 long seednum() ;
 void printbl(int n) ;
 void printnl() ;
+void striplead(char *sss, char c) ;
 void striptrail(char *sss, char c) ;
 void catx(char *sout, char **spt, int n) ;
 void catxx(char *sout, char **spt, int n) ;
@@ -27,6 +28,7 @@ int mapstrings(char **pstr, char **insub, char **outsub, int n)  ;
 int upstring (char *ss)  ; 
 int numcols (char *name) ;
 int numlines(char *name) ;
+int openit_trap (char *name, FILE ** fff, char *type); 
 void openit(char *name, FILE **fff, char *type)  ;
 int  ftest(char *aname) ;
 void fcheckr(char *name) ;
@@ -86,6 +88,8 @@ int getfline(char *ss, char *fname, int maxstr) ;
 int copyfs(char *infile, FILE *fff)  ;
 int getxxq(double **xx, int maxrow, int numcol, char *fname) ; 
 int numcolsq (char *name) ;
+int getdata(char *buff, int nbytes, char *fname)  ;
+int putdata(char *buff, int nbytes, char *fname)  ;
 
 
 #define ZALLOC(item,n,type)      if ((item = (type *)calloc((n),sizeof(type))) == NULL) \

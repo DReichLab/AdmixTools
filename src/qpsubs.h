@@ -37,6 +37,7 @@ void getrawcol(int *rawcol, SNP *cupt, int *xindex, int nrows) ;
 void getrawcolx(int **ccc, SNP *cupt, int *xindex, int nrows, Indiv **indm) ;
 void getmixstr(int k, char *sss) ;
 void setpopsizes(int *sizes, char **eglist, int numeg) ;
+void setoutformat(int outformat) ;
 void putewts(double *ewts)  ;
 void getewts(double *ewts)  ;
 void getezero(int *zpat)  ;
@@ -111,7 +112,9 @@ void gethscore(double *hscore, double *scores,
   int a, int b, int c, int d, int numeg) ;
 
 double qhdiff(double *scores,  int a, int b, int c, int d, int numeg)  ;
+void setblocksf(int *block, int *bsize, int *nblock, SNP **snpm, int numsnps, double blocklen, char *fname)  ;
 void setblocks(int *block, int *bsize, int *nblock, SNP **snpm, int numsnps, double blocklen)  ;
+int setblocksz (int **pblock, int **pbsize, SNP ** snpm, int numsnps, double blocklen, char *fname) ; 
 int numblocks(SNP **snpm, int numsnps, double blocklen)  ;
 void setmgpos(SNP **snpm, int numsnps, double *maxgdis)  ;
 void setgfromp(SNP **snpm, int numsnps)   ;
@@ -262,6 +265,11 @@ void supergetvals(double **admixw, double *elen,
 void superreest(double *s2, 
   int *xvlist, int nxvlist, int **xelist, int nxelist, int **admixv, int *admixedge, int nxalist)  ;
 void setadmfix(char *fixname) ;
+
+
+void setfancyf4 (int mode) ; 
+double hfix(int *aa) ; 
+int getf4 (int **xx, int *indx, double *ans) ;
 
 void fstcolinb(double *estn, double *estd, SNP *cupt, 
   int *xindex, int *xtypes, int nrows, int numeg) ;

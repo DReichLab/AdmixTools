@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <libgen.h>
 
 #include <nicklib.h>
 #include <getpars.h>
@@ -28,9 +29,10 @@
 */
 
 
-#define WVERSION   "320"
+#define WVERSION   "400"
 // diffmode added
 // xdata supported
+// code cleeanup 10/2/19
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -41,6 +43,7 @@ char *trashdir = "/var/tmp";
 int qtmode = NO;
 int colcalc = YES;
 int hires = NO;
+int fancyf4 = YES;
 
 Indiv **indivmarkers;
 SNP **snpmarkers;
@@ -86,6 +89,7 @@ char *indivname = NULL;
 char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
+char *blockname = NULL;
 int inbreed = NO;
 double lambdascale;
 int *f2ind, *ind2f, ng2, nh2;
@@ -110,6 +114,7 @@ void doq4ratdiff (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 		  int *xbot2, int numeg, int nblocks);
 
 int getf4 (int **xx, int *indx, double *ans);
+int usage (char *prog, int exval);
 
 int
 main (int argc, char **argv)
@@ -202,6 +207,7 @@ main (int argc, char **argv)
 
   nostatslim = MAX (nostatslim, 3);
   setinbreed (inbreed);
+  setfancyf4(fancyf4) ; 
 
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
@@ -307,10 +313,6 @@ main (int argc, char **argv)
   if ((maxgendis < .00001) || (gfromp == YES))
     setgfromp (snpmarkers, numsnps);
 
-  nblocks = numblocks (snpmarkers, numsnps, blgsize);
-  ZALLOC (blstart, nblocks, int);
-  ZALLOC (blsize, nblocks, int);
-//  printf("number of blocks for moving block jackknife: %d\n", nblocks) ;
 
   ZALLOC (xsnplist, numsnps, SNP *);
   ZALLOC (tagnums, numsnps, int);
@@ -322,9 +324,12 @@ main (int argc, char **argv)
   ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
-  setblocks (blstart, blsize, &xnblocks, xsnplist, ncols, blgsize);
+ nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
+
 // loads tagnumber
-  printf ("number of blocks for block jackknife: %d\n", xnblocks);
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
+  xnblocks = nblocks += 10 ; 
+
 
   ZALLOC (counts, ncols, int **);
   for (k = 0; k < ncols; ++k) {
@@ -369,7 +374,7 @@ main (int argc, char **argv)
 	  printf (" : ");
       }
       printf ("%12.6f %12.6f  %9.3f", y, ysig, y / ysig);
-      printf(" 9d", nsnps) ;
+      printf(" %9d", nsnps) ;
       printnl ();
     }
   }
@@ -428,9 +433,13 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  while ((i = getopt (argc, argv, "p:vV")) != -1) {
+  while ((i = getopt (argc, argv, "p:hvV")) != -1) {
 
     switch (i) {
+
+    case 'h':
+      usage(basename(argv[0]), 0);
+      break ; 
 
     case 'p':
       parname = strdup (optarg);
@@ -477,6 +486,9 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "noxdata:", &noxdata);
   getint (ph, "xdata:", &xdata);
+  getint (ph, "fancyf4:", &fancyf4);
+  getint (ph, "numchrom:", &numchrom);
+  getstring (ph, "blockname:", &blockname);
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");
@@ -848,56 +860,15 @@ doq4ratdiff (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 
 }
 
-
-double
-hfix (int *x)
-{
-// correction factor counts in x
-  double ya, yb, yt, h;
-  ya = (double) x[0];
-  yb = (double) x[1];
-  yt = ya + yb;
-  if (yt <= 1.5)
-    fatalx ("(hfix)\n");
-  h = ya * yb / (yt * (yt - 1.0));
-  return h / yt;
-}
-
-int
-getf4 (int **xx, int *indx, double *ans)
+int usage (char *prog, int exval)
 {
 
-  int a, i;
-  double y0, y1, ytot, ff[4];
-  double h0, h1;
+  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
+  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
+  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
+  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
+  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
 
-  *ans = 0.0;
-  for (i = 0; i < 4; ++i) {
-    a = indx[i];
-    if (a < 0) {
-      *ans = 1.0;
-      return 2;
-    }
-    y0 = (double) xx[a][0];
-    y1 = (double) xx[a][1];
-    ytot = y0 + y1;
-    if (ytot <= 0.0)
-      return -1;
-    ff[i] = y0 / ytot;
-  }
-  *ans = (ff[0] - ff[1]) * (ff[2] - ff[3]);
-  a = indx[0];
-  h0 = hfix (xx[a]);
-  a = indx[1];
-  h1 = hfix (xx[a]);
-  if (indx[0] == indx[2])
-    *ans -= h0;
-  if (indx[0] == indx[3])
-    *ans += h0;
-  if (indx[1] == indx[3])
-    *ans -= h1;
-  if (indx[1] == indx[2])
-    *ans += h1;
-  return 1;
+  exit(exval);
+};
 
-}

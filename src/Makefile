@@ -21,15 +21,18 @@ endif
 ND = nicksrc
 NLIB = $(ND)/libnick.a
 
-PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart convertf mergeit ##  gcount kimf
+PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart ##  gcount kimf
 ## rolloff* convertf mergeit from .../o2src
 
 PROGS2 = rexpfit.r  wtjack.pl 
 
 all: $(NLIB) $(PROGS) 
 
+
 $(NLIB):
 	$(MAKE) -C $(ND)
+
+## an ubuntu user found he needed: make all LDLIBS="-llapack" 
 
 statsubs.o:     tables nicksrc/statsubs.c
 	$(CC)  $(CFLAGS) -o statsubs.o nicksrc/statsubs.c
@@ -106,7 +109,6 @@ rmdirs:
 
 qpGraph: $(NLIB) qpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
-qpgbug: $(NLIB) qpgbug.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 qpreroot: qpreroot.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 

@@ -1,4 +1,4 @@
-ADMIXTOOLS version 5.1  9/18/18 (for Linux and Mac)
+ADMIXTOOLS version 6.0  1/10/20 (for Linux and Mac)
 
 See README.INSTALL for installation info. 
 
@@ -43,6 +43,21 @@ beyond our scope.
 
 Nick Patterson
 <nickp@broadinstitute.org>
+
+*** NEW *** 
+Lightweight onlline documentation added, thanks to Eric Deveaud                             
+<executable>  or <executable> -h  to get brief documentation or
+
+*** NEW ***  
+Alter number of chromosomes:   
+numchrom:  <zzz>
+zzz should be the autosome number (default 22 -- the number for humans) 
+
+Custom block numbers (for jackknife) 
+blockname:  <bbb> 
+bbb should contain a list of snps 1 / line followed by a block number (integer) 
+block number should be at least 1.  -1 -> snp ignored.  If this option is used 
+snps not in list will be ignored. 
 
 ----------------------------
 SOFTWARE COPYRIGHT NOTICE AGREEMENT

@@ -12,7 +12,7 @@
 
 #define MAXSTR 512 
 #define LONGSTR 10000
-#define MAXFF  200
+#define MAXFF  50
 #define MAXCH  100
 #define MTCHROM 90 
 #define XYCHROM 91
@@ -92,6 +92,7 @@ int numvalidind(Indiv **indivmarkers, int  numind)   ;
 int numvalidgtind(SNP **snpm, int numsnps, int ind)  ;
 int numvalidgt(Indiv **indivmarkers, SNP *cupt)   ;
 int numvalidgtx(Indiv **indivmarkers, SNP *cupt, int affst)  ;
+int getblocks(char *fname, SNP **snpm, int numsnps)   ;
 int getweights(char *fname, SNP **snpm, int numsnps)   ;
 int getindvals (char *fname, Indiv ** indivmarkers, int numindivs) ;
 void outpack(char *genooutfilename, SNP **snpm, Indiv **indiv, int numsnps, int numind)  ;
@@ -155,6 +156,7 @@ void
 outfiles(char *snpname, char *indname, char *gname, SNP **snpm, 
   Indiv **indiv, int numsnps, int numind, int packem, int ogmode) ;
 
+
 void snpdecimate(SNP **snpm, int nsnp, int decim, int mindis, int maxdis)  ;
 void decimate(SNP **cbuff, int n, int decim, int mindis, int maxdis) ;
 int vvadjust(double *cc, int n, double *pmean) ;
@@ -165,6 +167,7 @@ void cntpops(int *count, Indiv **indm, int numindivs, char **eglist, int numeg) 
 void printalleles(SNP  *cupt, FILE *fff) ;
 char *getpackgenos()  ;
 void clearpackgenos()  ;
+void freepackgenos()  ;
 void setchr(int mode) ;
 void setchimpmode(int mode) ;
 
@@ -183,5 +186,11 @@ void putsnpordered(int mode) ;
 int getsnpordered() ; 
 void ckdup(char **eglist, int n) ;
 
+long inprob (char *pname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind) ;
+long inprobx (char *pname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind, char *packprobs) ;
+long loadprobpack(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char *bigbuff) ;
+void outprob(char *oname, SNP **snpm, Indiv **indiv, int numsnps) ; 
+void outprobx(char *oname, SNP **snpm, Indiv **indiv, int numsnps, int numindivs, char *packprobs) ; 
+void sethiressnp() ;
 
 #endif

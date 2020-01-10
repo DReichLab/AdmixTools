@@ -1,4 +1,6 @@
 #include "qpsubs.h"
+#include "mcio.h" 
+
 extern int fancynorm, verbose, plotmode, outnum;
 extern FILE *fstdetails;
 
@@ -23,6 +25,10 @@ static char **aalist;
 static int aanum = -1;
 void loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg);
 void destroyaa ();
+static int fancyf4 = YES  ; 
+
+static int *xblock, *xbsize ; 
+static int xnblock ; 
 
 void
 printsc (int tpat[3][4], double tscore[3], char **eglist, double ymin)
@@ -70,6 +76,12 @@ void
 setallsnpsmode (int mode)
 {
   allsnpsmode = mode;
+}
+
+void
+setfancyf4 (int mode)
+{
+  fancyf4 = mode;
 }
 
 void
@@ -1530,6 +1542,88 @@ dohzg (double *top, double *bot, SNP ** xsnplist, int *xindex, int *xtypes,
 
 }
 
+  
+void
+setblocksf (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
+	   double blocklen, char *fname)
+// block, bsize are first element and block length 
+// must have been allocated if not NULL 
+{
+  int n = 0, i, t;
+  int chrom, xsize, lchrom, olds, numbl;
+  double fpos, dis, gpos;
+  SNP *cupt;
+
+
+  if (fname==NULL) {       
+   setblocks (block, bsize, nblock, snpm, numsnps, blocklen) ; 
+   return ; 
+  }
+
+  getblocks (fname, snpm, numsnps) ; 
+
+  numbl = 0 ; 
+  for (i = 0; i < numsnps; i++) {
+    cupt = snpm[i] ; 
+    numbl = MAX(numbl, cupt -> tagnumber) ; 
+  } 
+
+  ivzero(bsize, numbl+1) ; 
+  ivclear(block, numsnps + 9999, numbl+1) ; 
+
+  fpos = -1.0e20;
+  for (i = 0; i < numsnps; i++) {
+    cupt = snpm[i] ; 
+    if (cupt->ignore) continue;
+    if (cupt->isfake) continue;
+    t = cupt -> tagnumber ; 
+    if (t<0) continue ; 
+    ++bsize[t] ; 
+    block[t]  = MIN(block[t], i) ;
+  }
+    
+  *nblock = numbl;
+  printf("blockname: %s  numblocks: %d\n", fname, numbl) ;
+  return;
+}
+
+int
+setblocksz (int **pblock, int **pbsize, SNP ** snpm, int numsnps,
+	   double blocklen, char *fname)
+// block, bsize are first element and block length 
+{
+
+  int n ; 
+  int *tblock, *tbsize, tnblock ;
+
+  ZALLOC(tblock, numsnps+20, int) ;
+  ZALLOC(tbsize, numsnps+20, int) ;
+
+  
+  ivclear(tblock, -1, numsnps) ;
+
+  if (fname == NULL) setblocks(tblock, tbsize, &tnblock, snpm, numsnps, blocklen) ; 
+  else setblocksf(tblock, tbsize, &tnblock, snpm, numsnps, blocklen, fname) ; 
+
+  n = tnblock + 10; 
+
+  ZALLOC(xblock, n, int) ; 
+  ZALLOC(xbsize, n, int) ; 
+
+  copyiarr(tblock, xblock, n) ; 
+  copyiarr(tbsize, xbsize, n) ; 
+  free(tblock) ; 
+  free(tbsize) ; 
+
+  *pblock = xblock ; 
+  *pbsize = xbsize ; 
+
+  return tnblock ;
+
+}
+
+
+  
 void
 setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
 	   double blocklen)
@@ -1549,10 +1643,8 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
   for (i = 0; i < numsnps; i++) {
     cupt = snpm[i];
     cupt->tagnumber = -1;
-    if (cupt->ignore)
-      continue;
-    if (cupt->isfake)
-      continue;
+    if (cupt->ignore) continue;
+    if (cupt->isfake) continue;
     chrom = cupt->chrom;
     gpos = cupt->genpos;
     dis = gpos - fpos;
@@ -1569,6 +1661,12 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
       olds = i;
       xsize = 0;
     }
+
+/**
+    if (i<10000) { 
+     printf("zzt %d %d %d \n", i, cupt -> tagnumber, n) ;
+    }
+*/
     cupt->tagnumber = n;
     ++xsize;
   }
@@ -4200,6 +4298,98 @@ oldf3yyx (double *estmat, SNP * cupt,
   free2Dint (&ccc, nrows);
   free2Dint (&ccx, numeg + 1);
   return kret;
+}
+
+double
+hfix (int *x)
+{
+// correction factor counts in x
+double ya, yb, yt, h;
+ya = (double) x[0];
+yb = (double) x[1];
+yt = ya + yb;
+if (yt <= 1.5)
+fatalx ("(hfix)\n");
+h = ya * yb / (yt * (yt - 1.0));
+return h / yt;
+}
+
+
+
+int
+getf4 (int **xx, int *indx, double *ans)
+{
+
+int a, i;
+double ya, yb,  y0, y1, ytot, ff[4];
+double h0, h1;
+int isok, f4mode ;
+// f4mode == NO => f2, or f3
+
+*ans = 0.0;
+if (indx == NULL) {
+*ans = 1.0;
+return 2;
+}
+
+isok = f4mode = YES ; 
+
+ if (indx[0] == indx[2]) f4mode = NO ;
+ if (indx[0] == indx[3]) f4mode = NO ;
+ if (indx[1] == indx[2]) f4mode = NO ;
+ if (indx[1] == indx[3]) f4mode = NO ;
+
+for (i = 0; i < 4; ++i) {
+ ff[i] = -100*(i+1) ;  // silly value ;
+ a = indx[i];
+ if (a < 0) {
+  *ans = 1.0;
+  return 2;
+ }
+
+
+ *ans = 0 ;
+ y0 = (double) xx[a][0];
+ y1 = (double) xx[a][1];
+ ytot = y0 + y1;
+ if (ytot <= 0.01) {
+  isok = NO ;
+  continue ;
+ }
+ ff[i] = y0 / ytot;
+}
+
+if ((isok == NO) && (f4mode == NO)) return -1 ;
+if ((isok == NO) && (fancyf4 == NO)) return -1 ;
+
+ya = fabs(ff[0]-ff[1])  ;  
+yb = fabs(ff[2]-ff[3])  ;  
+
+if (f4mode && (MIN(ya, yb) < .00001)) { 
+ return 1 ; 
+}
+/** 
+ Note that if pop1 is missing and ff[2]=ff[3] then f4 is zero 
+*/
+
+if (isok == NO) return -1 ;
+
+*ans = (ff[0] - ff[1]) * (ff[2] - ff[3]);
+if (f4mode == YES) return 1 ;
+
+a = indx[0];
+h0 = hfix (xx[a]);
+a = indx[1];
+h1 = hfix (xx[a]);
+if (indx[0] == indx[2])
+*ans -= h0;
+if (indx[0] == indx[3])
+*ans += h0;
+if (indx[1] == indx[3])
+*ans -= h1;
+if (indx[1] == indx[2])
+*ans += h1;
+return 1;
 
 }
 

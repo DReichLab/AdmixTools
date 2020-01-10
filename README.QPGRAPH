@@ -55,12 +55,12 @@ admix T S1 S2 w1 w2
 These lines are in the same format as the output graph [-o option below] and such a graph can be used 
  (only admix lines are recognized) 
 admixout:  <admixwts file> 
-This file is of course easy to habnd edit. 
+This file is of course easy to hand edit. 
 If admixin is present then initial try estimation is omitted which will make qpGraph run 
  very much faster.  
-
-
-
+inbreed:  YES 
+Genotypes are expected to be pseudo-haploid -- 2 samples at least per population or drift lengths on 
+leaves are not meaningful.  
 
 
 -g graph  

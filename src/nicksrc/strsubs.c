@@ -1,3 +1,5 @@
+#include <fcntl.h>
+#include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -421,6 +423,28 @@ printnl ()
 }
 
 void
+striplead (char *sss, char c)
+
+/** 
+ strip out lead characters 
+ c will usually be ' '
+*/
+{
+  char *sx ;
+  sx = strdup(sss) ; 
+  
+  int len, i;
+  len = strlen (sss);
+  for (i = 0 ; i <len ; +-i) {
+    if (sss[i] != c) break ; 
+    ++sx ;  
+  }
+  strcpy(sss, sx) ; 
+  freestring(&sx) ;
+}
+
+
+void
 striptrail (char *sss, char c)
 
 /** 
@@ -689,6 +713,25 @@ ftest (char *sss)
   return YES;
 }
 
+
+int
+openit_trap (char *name, FILE ** fff, char *type)
+{
+  char *ss;
+  if (name == NULL)
+    fatalx ("\n(openit_reap) null name\n");
+  *fff = fopen (name, type);
+  if (*fff == NULL) {
+    ss = strerror (errno);
+    printf ("bad open %s\n", name);
+    printf("(openit) can't open file %s of type %s\n error info: %s\n", name, type,
+            ss);
+    return NO ;
+  }
+  return YES ;
+  
+}
+
 void
 openit (char *name, FILE ** fff, char *type)
 {
@@ -706,7 +749,7 @@ openit (char *name, FILE ** fff, char *type)
 }
 
 void fcheckr(char *name)
-// like ftest but just calls fatalx on errir
+// like ftest but just calls fatalx on error
 {
  FILE *fff ;
 
@@ -990,8 +1033,8 @@ int
 getxxnames (char ***pnames, double **xx, int maxrow, int numcol, char *fname)
 {
 
-  char line[MAXSTR];
-  char sstt[MAXSTR] ;  
+  char line[MAXSTR+1];
+  char sstt[MAXSTR+1] ;  
   char **spt ;
   char *sx;
   int nsplit, i, j, num = 0, maxff, numcolp;
@@ -1010,7 +1053,10 @@ getxxnames (char ***pnames, double **xx, int maxrow, int numcol, char *fname)
   maxff = MAX (MAXFF, numcolp);
   ZALLOC (spt, maxff, char *) ;
 
+  line[MAXSTR] = sstt[MAXSTR] = CNULL ;
+  num = 0 ;
   while (fgets (line, MAXSTR, fff) != NULL) {
+//  printf("zz %d ::%s\n", num, line) ; 
     nsplit = splitup (line, spt, maxff);
     if (nsplit == 0) {
       freeup (spt, nsplit);
@@ -1028,13 +1074,14 @@ getxxnames (char ***pnames, double **xx, int maxrow, int numcol, char *fname)
       if (nbad < 10)
         printf ("+++ bad line: nsplit: %d numcol: %d\n%s\n", nsplit, numcol,
                 line);
+      fatalx("quitting\n") ;
       continue;
     }
     if (num >= maxrow)
       fatalx ("too much data\n");
     for (i = 0; i < numcol; i++) {
 // NA -> 0 
-      strcpy(sstt, spt[i+1]) ; 
+      strncpy(sstt, spt[i+1], MAXSTR) ; 
       if (strcmp(sstt, "NA") == 0) strcpy(sstt, "0") ;
       xx[i][num] = atof (sstt) ;      
     }
@@ -1061,7 +1108,7 @@ like getxxnames but file already open
   char *sx;
   int nsplit, i, j, num = 0, maxff, numcolp;
   int nbad = 0;
-  char **names;
+  char **names = NULL;
 
   if (pnames != NULL)
     names = *pnames;
@@ -2023,4 +2070,55 @@ int copyfs(char *infile, FILE *fff)
   fclose(ggg) ;
   return num ;
 }
+
+int putdata(char *buff, int nbytes, char *fname) 
+{
+  int fdes, t, ret ;
+
+  if (fname == NULL) return 0 ;
+
+  ridfile(fname) ;
+
+  fdes = open(fname, O_CREAT | O_TRUNC | O_RDWR, 0666);
+  if (fdes<0) {
+    perror(" open failure") ;
+    fatalx("(putdata) bad open %s\n", fname) ;
+  }
+
+  t = write(fdes, buff, nbytes ) ;
+  if (t<0) {
+    perror("write failure") ;
+    fatalx("(putdata) bad write") ;
+  }
+  close(fdes) ;
+  return t ; 
+
+}
+
+int getdata(char *buff, int nbytes, char *fname) 
+{
+  int fdes, t, ret ;
+
+  if (fname == NULL) return 0 ;
+  fdes = open(fname, O_RDONLY) ;
+  if (fdes<0) {
+    perror(" open failure") ;
+    fatalx("(getdata) bad open %s\n", fname) ;
+  }
+  t = read(fdes, buff, nbytes ) ;
+  if (t<0) {
+    perror("read failure") ;
+    fatalx("(getdata) bad read") ;
+  }
+  close(fdes) ;
+  return t ; 
+
+}
+
+
+
+
+
+
+
 

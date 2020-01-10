@@ -22,6 +22,7 @@ bal (double *a, double *b, int n)
 
 /** 
  normalize mean 0 s.d 1 
+ no error checking 
 */
 {
   double t;
@@ -271,6 +272,8 @@ solvit (double *prod, double *rhs, int n, double *ans)
   int i;
   int ret;
 
+  ret = visnan(prod, n*n) ; if (ret==YES) return -4 ; 
+  ret = visnan(rhs, n) ; if (ret==YES) return -3 ; 
 
   ZALLOC (ttt, n * n, double);
   ZALLOC (p, n, double);
@@ -354,6 +357,32 @@ choldc (double *a, int n, double *p)
   }
 
   return 1;
+
+}
+int isposdef (double *a, int n) 
+{
+  double *aa, *p ; 
+  int ret, k ; 
+ 
+/** 
+ quick check on diagonal
+*/  
+  for (k=0; k<n; ++k) { 
+   if (a[k*n+k] <= 0.0) return NO ;
+  }
+
+  ZALLOC(aa, n*n, double) ; 
+  ZALLOC(p, n, double) ; 
+
+  copyarr(a, aa, n*n) ;
+  ret = choldc(aa, n, p) ;
+
+
+ free(aa) ; 
+ free(p) ;
+
+ if (ret>0) return YES ; 
+ return NO ; 
 
 }
 

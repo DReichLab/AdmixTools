@@ -31,9 +31,10 @@ parfile: Name of parameter file
 
 NEW FEATURE
 In some cases using popfilename (see below) the program uses an excessive amount of memory.  
-A solution, designed to be convenient is to make multiple runs with -l lo -h hi set when only lines 
+A solution, designed to be convenient, is to make multiple runs with -L lo -H hi set when only lines 
 lo through hi (starting at 1) of popfilename will be used.  This makes it easy to do multiple runs 
 and then extract all results by grep result: ... 
+*** note new parameter flags.  Used to be -l, -h  
 
 DESCRIPTION OF EACH PARAMETER in parfile:
 
