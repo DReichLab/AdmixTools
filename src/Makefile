@@ -1,6 +1,7 @@
 HOMEL=$(PWD)
 TOP=../bin
 BIN=$(HOMEL)/../bin
+CC=gcc
 
 override LDLIBS += -lgsl -lopenblas -lm -lnick
 # Some Linux distributions require separate lapacke library
