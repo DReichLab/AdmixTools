@@ -30,7 +30,7 @@
 */
 
 
-#define WVERSION   "600"
+#define WVERSION   "1200"
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -78,8 +78,9 @@ char *blockname = NULL;
 int inbreed = NO;
 double lambdascale;
 
-int ldregress = 0;
-double ldlimit = 9999.0;	/* default is infinity */
+int numboot = 1000 ; 
+
+char *fstatsname = NULL ; 
 
 char *outputname = NULL;
 char *weightname = NULL;
@@ -98,6 +99,8 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
 
 int getf4 (int **xx, int *indx, double *ans);
 int usage (char *prog, int exval);
+
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
 
 int
 main (int argc, char **argv)
@@ -136,6 +139,7 @@ main (int argc, char **argv)
   double T2, dof;
   int *xind;
   int numchromp ; 
+  int retkode ;
 
 
   int ***counts, **ccc;
@@ -144,9 +148,15 @@ main (int argc, char **argv)
   int *rlist, lbase, lpop, rbase;
 
   F4INFO **f4info, *f4pt, *f4pt2;
+ 
+  double ymem ; 
 
 
   readcommands (argc, argv);
+
+  cputime(0) ;
+  calcmem(0) ;
+
   printf ("## qpWave version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
@@ -157,6 +167,8 @@ main (int argc, char **argv)
 
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
+
+  if (fstatsname == NULL) { 
 
   if (instem != NULL) { 
    setinfiles(&indivname, &snpname, &genotypename, instem) ; 
@@ -185,6 +197,7 @@ main (int argc, char **argv)
     if ((chrom == numchromp) && (xchrom != numchromp))
       cupt->ignore = YES;
   }
+ }
 
   nleft = numlines (popleft);
   ZALLOC (popllist, nleft, char *);
@@ -222,6 +235,7 @@ main (int argc, char **argv)
 
   ZALLOC (nsamppops, numeg, int);
 
+ if (fstatsname == NULL) { 
   for (i = 0; i < numindivs; i++) {
     indx = indivmarkers[i];
     if (indx->ignore)
@@ -302,6 +316,8 @@ main (int argc, char **argv)
     bcols[k] = cupt->tagnumber;
   }
 
+ }
+
   lbase = 0;
   rbase = nleft;
   ZALLOC (rlist, nright - 1, int);
@@ -340,11 +356,26 @@ main (int argc, char **argv)
   }
 
 
+ if (fstatsname == NULL) { 
   y = doq4vecb (ymean, yvar, counts, bcols,
-		nrows, ncols, lbase, xind, nl, rbase, rlist, nr, nblocks);
+		nrows, ncols, lbase, xind, nl, rbase, rlist, nr, xnblocks);
 // y is jackknife dof 
-  printf ("dof (jackknife): %9.3f\n", y);
+  printf ("Effective number of blocks: %9.3f\n", y);
   printf ("numsnps used: %d\n", nsnpused);
+
+ }
+
+ else {
+  loadymv(ymean, yvar,  fstatsname, popllist, poprlist, nleft,  nright) ; 
+//  printf("loadymv exited\n") ;
+ }
+
+ retkode = checkmv(ymean, yvar, nl, nr) ; 
+ if (retkode == -1) printf("f4 stats all zero.  Rank 0!.  Aborting run\n") ;
+ if (retkode == -2) printf("f4 variance absursly small.  Aborting run\n") ;
+
+ if (retkode < 0) return -1 ;
+
 
   for (x = 0; x <= maxrank; ++x) {
     f4pt = f4info[x];
@@ -363,7 +394,8 @@ main (int argc, char **argv)
     printf4info (f4pt);
   }
 
-  printf ("## end of run\n");
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of qpWave: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
   return 0;
 }
 
@@ -436,6 +468,8 @@ readcommands (int argc, char **argv)
   getint (ph, "fancyf4:", &fancyf4);
   getdbl (ph, "diagplus:", &yscale);
   getstring (ph, "blockname:", &blockname);
+  getstring (ph, "fstatsname:", &fstatsname);
+  getint (ph, "numboot:", &numboot) ; 
 
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -587,4 +621,89 @@ int usage (char *prog, int exval)
 
   exit(exval);
 };
+
+// should find a way to share code here with qpAdm
+void load4(int *x, int a, int b, int c, int d)
+{
+ x[0] = a ;
+ x[1] = b ;
+ x[2] = c ;
+ x[3] = d ;
+}
+
+
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) 
+{
+
+  char **eglist ; 
+  int numeg, np, numfs, nh2 ; 
+  double *ff3, *ff3var, *vest, *vvar ; 
+  int a, b, c, d, i, j, t, tt, k, dim ; 
+  int nl, nr ; 
+  int **fsindex, *fs ; 
+  double y, ysig, yv ; 
+
+  ZALLOC(eglist, MAXPOPS, char *) ; 
+  numeg = np = fstats2popl(fstatsname, eglist) ; 
+  ZALLOC(ff3, np*np, double) ; 
+  ZALLOC(ff3var, np*np*np*np, double) ; 
+  loadfstats(fstatsname, ff3, ff3var, eglist, numeg) ; 
+
+  nl = nleft -1 ; 
+  nr = nright -1 ; 
+
+  nh2 = numeg*(numeg-1) ; nh2 /= 2 ; 
+  ZALLOC(vest, nh2, double) ; 
+  ZALLOC(vvar, nh2*nh2, double) ;
+
+  setvv(vest, vvar, ff3, ff3var, NULL, numeg) ; 
+
+  t = nleft*nright ;  numfs = 0 ; 
+ 
+  fsindex = initarray_2Dint(t, 4, -1) ; 
+  a = indxstring(eglist, numeg, popllist[0]) ; 
+  c = indxstring(eglist, numeg, poprlist[0]) ; 
+  for (i=1; i<nleft; ++i) { 
+   b = indxstring(eglist, numeg, popllist[i]) ; 
+   for (j=1; j<nright; ++j) { 
+    d = indxstring(eglist, numeg, poprlist[j]) ; 
+    fs = fsindex[numfs] ; 
+    load4(fs, a, b, c, d) ; 
+    ivmaxmin(fs, 4, NULL, &tt) ; 
+    if (tt<0) fatalx("pop not found in fstats: %s %s %s %s\n", 
+       popllist[0], popllist[i], poprlist[0], poprlist[j]) ; 
+    ++numfs ; 
+
+  }} 
+
+  vv2ww(ymean, yvar, vest, vvar, numeg, fsindex, numfs) ;
+/**
+  printf("ymean stats %12.6f %12.6f\n", asum(ymean, numfs), asum2(ymean, numfs) ) ;
+  printf("zza %15.9f %15.9f\n", vest[0], vvar[0]) ; 
+  printf("zzb %15.9f %15.9f\n", vest[1], vvar[1]) ; 
+  printf("zzc %15.9f %15.9f\n", ymean[0], yvar[0]) ; 
+  printimat2D(fsindex, numfs, 4) ; 
+
+  dim = nl*nr ; 
+  for (i=0; i<numfs; ++i) { 
+   y = ymean[i] ; 
+   yv = yvar[i*numfs+i] ; 
+   ysig = sqrt(yv) ; 
+   printf("%12.6f ", y) ; 
+   printf("%12.6f ", ysig) ; 
+   printf("%9.3f ", y/ysig) ; 
+   printnl() ; 
+  } 
+
+*/
+
+  free(eglist) ; 
+  free(ff3) ; 
+  free(ff3var) ; 
+  free(vest) ; 
+  free(vvar) ; 
+
+  free2Dint(&fsindex, t) ; 
+
+}
 

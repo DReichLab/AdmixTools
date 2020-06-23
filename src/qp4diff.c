@@ -1,6 +1,4 @@
-#include <stdio.h>
 
-#include <string.h>
 #include <unistd.h>
 #include <math.h>
 #include <sys/types.h>
@@ -29,11 +27,13 @@
 */
 
 
-#define WVERSION   "400" 
+#define WVERSION   "460" 
 
 // overlap NO added
 // allsnps: YES and instem: added
 // firstf4mult added (Mark request) 
+// print number of snps used 
+// weightjack trapped (too few blocks) 
 
 #define MAXFL  50   
 #define MAXSTR  512
@@ -109,7 +109,7 @@ FILE *ofile ;
 
 void readcommands(int argc, char **argv) ;
 int readpopx(char *pname, char ***plists, int npops)  ;
-void doq4diff(double *q4rat, double *q4ratsig, int ***counts, int *bcols, 
+int doq4diff(double *q4rat, double *q4ratsig, int ***counts, int *bcols, 
  int nrows, int ncols, int *xtop, int *xbot, int numeg, int nblocks) ;
 
 
@@ -174,6 +174,7 @@ int main(int argc, char **argv)
   int *qmiss ;  /* number of times pair migration event implied */
   int **qplist, numqp = 0, maxqp=10000 ;
   double *qpscore ;
+  int nsnps ; 
 
 
   double **dsctop, **dscbot ;
@@ -350,14 +351,18 @@ int main(int argc, char **argv)
      xtop[i] = indxindex(eglist, numeg, plists[a][i]) ;
      xbot[i] = indxindex(eglist, numeg, plists[a][i+4]) ;
     }
-    doq4diff(&y, &ysig, counts, bcols, 
+    nsnps = doq4diff(&y, &ysig, counts, bcols, 
      nrows, ncols, xtop, xbot, numeg, nblocks) ; 
-    printf("result: ") ;
+    if (nsnps < -100) {
+     y=0.0; ysig = 1.0 ; printf("badoctet: ") ;
+    }
+    else printf("result: ") ;
     for (t=0; t<8 ; ++t) { 
      printf("%10s ", plists[a][t]) ;
      if (t==3) printf(" : ") ;
     }
     printf("%12.6f %12.6f  %9.3f", y, ysig, y/ysig) ;
+    printf(" %7d", nsnps) ; 
     printnl() ;
    }
 
@@ -581,7 +586,7 @@ int readpopx(char *pname, char ***plists, int npops)
   fclose(fff) ;
   return num ;
 }
-void
+int
 doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols, 
  int nrows, int ncols, int *xtop1, int *xtop2, int numeg, int nblocks) 
 // don't demand overlap
@@ -600,7 +605,8 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
    double y1, y2, yscal ;
    double *w1, *w2, *ww, m1, m2 ;  
    int bnum, totnum  ;
-   int ret ;
+   int ret, ret1, ret2, cntblocks=0 ;
+   int num1, num2, num12 ;
    
    if (nrows==0) fatalx("badbug\n") ;
 
@@ -615,26 +621,30 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
 
    
    printf("overlap NO mode (same as allsnps: YES)\n") ;
+   num1 = num2 = num12 ; 
 
    totnum = 0 ;
    for (col=0; col<ncols;  ++col)  {
     bnum = bcols[col] ;  
     if (bnum<0) continue ;
     if (bnum>=nblocks) fatalx("logic bug\n") ;
-    ret = getf4(counts[col], xtop1, &y1) ;
+    ret1 = ret = getf4(counts[col], xtop1, &y1) ;
     y1 *= firstf4mult ;
     if (ret == 2) fatalx("bad pop\n") ;
     if (ret>=0) { 
      btop1[bnum] += y1 ;
      bbot1[bnum] += 1 ; 
      ++wjack[bnum] ;
+     ++num1 ; 
     }
-    ret = getf4(counts[col], xtop2, &y2) ;
+    ret2 = ret = getf4(counts[col], xtop2, &y2) ;
     if (ret == 2) fatalx("bad pop\n") ;
     if (ret>=0) { 
      btop2[bnum] += y2 ;
      bbot2[bnum] += 1 ; 
      ++wjack[bnum] ;
+     ++num2 ; 
+     if ((ret1>=0) && (ret2>=0)) ++num12 ; 
     }
    }
 
@@ -650,6 +660,7 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
     }
 
     for (k=0; k<nblocks; k++) {  
+     if (wjack[k] > 0.5) ++ cntblocks ; 
      top = btop1[k] ; 
      bot = bbot1[k] ;
      wtop[k] = gtop1-top ; 
@@ -663,6 +674,7 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
      wbot[k] += 1.0e-10 ;
      djack[k] -= wtop[k]/wbot[k] ;  // delete-block estimate
     }
+    if (cntblocks <=1) return -999 ;
       
     weightjack(&jest, &jsig, mean, djack,  wjack, nblocks) ;
 
@@ -679,9 +691,10 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
     free(btop2) ;
     free(bbot2) ;
 
+    return num1 + num2 - num12 ;  // simple inclusion exclus10n 
 }
 
-void
+int
 doq4diff(double *q4diff, double *q4diffsig, int ***counts, int *bcols, 
  int nrows, int ncols, int *xtop, int *xbot, int numeg, int nblocks) 
 {
@@ -695,13 +708,12 @@ doq4diff(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
    double y1, y2, yscal ;
    double *w1, *w2, *ww, m1, m2 ;  
    int bnum, totnum  ;
-   int ret ;
+   int ret, cntblocks=0 ;
    
    if (nrows==0) fatalx("badbug\n") ;
    if (overlap == NO) {
-     doq4diffx(q4diff, q4diffsig, counts, bcols, 
+     return doq4diffx(q4diff, q4diffsig, counts, bcols, 
       nrows,  ncols, xtop, xbot,  numeg,  nblocks)  ;
-     return ;
    }
 
    ZALLOC(w1, nblocks, double) ;
@@ -743,6 +755,7 @@ doq4diff(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
     mean = gtop/gbot ;
 
     for (k=0; k<nblocks; k++) {  
+     if (wjack[k] >= 0.5) ++cntblocks ; 
      top = btop[k] ; 
      bot = bbot[k] ;
      wtop[k] = gtop-top ; 
@@ -750,6 +763,8 @@ doq4diff(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
      wbot[k] += 1.0e-10 ;
      djack[k] = wtop[k]/wbot[k] ;  // delete-block estimate
     }
+
+   if (cntblocks <= 1) return -999 ; 
       
     weightjack(&jest, &jsig, mean, djack,  wjack, nblocks) ;
 
@@ -767,6 +782,8 @@ doq4diff(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
 
     free(btop) ;
     free(bbot) ;
+
+    return totnum ;
 
 }
 

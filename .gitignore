@@ -13,34 +13,6 @@ src/admixlib/*
 src/admixtables/*
 
 #Various output files
-src/backup
-src/convertf
-src/copych
-src/diff.out
-src/diffch
-src/dirlist
-src/dowtjack
-src/gmon.out
-src/grabpars
-src/libnick.a
-src/nicksrc/tmp
-src/oldmake
-src/oldmakefile
-src/q1
-src/qaz
-src/qp3Pop
-src/qp4diff
-src/qpAdm
-src/qpBound
-src/qpDpart
-src/qpDstat
-src/qpff3base
-src/qpF4ratio
-src/qpGraph
-src/qpWave
-src/qpreroot
-src/rolloff
-src/tables
 pdoc.aux
 pdoc.dvi
 pdoc.log

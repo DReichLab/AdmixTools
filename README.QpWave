@@ -84,6 +84,10 @@ program code:
 
 diagplus:  0  
 
+*** new feature (for both qpAdm and qpWave)***  
+Input can now be an fstats file -- see README.qpfstats
+For qpAdm new parameter numboot: see README.qpfstats
+
 
 Nick Patterson
 <nickp@broadinstitute.org>

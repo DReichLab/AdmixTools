@@ -73,6 +73,16 @@ qpGraph will accept either style.
 [-d dotfile]  Graph output in "dot format";  dot -Tps < dotfile > dotfile.ps gives postscript
 "dot" must be installed (part of Graphviz) 
 
+*** new feature ***  
+Input can now be an fstats file -- see README.qpfstats
+*** new feature *** 
+halfscore (won't work in combination with fstats)
+halfscore:  YES 
+halfjackname:  <output file> 
+Does a VERY conservative goodness of fit test.  See halfscore.pdf for details.
+
+
+
 ===================================================================================================
 Utility program: qpreroot
 If the input graph is not connected or has loops qpGraph will die unpleasantly.  

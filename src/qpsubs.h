@@ -241,6 +241,7 @@ int findlabel(char *label) ;
 int getnumanc() ; 
 int getnumedge() ; 
 int getnumvertex() ;  
+int vuseful() ; 
 void reroot(char *nodename)  ;
 
 int hashgraph()  ;
@@ -270,6 +271,7 @@ void setadmfix(char *fixname) ;
 void setfancyf4 (int mode) ; 
 double hfix(int *aa) ; 
 int getf4 (int **xx, int *indx, double *ans) ;
+void setvv(double *vest, double *vvar, double *ff3, double *ff3var, int *ind2f, int numeg)   ; 
 
 void fstcolinb(double *estn, double *estd, SNP *cupt, 
   int *xindex, int *xtypes, int nrows, int numeg) ;
@@ -284,6 +286,25 @@ double gethtest(int popnum) ;
 double gethest(int popnum) ;
 double getfreq(int popnum) ;
 double getaax(int popnum) ;
+
+int dofstats (double *fbmean, double *fbcovar, double **fcoeffs, int nbasis, 
+       double *fsmean, double *fssig, int **fsindex, int nfstats, 
+       SNP ** xsnplist, int *xindex, int *xtypes,
+       int nrows, int ncols, int numeg, int nblocks, double scale) ;
+int calchet ( double *hets, double *valids, 
+       SNP ** xsnplist, int *xindex, int *xtypes,
+       int nrows, int ncols, int numeg)  ; 
+
+
+void getegnum(int *egnum, char **spt, char **eglist, int numeg, int num)  ; 
+int fstats2popl(char *fstatsname, char **poplist)  ; 
+void  loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg) ; 
+int mkcoeffs (double *yco, int **dd, int numpops, int numd)  ;
+void vv2ww (double *ww, double *wwvar, double *vest, double *vvar, int numpops, int **dd, int numd) ;
+
+void dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;
+void dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;
+void weightjackfourier(double *est,double *sig,double mean,double *jmean,double *jwt,int g,double* prho);  
 
 #ifdef __cplusplus
 }

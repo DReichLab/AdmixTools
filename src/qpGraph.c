@@ -1,4 +1,5 @@
 #include <string.h>
+
 #include <unistd.h>
 #include <math.h>
 #include <sys/types.h>
@@ -24,8 +25,9 @@
 
 //  (YRI, CEU, Papua, .... )               
 
+int debug = NO ; 
 
-#define WVERSION   "6600"   
+#define WVERSION   "7365"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -59,7 +61,8 @@
 // instem added
 // new version of qpgsubs (kimfit)
 // admixout, admixin 
-// dumpfstats added (for MIT, Dimitris, Julia) 
+// dumpfstats added (for MIT, Dimitris, Julia) .  See fstatsoutname
+// fstatsname (loadfstats) added
 
 
 #define MAXFL  50
@@ -92,6 +95,8 @@ int popsizelimit = -1;
 int gfromp = NO;                // genetic distance from physical 
 int hires = NO;
 int allsnpsmode = NO;
+int oldallsnpsmode = NO;
+int loadf3 = NO ; 
 int inbreed = NO;
 int initmixnum = -1;
 int initverbose = NO ;
@@ -124,6 +129,8 @@ char *blockname = NULL;
 char *dottitle = NULL ;
 char *outliername = NULL ; 
 char *fstatsname = NULL ; 
+char *fstatsoutname = NULL ; 
+
 
 char *admixout = NULL;
 char *admixin  = NULL;
@@ -146,7 +153,8 @@ double *lockvals;
 
 double lambdascale = -1.0;
 int *f2ind, *ind2f;
-double *vest, *vvar, *vvinv, *xvvar, *xvvinv, *vvdiag;
+double *vest, *vvar, *vvinv, *xvvar, *xvvinv, *vvdiag, *vest2, *vvar2, *vvinv2, *vfit;
+double *qvvar, *qvvinv ;  
 double **vmix;
 int *lmix, nmix;
 int nh2, numeg;
@@ -166,6 +174,10 @@ char **enames;
 double zthresh = 3.0;
 double f2diag = 0.0;
 
+int halfscore = NO ; 
+int fullvar = -999 ; 
+char *halfjackname = NULL ; 
+
 int gslsetup (int nmix, double *vmix) ;
 double gslopt (double *wpars) ;
 void readcommands (int argc, char **argv);
@@ -173,9 +185,15 @@ void indiaestit (double *f2, double *f3, double *f4, int n);
 void sol2 (double *co, double *rhs, double *ans);
 void mkww (double *f3, double *f2, int k, double *ww, int n);
 char *getshort (char *ss, int n);
-void doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex,
+
+int doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex,
             int *xtypes, int nrows, int ncols, int numeg, int nblocks,
             double scale);
+
+int doff3blocks (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
+       int nrows, int ncols, int numeg, int nblocks, double scale, double **f3jack, double *f3jweights, 
+       int *blocktypes, int bmode) ;
+
 void map4x (double *aa, double *bb, int n2, int *indx);
 void map4y (double *aa, double *bb, int n2, int *indx);
 void getmv (int a, int b, int c, int d, double *mean, double *var,
@@ -183,8 +201,13 @@ void getmv (int a, int b, int c, int d, double *mean, double *var,
 void bumpm (double *y, int a, int c, double val, double *xest);
 void bumpw (double *w, int a, int c, double val);
 void lncoadppwts (double *ppwts, double *pwts, int n, double *awts, int nanc);
+
 double calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
                int nrow, int nedge, int nanc);
+
+double calcf3 (double *ff3, double *xxans, double *qmat, double *ppwts, double *rhs,
+               int nrow, int nedge, int nanc);
+
 void setwww (double **tmix, double *www, int n);
 void getwww (double **tmix, double *www, int n);
 double scorit (double *www, int n, double *pfix, double *ans);
@@ -213,7 +236,13 @@ int nbad2 (int a, int b, int c, int d);
 void wtov (double *vv, double **ww, int n);
 void vtow (double *vv, double **ww, int n);
 void loadppwts (double *ppwts, double *pwts, int n, double *awts, int nanc) ; 
+
 void   dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;
+void    mkfstats(char *parname)   ; 
+double graph2ff3(double *ff3, double *qmat, double *rhs) ; 
+void writehj(char *halfjackname, char *graphname, int seed, double *vals, double *wvals, int n) ;
+void setoutsc(double *wb,  double *fest, double *qmat, double **jmean,  int *blocktypes, int btype, int nblocks)  ;
+
 int usage (char *prog, int exval);
 
 int
@@ -238,8 +267,9 @@ main (int argc, char **argv)
 
   int ch1, ch2;
   int fmnum, lmnum;
-  int num, n1, n2;
+  int num, n1, n2, numxbl;
 
+  int nrows, ncols, nedge, nanc, m, nc, nvar;
   int nindiv = 0, e, f, lag = 1;
   double xc[9], xd[4], xc2[9];
   int nignore, numrisks = 1;
@@ -248,7 +278,6 @@ main (int argc, char **argv)
   int *tagnums;
   Indiv **xindlist;
   int *xindex, *xtypes;
-  int nrows, ncols, nedge, nanc, m, nc, nvar;
   double zn, zvar;
   int weightmode = NO;
   double chisq, ynrows;
@@ -284,6 +313,7 @@ main (int argc, char **argv)
   double ymin;
   double *f2, *f2sig, *fst;
   double *ff3, *ff3var, *ff3fit, *ff3sig;
+  double *ff3out, *ff3varout ; 
   double *vgsl;
 
   double *f3, *f4, *f3sig, *f4sig, *www, *ww2;
@@ -306,44 +336,96 @@ main (int argc, char **argv)
   int dmode = NO;
   int bad2 = NO;
   int callinitv = YES ;
+  double **f3jack, *f3jweights ; 
+  double **f3jack2, *f3jweights2 ; 
+  int *blocktypes ; 
+  double *wb1, *wb2, *wwb, wmean, wsig ; 
 
   double ymem ; 
 
   readcommands (argc, argv);
 
+  if (halfjackname != NULL) halfscore = YES ; 
+  if (halfscore && (fstatsname != NULL)) fatalx("halfscore, fstatsname incompatible\n") ; 
+  if (halfscore && (seed == 0)) printf("*** warning: halfscore.  seed not set!\n") ;
+  if ((fullvar == -999) && (halfscore == YES)) fullvar = YES ;
+  if (halfscore == NO) fullvar = NO ; 
+  if (fullvar == YES) printf("all data used for covariance esimation\n") ;
+
   cputime(0) ; 
   calcmem(0) ; 
   printf ("## qpGraph version: %s\n", WVERSION);
+  if (oldallsnpsmode) loadf3 = NO ; 
+
+  ZALLOC (eglist, MAXPOPS, char *);
+  if ((doanalysis == NO) && (poplistname != NULL)) {
+    numeg = loadlist (eglist, poplistname);
+    strcpy(sss, eglist[0]) ;
+  }
+  else {
+    if (graphname == NULL) { 
+      fatalx ("no graph given\n");
+   }
+
+   printf ("graph: %s\n", graphname);
+   
+
+/**
+   sprintf(sss, "cat %s", graphname) ;
+   system(sss) ;  
+   fflush(stdout) ;
+*/
+    printnl ();
+    printnl ();
+    numeg = loadgraph (graphname, &eglist);
+    getpops(eglist, &t) ; 
+    if (t != numeg) fatalx("badbug\n") ; 
+    if (rootname != NULL) reroot (rootname);
+    nedge = getnumedge ();
+    nanc = getnumanc ();
+    printf("numedge: %d  numancestor: %d\n", nedge, nanc) ;
+    fflush(stdout) ; 
+    ZALLOC (enames, nedge, char *);
+    getenames (enames);
+    ZALLOC (edgelock, nedge, int);
+    ZALLOC (lockvals, nedge, double);
+    nedgelock = getedgelock (edgelock, lockvals);
+    for (k = 0; k < nedgelock; ++k) {
+      printf ("locked: %s %12.6f\n", enames[k], lockvals[k]);
+    }
+    fflush(stdout) ; 
+   t = getrootlabel (sss);
+  }
+
+  i = 999 ; 
+
+  if (fstatsname != NULL) loadf3 = YES ; 
+  if (loadf3 && (fstatsname == NULL))  { 
+   fflush(stdout) ; 
+   mkfstats(parname) ;   // sets fstatsname 
+   printf("temporary fstatsname: %s\n", fstatsname) ; 
+   fflush(stdout) ; 
+  }
+
+  if (loadf3 && lsqmode) fatalx("lsqmode not compatible with loadf3 or fstatsname\n") ; 
+
   if (parname == NULL)
     return 0;
   if (outpop != NULL)
     printf ("outpop:  %s\n", outpop);
-
-  if (instem != NULL) { 
-   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
-// set up names.  Nothing read
-  } 
-
-  setallsnpsmode (allsnpsmode);
-
-  if (seed == 0)
-    seed = seednum ();
-  SRAND (seed);
-  printf ("seed: %d\n", seed);
-
-  setinbreed (inbreed);
-
-  if (xchrom == (numchrom + 1))
-    noxdata = NO;
   if (lsqmode)
     printf ("simple lsqmode\n");
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
   if (f3name != NULL)
     openit (f3name, &f3file, "w");
-  numeg = loadgraph (graphname, &eglist);
-  printstrings (eglist, numeg);
 
+
+ if (fstatsname == NULL) { 
+  if (instem != NULL) { 
+   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
+// set up names.  Nothing read
+  } 
   numsnps =
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
 
@@ -365,59 +447,76 @@ main (int argc, char **argv)
       cupt->ignore = YES;
   }
 
-
-  printnl ();
-
-
-  if ((doanalysis == NO) && (poplistname != NULL)) {
-    ZALLOC (eglist, MAXPOPS, char *);
-    numeg = loadlist (eglist, poplistname);
-  }
-  else {
-    if (graphname == NULL)
-      fatalx ("no graph given\n");
-    printf ("graph: %s\n", graphname);
-
-/**
-   sprintf(sss, "cat %s", graphname) ;
-   system(sss) ;  
-   fflush(stdout) ;
-*/
-    printnl ();
-    printnl ();
-    numeg = loadgraph (graphname, &eglist);
-    if (rootname != NULL)
-      reroot (rootname);
-    nedge = getnumedge ();
-    nanc = getnumanc ();
-    printf("numedge: %d  numancestor: %d\n", nedge, nanc) ;
-    ZALLOC (enames, nedge, char *);
-    getenames (enames);
-    ZALLOC (edgelock, nedge, int);
-    ZALLOC (lockvals, nedge, double);
-    nedgelock = getedgelock (edgelock, lockvals);
-    for (k = 0; k < nedgelock; ++k) {
-      printf ("locked: %s %12.6f\n", enames[k], lockvals[k]);
-    }
-  }
-  xnumeg = numeg;
   for (i = 0; i < numeg; i++) {
     setstatus (indivmarkers, numindivs, eglist[i]);
   }
 
-  ZALLOC (egshort, numeg, char *);
+  setallsnpsmode (allsnpsmode);
+
+  if (seed == 0)
+    seed = seednum ();
+  SRAND (seed);
+  printf ("seed: %d\n", seed);
+
+  setinbreed (inbreed);
+
+  if (xchrom == (numchrom + 1))
+    noxdata = NO;
+  printnl ();
+
+ }
+
+  xnumeg = numeg;
+
+ ZALLOC (egshort, numeg, char *);
+
   for (i = 0; i < numeg; i++) {
     egshort[i] = strdup (getshort (eglist[i], 5));
-    printf ("%3d %s\n", i, eglist[i]);
   }
+  fflush(stdout) ; 
+//  printf("egshort set!\n") ;
 
-  if (!doanalysis)
+  qplist = initarray_2Dint (numeg * numeg * numeg * numeg, 4, 0);
+  ZALLOC (qpscore, numeg * numeg * numeg * numeg, double);
+
+  ZALLOC (pmean, numeg, double);
+  ZALLOC (pnum, numeg, double);
+
+  vmix = initarray_2Ddouble (MAXG, MAXW, 0.0);
+  ZALLOC (lmix, MAXG, int);
+  nmix = 0;
+
+  ng2 = numeg * numeg;
+  ng3 = numeg * ng2;
+  ng4 = numeg * ng3;
+
+  ZALLOC (hest, ng2, double);
+  ZALLOC (hsig, ng2, double);
+
+  ZALLOC (f2, ng2, double);
+  ZALLOC (f2sig, ng2, double);
+  ZALLOC (fst, ng2, double);
+  ZALLOC (www, ng2, double);
+  ZALLOC (ww2, MAXG, double);
+
+  ZALLOC (ff3, ng2, double);
+  ZALLOC (ff3fit, ng2, double);
+  ZALLOC (ff3sig, ng2, double);
+  ZALLOC (ff3var, ng4, double);
+
+  if (halfscore) { 
+   ZALLOC (ff3out, ng2, double);
+   ZALLOC (ff3varout, ng4, double);
+  }
+// differences from basepoint 
+
+
+  if (doanalysis)
     printf ("jackknife block size: %9.3f\n", blgsize);
 
   outnum = -1;
   basenum = 0;
 
- t = getrootlabel (sss);
   printf ("root label: %s\n", sss);
 
   if (outpop == NULL) {
@@ -457,7 +556,6 @@ outpop:    (not present)
     ++numeg;
   }
 
-//  printf("zzbasenum: %d %d\n", outnum, basenum) ;
 
   basenum = 0 ; // hope this is OK
      
@@ -467,7 +565,7 @@ outpop:    (not present)
 
   if (outnum >= 0)
     outpop = eglist[outnum];
-  basepop = eglist[basenum];
+   basepop = eglist[basenum];
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -498,6 +596,7 @@ outpop:    (not present)
   }
 
   ZALLOC (xpopsize, numeg, int);
+ if (fstatsname == NULL) { 
   for (i = 0; i < nrows; i++) {
     k = xtypes[i];
     ++xpopsize[k];
@@ -509,7 +608,10 @@ outpop:    (not present)
   for (i = 0; i < numeg; i++) {
     if (xpopsize[i] == 0)
       fatalx ("zero popsize: %s\n", eglist[i]);
+    if (inbreed &&(xpopsize[i] == 1)) 
+      fatalx ("single sample and inbreed set: %s\n", eglist[i]);
   }
+
 
 
   printf ("before setwt numsnps: %d  outpop: %s\n", numsnps, outpop);
@@ -564,35 +666,6 @@ outpop:    (not present)
 
 
   zz = initarray_2Ddouble (numeg * numeg, ncols, 0.0);
-  qplist = initarray_2Dint (numeg * numeg * numeg * numeg, 4, 0);
-  ZALLOC (qpscore, numeg * numeg * numeg * numeg, double);
-
-  ZALLOC (pmean, numeg, double);
-  ZALLOC (pnum, numeg, double);
-  ZALLOC (rawcol, nrows, int);
-
-  vmix = initarray_2Ddouble (MAXG, MAXW, 0.0);
-  ZALLOC (lmix, MAXG, int);
-  nmix = 0;
-
-  ng2 = numeg * numeg;
-  ng3 = numeg * ng2;
-  ng4 = numeg * ng3;
-
-  ZALLOC (hest, ng2, double);
-  ZALLOC (hsig, ng2, double);
-
-  ZALLOC (f2, ng2, double);
-  ZALLOC (f2sig, ng2, double);
-  ZALLOC (fst, ng2, double);
-  ZALLOC (www, ng2, double);
-  ZALLOC (ww2, MAXG, double);
-
-  ZALLOC (ff3, ng2, double);
-  ZALLOC (ff3fit, ng2, double);
-  ZALLOC (ff3sig, ng2, double);
-  ZALLOC (ff3var, ng4, double);
-// differences from basepoint 
   dmode = NO;
   if (fstdmode)
     dmode = 2;
@@ -600,6 +673,7 @@ outpop:    (not present)
   scale =
     dofstnumx (fst, f2, f2sig, xsnplist, xindex, xtypes, nrows, ncols, numeg,
                xnblocks, indivmarkers, dmode);
+
   if (lambdascale <= 0.0)
     lambdascale = scale;
   else {
@@ -619,6 +693,8 @@ outpop:    (not present)
   printnl ();
   printf3 ("f2:", f3file, f2, egshort, numeg);
 
+  fflush(stdout) ;
+
   if (phylipname != NULL) {
     openit (phylipname, &phylipfile, "w");
     fprintf (phylipfile, "%6d\n", numeg);
@@ -636,6 +712,8 @@ outpop:    (not present)
     fclose (phylipfile);
   }
 
+ }
+
 
   ZALLOC (f3, ng3, double);
   ZALLOC (f4, ng4, double);
@@ -649,9 +727,19 @@ outpop:    (not present)
 
   ZALLOC (vest, nh2, double);
   ZALLOC (vvar, nh2 * nh2, double);
+
+  ZALLOC (vest2, nh2, double);
+  ZALLOC (vvar2, nh2 * nh2, double);
+  ZALLOC(vfit, nh2, double) ;  // fstats
+
   ZALLOC (xvvar, nh2 * nh2, double);    // adjusted
   ZALLOC (vvinv, nh2 * nh2, double);
+  ZALLOC (vvinv2, nh2 * nh2, double);
   ZALLOC (xvvinv, nh2 * nh2, double);
+  if (fullvar) {
+   ZALLOC (qvvar, nh2 * nh2, double);
+   ZALLOC (qvvinv, nh2 * nh2, double);
+  }
 
   k = 0;
   for (a = 0; a < numeg; ++a) {
@@ -667,10 +755,87 @@ outpop:    (not present)
     }
   }
 
-  doff3 (ff3, ff3var, xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks,
+ if (halfscore) { 
+
+  ZALLOC(blocktypes, nblocks, int) ;
+  ZALLOC(f3jweights, nblocks, double) ;
+  ZALLOC(wb1, nblocks, double) ;
+  ZALLOC(wb2, nblocks, double) ;
+  ZALLOC(wwb, nblocks, double) ;
+  ivclear(blocktypes, -1, nblocks) ;
+  for (k=0; k<nblocks; ++k) { 
+    blocktypes[k] = ranmod(2) + 1 ;  // 1
+  }
+
+  blocktypes[0] = 0 ; 
+
+  f3jack = initarray_2Ddouble(nblocks, nh2, 0.0) ; 
+
+  ZALLOC(f3jweights2, nblocks, double) ;
+  f3jack2 = initarray_2Ddouble(nblocks, nh2, 0.0) ; 
+  
+ }
+
+
+ if (fstatsname == NULL) { 
+//  printf("calling doff3 %d %d %d %d %9.3f\n", nrows, ncols, numeg, nblocks, lambdascale) ; 
+
+// *** new *** 
+  if (fullvar) {
+    numxbl = doff3 (ff3, ff3var, xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks,
          lambdascale);
-// side effect vvar made
-   dumpfstats(fstatsname, ff3, ff3var, eglist, numeg, ind2f, basenum) ; 
+    copyarr(vvar, qvvar, nh2*nh2) ; 
+  }
+   
+  if (halfscore == NO) { 
+   numxbl = doff3 (ff3, ff3var, xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks,
+         lambdascale);
+// side effect vvar set
+  }
+  else { 
+
+   numxbl = doff3blocks (ff3, ff3var, xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks,
+         lambdascale, f3jack, f3jweights, blocktypes, 1);
+
+   doff3blocks (ff3out, ff3varout, xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks,
+         lambdascale, f3jack2, f3jweights2, blocktypes, 2);
+
+   if (fullvar) vvar = vvar2 = qvvar ;              
+
+  }
+
+   printf("number of blocks with nonzero data: %d\n", numxbl) ;
+   dumpfstats(fstatsoutname, ff3, ff3var, eglist, numeg, ind2f, basenum) ; 
+ }
+
+ if (fstatsname != NULL)  {
+   loadfstats(fstatsname, ff3, ff3var, eglist, numeg) ; 
+   setvv(vest, vvar, ff3, ff3var, ind2f, numeg) ; 
+   for (u = 0; u < nh2; ++u) {
+     y = vvar[u * nh2 + u];
+     vvar[u * nh2 + u] = MAX (y, minvar);
+   }
+  }
+
+
+  copyarr (vvar, xvvar, nh2 * nh2);
+
+  for (u = 0; u < nh2; ++u) {
+    y = vvar[u * nh2 + u];
+    xvvar[u * nh2 + u] += y * f2diag;
+  }
+   pdinv(vvinv, xvvar, nh2) ; 
+
+   if (halfscore) { 
+
+   copyarr (vvar2, xvvar, nh2 * nh2);
+   for (u = 0; u < nh2; ++u) {
+     y = vvar2[u * nh2 + u];
+     xvvar[u * nh2 + u] += y * f2diag;
+   }
+    pdinv(vvinv2, xvvar, nh2) ; 
+  }
+   
 
   if (badpop2name != NULL) {
 
@@ -788,19 +953,23 @@ outpop:    (not present)
     return 0;
   }
   printf ("starting analysis\n");
-  y = trace (xvvar, nh2);
-  y *= 1.0e-5;
+
+ if (fstatsname == NULL)  {
+  y = 1.0e-5 *trace(xvvar, nh2) ; ;
   vclear (www, y, nh2);
   adddiag (xvvar, www, nh2);
+  pdinv (vvinv, xvvar, nh2);
+
+  y = 1.0e-5 * trace(xvvinv, nh2) ; 
   adddiag (xvvinv, www, nh2);
 
-  pdinv (vvinv, xvvar, nh2);
   pdinv (xvvinv, xvvinv, nh2);
   for (a = 1; a < numeg; a++) {
     u = f2ind[a * numeg + a];
     xvvinv[u * nh2 + u] *= f2weight;
   }
 // xvvinv used in lsq mode
+ }
 
 /**
   printmatw(vvar, nh2, nh2, nh2) ;
@@ -821,7 +990,7 @@ outpop:    (not present)
   na2 = nanc*(nanc-1)/2 ;
   nvar = nedge + na2 ;  
   if (verbose) {
-   printf("zzmain: %d %d\n", nedge, nvar) ;
+   printf("zzstart: %d %d\n", nedge, nvar) ;
    printmat(pwts, nrows, nvar) ;
   }
 //  verbose = NO ;
@@ -834,19 +1003,22 @@ outpop:    (not present)
     if (lmix[k] != 2)
       fatalx ("qpGraph: only binary admixture supported\n");
   }
+  if ((loadname != NULL) || (admixin != NULL)) { 
+   initmixnum=0 ;
+   callinitv = NO ; 
+  }
 
   if (initmixnum < 0) {
-    t = (int) pow (2, nmix);
+     t = nnint(pow (2, nmix)) ;
+      initmixnum = MAX (100 * nmix, 20 * t);
   }  
 
-  if (initmixnum>0) initmixnum = MAX (100 * nmix, 20 * t);
 
-  if (loadname != NULL) callinitv = NO ;
-  if (admixin != NULL) callinitv = NO ;
-
-  if (callinitv) {
+  if (callinitv==YES) {
+    printf("calling initvmix: %d\n", initmixnum); fflush(stdout) ; 
     y = initvmix (wwtemp, nwts, initmixnum);    // side effect sets vmix
     printf ("callinitv set. initial admix wts:  score: %9.3f\n", y);
+ // if (y < .0001) fatalx("init score bug\n") ; 
     getwww (vmix, wwtemp, nwts);
     putgmix (vmix);
   }
@@ -916,7 +1088,7 @@ outpop:    (not present)
     printmat (vgsl, 1, nmix);
     gslsetup (nmix, vgsl);
     gslopt (vgsl);
-    printf ("final vg:\n");
+    printf ("final vg:");
     printmat (vgsl, 1, nmix);
     vtow (vgsl, vmix, nmix);
 
@@ -927,6 +1099,7 @@ outpop:    (not present)
 
   if (details)
     verbose = YES;
+
   y = scorit (wwtemp, nwts, &y1, ww2);
 
   dof = nh2 -nvar  + intsum (ezero, nedge);
@@ -938,6 +1111,76 @@ outpop:    (not present)
           y, dof, ytail);
   printf("number of graph evaluations: %d\n", numscorit) ;
 
+  putewts(ww2) ; 
+
+  y2 = graph2ff3(ff3fit, vvinv, vest) ; 
+//  printf("zzfita %15.6f %15.6f\n", y, y2)  ; 
+
+ if (halfscore) { 
+
+  y2 = graph2ff3(vfit, vvinv2, vest2) ; 
+
+ if (verbose) {
+  printmat(vest, 1, nh2) ; printnl() ;
+  printmat(vest2, 1, nh2) ; printnl() ;
+
+  printmat(vfit, 1, nh2) ; printnl() ;
+  printmat(f3jack[0], 1, nh2) ; printnl() ;
+  printmat(f3jack2[0], 1, nh2) ; printnl() ;
+
+  printf("vvar\n") ;
+  printmatl(vvar, 1, 5) ; 
+  printnl() ;
+  printmatl(vvar2, 1, 5) ; 
+  printnl() ; 
+  printnl() ; 
+  printf("vvinv\n") ;
+  printmatl(vvinv, 1, 5) ; 
+  printnl() ;
+  printmatl(vvinv2, 1, 5) ; 
+  printnl() ;
+
+ }
+
+  setoutsc(wb1, vest, vvinv2, f3jack2, blocktypes, 2, nblocks) ; 
+  setoutsc(wb2, vfit,  vvinv2, f3jack2, blocktypes, 2, nblocks) ; 
+//  printf("zzfit %15.6f %15.6f\n", y, y2)  ; 
+
+  vvm(wwb, wb1, wb2, nblocks) ; 
+
+  for (k=0; k<nblocks; ++k) { 
+   if (halfjackname != NULL) break ; 
+   printf("wbjack: %5d ", k) ; 
+   printf(" %9.3f", wb2[k]) ; 
+   printf(" %9.3f", wb1[k]) ; 
+   printf(" %9.3f", wwb[k]) ; 
+   printf(" %3d ", blocktypes[k]) ; 
+   printnl() ;
+  }
+  weightjack(&wmean, &wsig, wwb[0], wwb+1, f3jweights2+1, nblocks-1) ; 
+  wsig += 1.0e-10 ; 
+  printf("halfscore. 2*log likelihood. baseline empirical: %12.6f jmean: %12.6f s.err.: %12.6f\n", wwb[0], wmean, wsig) ;  
+  printf("Zfit: %9.3f\n",  wmean/wsig) ;
+
+   f3jweights2[0] = 0 ; 
+   writehj(halfjackname, graphname, seed, wwb, f3jweights2, nblocks) ;
+
+ }
+
+ else { 
+
+ if (verbose) { 
+  printmat(vest, 1, nh2) ; printnl() ;
+  printmat(vfit, 1, nh2) ; printnl() ;
+
+  printnl() ; 
+  printnl() ; 
+  printmatl(vvinv, 1, 5) ; 
+  printnl() ;
+  printnl() ;
+ }
+
+}
 
   calcfit (ff3fit, ww2, numeg);
 
@@ -987,7 +1230,7 @@ calcfit (double *ff3fit, double *ww, int numeg)
   ZALLOC (bestf, nh2, double);
 
   xwts = ppwts;
-  ng2 = numeg + numeg;
+  ng2 = numeg * numeg;
   vzero (ff3fit, ng2);
   for (u = 0; u < nh2; ++u) {
     y1 = bestf[u] = vdot (xwts, ww, nvar);
@@ -1486,11 +1729,14 @@ scorit (double *www, int n, double *pfix, double *ans)
   ZALLOC (pwts, numeg * MAXG, double);
   ZALLOC (awts, numeg * MAXG, double);
 
+
   getpwts (pwts, awts, &nrows, &nedge, &nanc);
   na2 = nanc*(nanc-1)/2 ;  
   nvar = nedge + na2 ;
+
   ZALLOC (xxans, nvar, double);
   ZALLOC (ppwts, nh2 * nvar, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
+
   loadppwts (ppwts, pwts, nedge, awts, nanc);
 
 
@@ -1500,22 +1746,9 @@ scorit (double *www, int n, double *pfix, double *ans)
 
   yscore = calcxx (xxans, ppinv, ppwts, vest, nh2, nedge, nanc);
 
-  if (ncall == -1)  {
-    printf("init score: %9.3f\n", yscore) ;
-    printf("zzinit: %d %d ", nedge, nvar) ; 
-    if (nmix!=0) printmat(tt, 1, nmix) ;
-    else printnl()  ;
-    printf("pwts:\n") ;
-    printmat(pwts, nrows, nedge) ;
-    printnl() ;
-    printf("awts:\n") ;
-    printmat(awts, nrows, nanc) ;
-    printnl() ;
-    printmat(ppwts, nh2, nvar) ; 
-    printnl() ;
-    printmat(xxans, 1, nvar) ;  
-    printnl() ;
-    printfit(xxans) ;
+  if (debug) { 
+   printf("zzans:\n") ; 
+   printmat(xxans, 1, nh2) ; 
   }
 
   if (pfix != NULL)
@@ -1550,7 +1783,9 @@ calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
   double ttans[100];
   double *q1, *q2;
   int *constraint, *cpt ; 
+  static long ncall = 0 ; 
 
+  ++ncall ;
   na2 = nanc*(nanc-1)/2 ;
   ncol = nedge + na2 ;
 
@@ -1586,6 +1821,7 @@ calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
   for (a = 0; a < nrow; a++) {
     for (b = 0; b < nrow; b++) {
       y = qmat[a * nrow + b];
+      if (ncall == -1) printf("zza  %d %d %15.9f\n", a, b, y) ;
       pa = ppwts + a * ncol;
       pb = ppwts + b * ncol;
       for (i = 0; i < ncol; i++) {
@@ -1615,11 +1851,19 @@ calcxx (double *xxans, double *qmat, double *ppwts, double *rhs,
 
 
   mulmat (ll, ppwts, xxans, nrow, ncol, 1);
+
+/**
   vvm (w2, ll, rhs, nrow);
   mulmat (w1, qmat, w2, nrow, nrow, 1);
-
   y = vdot (w1, w2, nrow);
+*/
 
+  y = scx(qmat, rhs,ll, nrow) ; 
+
+  mulmat (ll, ppwts, xxans, nrow, ncol, 1);
+  vvm (w2, ll, rhs, nrow);
+  mulmat (w1, qmat, w2, nrow, nrow, 1);
+  y = vdot (w1, w2, nrow);
   free (cc);
   free (rr);
   free (ll);
@@ -1866,6 +2110,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "graphdotname:", &graphdotname);
   getstring (ph, "phylipname:", &phylipname);
   getstring (ph, "fstatsname:", &fstatsname);
+  getstring (ph, "fstatsoutname:", &fstatsoutname);
   getstring (ph, "outpop:", &outpop);
   getstring (ph, "output:", &outputname);
   getstring (ph, "badsnpname:", &badsnpname);
@@ -1881,6 +2126,8 @@ readcommands (int argc, char **argv)
   getint (ph, "inbreed:", &inbreed);
   getint (ph, "useallsnps:", &allsnpsmode);
   getint (ph, "allsnps:", &allsnpsmode);
+  getint (ph, "oldallsnps:", &oldallsnpsmode);
+  getint (ph, "loadf3:", &loadf3);
   getint (ph, "numchrom:", &numchrom);
   getint (ph, "initmix:", &initmixnum);
   getint (ph, "initverbose:", &initverbose);
@@ -1911,11 +2158,15 @@ readcommands (int argc, char **argv)
   getint (ph, "details:", &details);
   getint (ph, "lsqmode:", &lsqmode);
   getint (ph, "fstdmode:", &fstdmode);
+  getint (ph, "halfscore:", &halfscore);
+  getint (ph, "fullvar:", &fullvar);
+
   getstring (ph, "dumpname:", &dumpname);
   getstring (ph, "loadname:", &loadname);
   getstring (ph, "outliername:", &outliername);
   getstring (ph, "blockname:", &blockname);
-  getint (ph, "hires:", &hires);
+  getstring (ph, "halfjackname:", &halfjackname);
+// use all data for variance in halfscoe mode
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");
@@ -1952,7 +2203,170 @@ sol2 (double *co, double *rhs, double *ans)
 
 }
 
-void
+
+int
+doff3blocks (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
+       int nrows, int ncols, int numeg, int nblocks, double scale, double **f3jack, double *f3jweights, 
+       int *blocktypes, int bmode) 
+// f3jack f3jweights   output.   blocktypes -1, 1, 2 xmode 1 insample, xmode 0 out of sample
+{
+
+  int t1, t2;
+  int a, b, c;
+  int ng2, ng3;
+  int c1[2], c2[2], *cc;
+  int *rawcol, *popall, *pop0, *pop1;
+  int k, g, i, col, j;
+  double ya, yb, y, jest, jsig, mean;
+  SNP *cupt;
+  double *top, *bot, *djack, *wjack, *gtop, *gbot, *wbot, *wtop;
+  double **btop, **bbot, wt;
+  double *w1, *w2, *w3;
+  double ytop, ybot;
+  double y1, y2, yscal;
+  int bnum;
+  int numegm = numeg - 1;
+  int u, v, x, kret;
+  double *estmat;
+  int numxblocks = 0 ;
+  double *qvest, *qvvar ; 
+
+  ng2 = numeg * numeg;
+  ng3 = numeg * numeg * numeg;
+
+  ZALLOC (w1, ng3, double);
+  ZALLOC (w2, ng3, double);
+  ZALLOC (w3, ng3 * numeg, double);
+  ZALLOC (gtop, ng3, double);
+  ZALLOC (gbot, ng3, double);
+  ZALLOC (wtop, ng3, double);
+  ZALLOC (wbot, ng3, double);
+  ZALLOC (estmat, ng3, double);
+  ZALLOC (djack, nblocks, double);
+  ZALLOC (wjack, nblocks, double);
+  btop = initarray_2Ddouble (nblocks, ng3, 0.0);
+  bbot = initarray_2Ddouble (nblocks, ng3, 0.0);
+
+  qvest = vest ; qvvar = vvar ; 
+  if (bmode == 2) { 
+   qvest = vest2 ; qvvar = vvar2 ; 
+  }
+  
+
+// printf("zz ") ;  printimat(ind2f, 1, nh2) ;
+
+  for (col = 0; col < ncols; ++col) {
+    cupt = xsnplist[col];
+    if (cupt->ignore)
+      continue;
+    wt = cupt->weight;
+    if (wt <= 0.0)
+      continue;
+    bnum = cupt->tagnumber;
+    if (bnum < 0)
+      continue;
+    if (bnum==0) fatalx("logic bug (blocksz?)\n") ; 
+    if (bmode > 0) { 
+     x = blocktypes[bnum] ; 
+     if (x != bmode) continue ; 
+    }
+    top = btop[bnum];
+    bot = bbot[bnum];
+
+    kret = f3yyx (estmat, cupt, xindex, xtypes, nrows, numeg, indivmarkers);
+    if (kret < 0)
+      continue;
+
+    ++wjack[bnum];
+
+    a = basenum;
+    for (u = 0; u < nh2; u++) {
+      x = ind2f[u];
+      b = x / numeg;
+      c = x % numeg;
+      ytop = dump3 (estmat, a, b, c, numeg);
+      if (ytop < -100)
+        continue;
+      if (fstdmode == NO) {
+        top[u] += wt * ytop;
+        bot[u] += 1.0;
+      }
+      else {
+        top[u] += ytop;
+        bot[u] += 1.0 / wt;
+      }
+    }
+  }
+
+  for (k = 0; k < nblocks; k++) {
+    top = btop[k];
+    bot = bbot[k];
+    vvp (gtop, gtop, top, nh2);
+    vvp (gbot, gbot, bot, nh2);
+  }
+
+  vsp (w2, gbot, 1.0e-10, nh2);
+  vvd (w3, gtop, w2, nh2);
+  vzero (ff3, numeg * numeg);
+  for (u = 0; u < nh2; u++) {
+    x = ind2f[u];
+    b = x / numeg;
+    c = x % numeg;
+    y1 = w3[u];
+    bump2 (ff3, b, c, numeg, y1);
+    if (b < c)
+      bump2 (ff3, c, b, numeg, y1);
+  }
+
+
+  for (k = 1; k < nblocks; k++) {
+    top = btop[k];
+    bot = bbot[k];
+    vvm (wtop, gtop, top, nh2);
+    vvm (wbot, gbot, bot, nh2);
+    vsp (wbot, wbot, 1.0e-10, nh2);
+    vvd (top, wtop, wbot, nh2); // delete-block estimate
+    copyarr(top, f3jack[k], nh2) ; 
+    f3jweights[k] = wjack[k] ; 
+  }
+  vsp (gbot, gbot, 1.0e-10, nh2);
+  vvd (gtop, gtop, gbot, nh2);
+  copyarr(gtop, f3jack[0], nh2) ; 
+  f3jweights[0] = 0 ; 
+
+  wjackvest (qvest, qvvar, nh2, gtop, btop, wjack, nblocks);
+  vst (qvest, qvest, scale, nh2);
+  vst (qvvar, qvvar, scale * scale, nh2 * nh2);
+
+  vst (ff3, ff3, scale, numeg * numeg);
+  map4x (qvvar, ff3var, numeg, ind2f);
+
+  numxblocks = 0 ; 
+  for (k=0; k<nblocks; ++k) { 
+   vst (f3jack[k], f3jack[k], scale, nh2);
+   if (wjack[k]>0) ++numxblocks ; 
+  }
+
+
+  free (w1);
+  free (w2);
+  free (w3);
+
+  free (gbot);
+  free (wtop);
+  free (wbot);
+  free (estmat);
+  free (djack);
+  free (wjack);
+
+  free2D (&btop, nblocks);
+  free2D (&bbot, nblocks);
+
+  return numxblocks ;
+
+}
+
+int
 doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
        int nrows, int ncols, int numeg, int nblocks, double scale)
 {
@@ -1974,6 +2388,7 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
   int numegm = numeg - 1;
   int u, v, x, kret;
   double *estmat;
+  int numxblocks = 0 ; 
 
   ng2 = numeg * numeg;
   ng3 = numeg * numeg * numeg;
@@ -1990,11 +2405,6 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
   ZALLOC (wjack, nblocks, double);
   btop = initarray_2Ddouble (nblocks, ng3, 0.0);
   bbot = initarray_2Ddouble (nblocks, ng3, 0.0);
-
-  ZALLOC (vest, nh2, double);
-  ZALLOC (vvar, nh2 * nh2, double);
-
-// printf("zz ") ;  printimat(ind2f, 1, nh2) ;
 
   for (col = 0; col < ncols; ++col) {
     cupt = xsnplist[col];
@@ -2075,6 +2485,11 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
   map4x (vvar, ff3var, numeg, ind2f);
 //  vst(ff3var, ff3var, scale*scale, numeg*numeg*numeg*numeg) ;
 
+  numxblocks = 0 ;
+  for (k=0; k<nblocks; ++k) { 
+   if (wjack[k]>0) ++numxblocks ; 
+  }
+
 
   free (w1);
   free (w2);
@@ -2090,7 +2505,35 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
   free2D (&btop, nblocks);
   free2D (&bbot, nblocks);
 
+  return numxblocks ;
+
 }
+
+double calcf3 (double *ff3, double *xxans, double *qmat, double *ppwts, double *rhs,
+        int nrow, int nedge,int nanc)
+
+// like calcxx but xxans is input returns score
+
+{
+
+  double *cc, *rr, *ll, *w1, *w2;
+  double *pa, *pb;
+  int a, b, i, j, kret, u, x, c, f=0;
+  int ncol, na2 ;
+  double y;
+  static long ncall = 0 ; 
+
+  ++ncall ;
+  na2 = nanc*(nanc-1)/2 ;
+  ncol = nedge + na2 ;
+
+  mulmat (ff3, ppwts, xxans, nrow, ncol, 1);
+  y = scx(qmat, rhs, ff3, nrow) ; 
+
+
+  return y;
+}
+
 
 void
 map4y (double *aa, double *bb, int n2, int *indx)
@@ -2387,44 +2830,6 @@ vtow (double *vv, double **ww, int n)
     ww[k][1] = 1.0 - y;
   }
 }
-void   dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) 
-{
-   FILE *fff ;
-   int a, b, nh2, k, x, u, v, c, d ; 
-   double y1, y2 ; 
-
-   if (fstatsname == NULL) return ; 
-
-   openit(fstatsname, &fff, "w") ; 
-   fprintf(fff, "##fbasis.  basepop: %s ::  f3*1000 covar*1000000\n", eglist[basenum]) ;  
-   
-   nh2 = numeg * (numeg - 1);
-   nh2 /= 2;
-   for (u=0; u<nh2; ++u) { 
-     x = indx[u];
-     a = x / numeg;
-     b = x % numeg;
-     y1 = ff3[a*numeg+b]*1000 ; 
-     fprintf(fff, "%15s %15s  ", eglist[a], eglist[b]) ; 
-     fprintf(fff, "%9.3f\n", y1) ;
-   }
-   for (u=0; u<nh2; ++u) { 
-    for (v=u; v<nh2; ++v) { 
-     x = indx[u];
-     a = x / numeg;
-     b = x % numeg;
-     x = indx[v];
-     c = x / numeg;
-     d = x % numeg;
-     y2 = dump4 (ff3var, a, b, c, d, numeg) * 1000 * 1000 ;
-     fprintf(fff, "%15s %15s   ",  eglist[a], eglist[b]) ; 
-     fprintf(fff, "%15s %15s   ",  eglist[c], eglist[d ]) ; 
-     fprintf(fff, "%9.3f\n", y2) ;
-   }}
-
-   fclose(fff) ; 
-
-}
 
 int usage (char *prog, int exval)
 {
@@ -2435,7 +2840,7 @@ int usage (char *prog, int exval)
   (void)fprintf(stderr, "   -s <val>    ... use <val> seed.\n");
   (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
   (void)fprintf(stderr, "   -g <nam>    ... use <nam> as graph name.\n");
-  (void)fprintf(stderr, "   -o <nam>    ... use <nam> au out graph.\n");
+  (void)fprintf(stderr, "   -o <nam>    ... use <nam> as out graph.\n");
   (void)fprintf(stderr, "   -d <nam>    ... use <nam> for graph dot name.\n");
   (void)fprintf(stderr, "   -x <nam>    ... use <nam> as oulier name.\n");
   (void)fprintf(stderr, "   -l <val>    ... use <val> as lambda scale value.\n");
@@ -2445,3 +2850,128 @@ int usage (char *prog, int exval)
   exit(exval);
 };
 
+
+void mkfstats(char *parname)  
+{
+ char sss[128] ; 
+ char fsx[128] ; 
+ char ppp[128] ;  
+ char pops[128] ;  
+ char tpar[128] ; 
+
+ int pid ; 
+
+ FILE *fff ; 
+
+ pid = getpid() ; 
+ strcpy(fsx, mytemp("fsx")) ; 
+ strcpy(ppp, mytemp("ppp")) ; 
+ strcpy(pops, mytemp("pops")) ; 
+ strcpy(tpar, mytemp("tpar")) ; 
+
+ printf("tmp: %s\n", fsx) ;
+ fstatsname = strdup(fsx) ; 
+
+ openit(ppp, &fff, "w") ; 
+ sprintf(sss, "fgrep -v fstatsoutname: %s | fgrep -v poplistname: > %s", parname, tpar) ; 
+ system(sss) ; 
+ copyfs(tpar, fff) ; 
+
+ fprintf(fff, "fstatsoutname: %s\n", fsx) ; 
+ if (graphname == NULL) fatalx("(mkfstats) no graphname!\n") ;
+ sprintf(sss, "grepcol_silent 0 label < %s | xtractcol 2 > %s\n", graphname, pops) ; 
+// printf("cmd1: %s\n", sss) ; 
+ system (sss) ; 
+ fprintf(fff, "poplistname: %s\n", pops) ; 
+ fclose(fff) ; 
+// sprintf(sss, "cat %s\n", ppp) ; 
+// system(sss) ; 
+ sprintf(sss, "qpfstats -p %s > /tmp/qqlog:%d", ppp, pid) ; 
+ system(sss) ; 
+ // printf("exiting mkfstats\n") ; 
+ if (fstatsoutname != NULL) { 
+  sprintf(sss, "cp %s %s", fsx, fstatsoutname) ; 
+  system(sss) ;
+  printf("fstats file: %s made\n", fstatsoutname) ;
+ } 
+ return ; 
+
+}
+double graph2ff3(double *ff3, double *qmat, double *rhs) 
+// makes f basis from graph .  returns score 
+{
+  double *ewts, *pwts, *awts, *ans, *ppwts  ; 
+  int nanc, nedge, na2, nvar, nrows ; 
+  double y ; 
+
+
+  ZALLOC (pwts, numeg * MAXG, double);
+  ZALLOC (awts, numeg * MAXG, double);
+
+
+  getpwts (pwts, awts, &nrows, &nedge, &nanc);
+
+  na2 = nanc*(nanc-1)/2 ;  
+  nvar = nedge + na2 ;
+
+  ZALLOC (ans, nvar, double);
+  ZALLOC (ppwts, nh2 * nvar, double);  // coeffs of x_{ab} = (p_0 - p_a) (p_0-p_b)
+
+  loadppwts (ppwts, pwts, nedge, awts, nanc);
+  getewts(ans) ; 
+
+  if (debug) { 
+   printf("zzans2:\n") ; 
+   printmat(ans, 1, nh2) ; 
+  }
+  y =  calcf3 (ff3, ans, qmat, ppwts, rhs, nh2, nedge, nanc) ;
+
+  free(pwts) ; 
+  free(awts) ; 
+  free(ans) ; 
+  free(ppwts) ; 
+
+  return y ; 
+
+}
+
+void 
+setoutsc(double *wb,  double *fest, double *qmat, double **jmean,  int *blocktypes, int btype, int nblocks)  
+{
+  
+  int k ; 
+
+  vzero(wb, nblocks) ; 
+  for (k=0; k<nblocks; ++k) { 
+   if ((k>0) && blocktypes[k] != btype) continue ; 
+   wb[k] = scx(qmat, jmean[k], fest, nh2) ; 
+
+   if (k==-1) { 
+    printf("zzsetout\n") ; 
+    printmat(jmean[k], 1, nh2) ; 
+    printnl() ; 
+    printmat(fest, 1, nh2) ; 
+    printnl() ;
+   }
+  }
+}
+
+void
+writehj(char *halfjackname, char *graphname, int seed, double *vals, double *wvals, int n) 
+{
+
+ FILE *fff ;
+ int k, last ; 
+ 
+ if (halfjackname == NULL) return ; 
+ last = findflastgt(wvals, n, 0) ; 
+ openit(halfjackname, &fff, "w") ; 
+ fprintf(fff, "## graph: %s seed: %d (negative => fit worse than empirical)\n", graphname, seed) ;
+
+ for (k=0; k<n; ++k) { 
+  fprintf(fff, "%5d %9.0f %12.6f\n", k, wvals[k], vals[k]) ;
+  if (k==last) break ; 
+ }
+
+ fclose(fff) ; 
+}

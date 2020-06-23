@@ -1363,16 +1363,3 @@ void setinfiles(char **pind, char **psnp, char **pgeno, char *stem)
 
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-

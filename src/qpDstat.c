@@ -26,7 +26,7 @@
 */
 
 
-#define WVERSION   "900"
+#define WVERSION   "970"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -59,6 +59,7 @@ int colcalc = YES;
 int qtmode = NO;
 int hires = NO;
 int printsd = NO;
+int fourier = NO ; 
 
 Indiv **indivmarkers;
 SNP **snpmarkers;
@@ -200,7 +201,7 @@ main (int argc, char **argv)
   double **zdata, *z1, *z2;
   int maxtag = -1;
   double **zz;
-  double *pmean, *pnum, rscore[3], dstat[3], hscore[3], rrr[3], ww[3],
+  double *pmean, *pnum, rscore[3], dstat[3], rrr[3], ww[3],
     serr[3];
   int ssize[3][3], *sz;
   int tpat[3][4], rpat[3][4], *rrtmp, *rp;
@@ -476,6 +477,13 @@ main (int argc, char **argv)
     if (tt>nblocks) fatalx("bad tagnumber!\n") ; 
   }
 
+  vzero(rscore,3) ; 
+  vzero(dstat,3) ; 
+   vzero(rrr,3) ; 
+   vzero(ww,3) ; 
+
+
+
   setabx (abx, bax, counts, ncols, numeg);
   if (dotree)
     setf2 (f2, counts, ncols, numeg);
@@ -616,6 +624,7 @@ main (int argc, char **argv)
     }
 
 
+    vzero(rscore, 3) ; 
     getdsc (&rscore[0], &dstat[0], abx, bax, ncols,
             a, b, c, d, numeg, bcols, nblocks, ssize[0]);
 
@@ -769,11 +778,9 @@ readcommands (int argc, char **argv)
   getint (ph, "msjackweight:", &msjackweight);
   getdbl (ph, "blgsize:", &blgsize);
   getint (ph, "dotree:", &dotree);
-  getint (ph, "printsd:", &printsd);
   getint (ph, "nochrom:", &zchrom);
   getint (ph, "locount:", &locount);
   getint (ph, "hicount:", &hicount);
-  getint (ph, "numchrom:", &numchrom);
 
   getint (ph, "noxdata:", &noxdata);
   getint (ph, "xdata:", &xdata);
@@ -795,7 +802,9 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "xmode:", &xmode);
   getint (ph, "f4mode:", &f4mode);
+  getint (ph, "printsd:", &printsd);
   getstring (ph, "blockname:", &blockname);
+  getint (ph, "fourierjack:", &fourier);
 
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -1059,6 +1068,7 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
   int *nzd;
 // nzdata is # blocks with  nonzero abba or baba counts 
   double zbaba, zabba;
+  double rho, mblocks ;
 
   *dzscx = *dzsc = 0.0;
   sgn = 1.0;
@@ -1185,7 +1195,22 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
    }
 */
 // abort() ;
-  weightjack (&est, &sig, ymean, jmean, jwt, nblocks);
+  mblocks = nblocks ; 
+  for (k=nblocks-1; k>=0; --k) { 
+   if (jwt[k] > 0) break ;  
+   --mblocks ; 
+  }
+
+  if (fourier) {
+   weightjackfourier (&est, &sig, ymean, jmean, jwt, mblocks, &rho);
+   printf("fourier called.  rho: %9.3f\n", rho) ; 
+   verbose = NO ; 
+  }
+
+  else {
+   weightjack (&est, &sig, ymean, jmean, jwt, mblocks);
+  }
+
   *dzscx = est / (sig + 1.0e-20);       // Z score
   *dzsc = est;
 
@@ -1395,7 +1420,7 @@ ckdups (char **list, int n)
   }
 }
 int usage (char *prog, int exval)
-{
+{ 
 
   (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
   (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");

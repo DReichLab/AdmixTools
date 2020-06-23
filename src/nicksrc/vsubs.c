@@ -517,6 +517,23 @@ adddiag (double *a, double *diag, int n)
   }
 }
 
+void
+diagplus (double *b, double *a, double eps, int n)
+
+{
+  double *dd, y  ; 
+
+  ZALLOC(dd, n, double) ;
+  y = eps*trace(a, n)/(double) n ; 
+// scale invariant
+  vclear(dd, y, n) ;
+  copyarr(a, b, n*n) ; 
+  adddiag(b, dd, n) ;
+
+  free(dd) ;
+}
+
+
 
 
 void
@@ -1185,6 +1202,27 @@ printimatw (int *a, int m, int n, int w)
   }
 }
 
+
+void
+printimatxfile (int *a, int m, int n, FILE *fff)
+
+/** 
+ print a matrix n wide m rows  
+ no final new line
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      fprintf (fff, "%5d ", a[i * n + j]);
+      jmod = (j + 1) % 10;
+      if ((jmod == 0) && (j < (n - 1))) {
+        fprintf (fff, "  ...\n");
+      }
+    }
+  }
+}
+
 void
 printimatx (int *a, int m, int n)
 
@@ -1222,6 +1260,27 @@ printimat2D (int **a, int m, int n)
 
   for (k = 0; k < m; ++k) {
     printimat (a[k], 1, n);
+  }
+}
+
+
+void
+printimat1x (int *a, int m, int n)
+
+/** 
+ print a matrix n wide m rows, %1d format  
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      printf ("%1d", a[i * n + j]);
+      jmod = (j + 1) % 50;
+      if ((jmod == 0) && (j < (n - 1))) {
+        printf ("  ...\n");
+      }
+    }
+    if (i < (m - 1)) printf ("\n");
   }
 }
 
@@ -2833,4 +2892,37 @@ int visnan(double *a, int n)
 
 }
 
+
+int 
+findlastgt(int *a, int n, int val) 
+// should scan backwards really
+{
+
+ int k, last ; 
+ int x  ; 
+
+ last = n ; 
+ for (k=0; k<n; ++k) { 
+  x = a[k] - val ; 
+  if (x>0) last = k ; 
+ }
+ return last ;
+}
+
+
+int 
+findflastgt(double *a, int n, double val) 
+// should scan backwards really
+{
+
+ int k, last ; 
+ double y ; 
+
+ last = n ; 
+ for (k=0; k<n; ++k) { 
+  y = a[k] - val ; 
+  if (y>1.0e-6) last = k ; 
+ }
+ return last ;
+}
 

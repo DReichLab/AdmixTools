@@ -25,12 +25,13 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "700"
+#define WVERSION   "800"
 
 // gsimplify option added
 // calctime added  
 // calctime NOT YET WORKING
 // calcscript bug fixed 
+// cleantree added
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -43,6 +44,8 @@ int qtmode = NO;
 int fstdmode = NO;
 int hires = NO;
 int inbreed = NO;
+int cleantree = YES ; 
+int gsimp = NO ; 
 
 int isinit = NO;
 
@@ -152,12 +155,12 @@ main (int argc, char **argv)
 
   }
 
-/**
   if (gsimp) {
     printf ("calling gsimplify\n");
     gsimplify (0);
   }
-*/
+
+  if (cleantree) vuseful() ; 
 
   dumpgraph (graphoutname);
   dumpdotgraph (graphdotname);
@@ -246,7 +249,7 @@ readcommands (int argc, char **argv)
   int n, t;
 
   if (argc == 1) { usage(basename(argv[0]), 1); }
-  while ((i = getopt (argc, argv, "p:r:g:o:d:x:s:HhvVtf")) != -1) {
+  while ((i = getopt (argc, argv, "p:r:g:o:d:x:s:HhvVtfw")) != -1) {
 
     switch (i) {
 
@@ -295,6 +298,10 @@ readcommands (int argc, char **argv)
       printf ("version: %s\n", WVERSION);
       break;
 
+    case 'w':
+      gsimp = YES ; 
+      break;
+
     case 'V':
       verbose = YES;
       break;
@@ -329,6 +336,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "edgename:", &edgename);
   getdbl (ph, "valbreak:", &valbreak);
   getint(ph, "calctime:", &calctime) ;
+  getint(ph, "cleantree:", &cleantree) ;
   t = 1 ; 
   getint(ph, "outformat:", &t) ;
   setoutformat(t) ; 

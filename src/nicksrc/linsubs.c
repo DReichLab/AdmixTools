@@ -33,6 +33,38 @@ bal (double *a, double *b, int n)
   vst (a, a, 1.0 / sqrt (t), n);
 }
 
+
+void xmultx(double *a, double *b, int m, int n) 
+{
+ // M' x M : a is m x m 
+ double *tb ; 
+
+ ZALLOC(tb, m*n, double) ; 
+ 
+ transpose(tb, b, m, n) ;  
+ mulmat(a, b, tb, m, n, m) ; 
+ 
+
+ free(tb) ;
+
+
+}
+void txmulx(double *a, double *b, int m, int n) 
+{
+ // M' x M : a is n x n 
+ double *tb ; 
+
+ ZALLOC(tb, m*n, double) ; 
+ 
+ transpose(tb, b, m, n) ;  
+ mulmat(a, tb, b, n, m, n) ; 
+ 
+
+ free(tb) ;
+
+
+
+}
 void
 mulmat (double *a, double *b, double *c, int a1, int a2, int a3)
 

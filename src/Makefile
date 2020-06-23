@@ -1,7 +1,6 @@
 HOMEL=$(PWD)
 TOP=../bin
 BIN=$(HOMEL)/../bin
-CC=gcc
 
 override LDLIBS += -lgsl -lopenblas -lm -lnick
 # Some Linux distributions require separate lapacke library
@@ -22,12 +21,17 @@ endif
 ND = nicksrc
 NLIB = $(ND)/libnick.a
 
-PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart ##  gcount kimf
-## rolloff* convertf mergeit from .../o2src
+PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart qpfstats qpfmv gcount kimf grabpars qpdslow
+PROGS3 = rolloff rolloffp convertf mergeit simpjack2
+PERLP = jackdiff mkpretty
+
+##  gcount kimf
 
 PROGS2 = rexpfit.r  wtjack.pl 
 
-all: $(NLIB) $(PROGS) 
+CC = cc
+
+all: $(NLIB) $(PROGS) $(PROGS3) 
 
 
 $(NLIB):
@@ -43,6 +47,8 @@ expfit.sh:	expfit.templ
 	chmod +x expfit.sh
 
 qpDstat: $(NLIB) qpDstat.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+
+qpdslow: $(NLIB) qpdslow.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 qpDpart: $(NLIB) qpDpart.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
@@ -72,14 +78,28 @@ grabpars: $(NLIB) grabpars.o
 
 qpff3base: $(NLIB) qpff3base.o qpgsubs.o qpsubs.o mcio.o admutils.o egsubs.o regsubs.o ldsubs.o
 
+qpfstats: $(NLIB) qpfstats.o qpgsubs.o qpsubs.o mcio.o admutils.o egsubs.o regsubs.o ldsubs.o
+
+qqpfstats: $(NLIB) qqpfstats.o qpgsubs.o qpsubs.o mcio.o admutils.o egsubs.o regsubs.o ldsubs.o
+
+qpfmv: $(NLIB) qpfmv.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o  eigsubs.o eigx.o
+
+qqpfmv: $(NLIB) qqpfmv.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o  eigsubs.o eigx.o
+
 qpAdm: $(NLIB) qpAdm.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f4rank.o  eigsubs.o eigx.o
 
+qqpAdm: $(NLIB) qqpAdm.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f4rank.o  eigsubs.o eigx.o
+
 qpWave: $(NLIB) qpWave.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f4rank.o eigsubs.o eigx.o
+
+simpjack2: $(NLIB) simpjack2.o
 
 install:	all dirs tables
 	mkdir -p $(TOP)
 	cp $(PROGS) $(TOP)
 	cp $(PROGS2) $(TOP)
+	cp $(PROGS3) $(TOP)
+	cp ../perlsrc/* $(TOP) 
 
 uninstall:
 	rm -f tables
@@ -97,7 +117,7 @@ clean:
 	rm -f *junk*
 	rm -f core
 	$(MAKE) -C $(ND) clean
-	rm -f $(PROGS)
+	rm -f $(PROGS) $(PROGS3)
 
 clobber: clean rmdirs uninstall
 
@@ -110,6 +130,8 @@ rmdirs:
 
 qpGraph: $(NLIB) qpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
+
+qqpGraph: $(NLIB) qqpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 
 qpreroot: qpreroot.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
 

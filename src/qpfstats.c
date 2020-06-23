@@ -26,14 +26,11 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "340"
+#define WVERSION   "180"
 
-// phylipname added  (f2 stats)
-// dumpname added  (binary file) 
-// dumpf3block added  (binary file) 
-// bug found in map4x
 // useweight added  
 // allsnps added
+// doscale NO added
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -48,6 +45,7 @@ int qtmode = NO;
 int inbreed = NO;
 int allsnpsmode = NO;
 char *f3name = NULL;
+char *fstatsoutname = NULL;
 
 Indiv **indivmarkers;
 SNP **snpmarkers;
@@ -64,8 +62,6 @@ int gfromp = NO;		// genetic distance from physical
 int forcezmode = NO;
 double blgsize = 0.05;		// block size in Morgans */ double *chitot ;
 double diag = 0.0;
-int bigiter = 100;
-int startiter = 50;
 int fstdmode = NO;		// YES denominators done as in qp3test
 int xchrom = -1;
 int *xpopsize;
@@ -81,12 +77,9 @@ char *indivname = NULL;
 char *badsnpname = NULL;
 char *poplistname = NULL;
 char *outliername = NULL;
-char *fixname = NULL;
 
 char *dumpname = NULL;
 char *dumpf3block = NULL;
-char *loadname = NULL;
-char *phylipname = NULL;
 
 char *outpop = NULL;
 // list of outliers
@@ -98,6 +91,7 @@ double baseval = 0.0;
 // basenum for f3 status  
 
 
+int doscale = YES ; 
 double lambdascale = -1.0;
 int *f2ind, *ind2f;
 double *vest, *vvar, *vvinv, *xvvar, *xvvinv;
@@ -120,6 +114,7 @@ char **enames;
 double zthresh = 3.0;
 double f2diag = 0.0;
 int useweights = YES;
+double ymem ; 
 
 void readcommands (int argc, char **argv);
 void indiaestit (double *f2, double *f3, double *f4, int n);
@@ -143,7 +138,6 @@ void getwww (double **tmix, double *www, int n);
 double scorit (double *www, int n, double *pfix, double *ans);
 void printvals (double **tmix, double *edgelen, int nedge);
 void printfit (double *ww);
-void initvmix (double *wwinit, int nwts, int numiter);
 int iscanon (int a, int b, int c, int d);
 
 void setrand (double *ww, int n);
@@ -166,6 +160,8 @@ void dumpit (char *dumpname, double *ff3, double *ff3var, char **eglist,
 void checkpd (double *a, int n);
 void dumpf3 (char *dumpf3name, double **btop, double **bbot, int nblock);
 int usage (char *prog, int exval);
+void load4(int *x, int a, int b, int c, int d)  ;
+void loadco(double *co, int *fs, int *fsb, int np) ;
 
 int
 main (int argc, char **argv)
@@ -175,62 +171,30 @@ main (int argc, char **argv)
   int **snppos;
   int *snpindx;
   char **snpnamelist, **indnamelist;
-  int lsnplist, lindlist;
-  int i, j, k, k1, k2, k3, k4, kk;
+  int i, j, k, k1, k2, k3, k4, kk ;
   SNP *cupt, *cupt1, *cupt2, *cupt3;
   Indiv *indx;
   double y1, y2, y, sig, tail, yy1, yy2;
-  char ss[11];
   int *blstart, *blsize, nblocks;
   int xnblocks;			/* for xsnplist */
   int *bcols;
-  int **subsets;
   double maxgendis;
 
-  int ch1, ch2;
-  int fmnum, lmnum;
-  int num, n1, n2;
+  int t, num, n, n1, n2, n3, n4;
 
   int nindiv = 0, e, f, lag = 1;
-  double xc[9], xd[4], xc2[9];
   int nignore, numrisks = 1;
   double *xrow, *xpt;
   SNP **xsnplist;
-  int *tagnums;
   Indiv **xindlist;
   int *xindex, *xtypes;
   int nrows, ncols, nedge, m, nc;
-  double zn, zvar;
-  double chisq, ynrows;
-  int *numhits, t;
-  double *xmean, *xfancy;
-  double *divans, *divsd;
-  double *hettop, *hetbot;
   int chrom, numclear;
-  double gdis;
-  int outliter, *badlist, nbad;
-  double **zdata, *z1, *z2;
-  int maxtag = -1;
-  double **zz;
-  double *pmean, *pnum, rscore[3], tscore[3], hscore[3], rrr[3], ww[3];
-  int tpat[3][4], rpat[3][4];
-  int *rawcol;;
   int a, b, c, d, col, u, v, x;
-  double *qpscores;
-  double *hest, *hsig;
-  double mingenpos, maxgenpos;
-  int *qhit;			/* number of times pair is clade in quartet */
-  int *qmiss;			/* number of times pair migration event implied */
-  int **qplist, numqp = 0, maxqp = 10000;
   int *popsizes;
   double *qpscore;
 
-
-  double **zzn, **zzd;
   int popx[4];
-  double tn[4 * 5], td[4 * 4];
-  double zzsig[5], zzest[5], zsc[5];
-  double ymin;
   double *f2, *f2sig, *fst;
   double *ff3, *gg3, *ff3var, *ff3fit, *ff3sig;
 
@@ -238,32 +202,42 @@ main (int argc, char **argv)
   int ng2, ng3, ng4;
   double *pwts;
   double *ppwts;
-  char **cnames;
-  char **vnames;
-  double yscore;
-  double *xxans;
-  double *wwtemp;
-  int nwts, nforce;
-  int iter, dof;
   double ytail;
   int *xpopsize;
-  FILE *f3file = NULL, *phylipfile;
+  FILE *f3file = NULL ;
   double scale;
+
+  int **findex, np, *fsnum, nfstats ; 
+  int *tt, *jwork ; 
+  int **basis, *basisnum,  *basisfn,  nbasis ; 
+  double **fcoeffs ; 
+  double *fsmean, *fssig ; 
+  double *fbmean, *fbcovar ; 
+  int kret, bad ;
+  double *hrate, *hvalid ; 
 
 
   readcommands (argc, argv);
-  printf ("## qpff3base version: %s\n", WVERSION);
+
+  cputime(0) ;
+  calcmem(0) ;
+  
+
+  printf ("## qpfstats version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
   if (xchrom == 23)
     noxdata = NO;
 
+/**
   if (seed == 0)
     seed = seednum ();
   SRAND (seed);
-  printf ("seed: %d\n", seed);
+  h:0
+rintf ("seed: %d\n", seed);
+*/
 
-  setinbreed (inbreed);
+  setinbreed(inbreed) ;
   setallsnpsmode (allsnpsmode);
 
   numsnps =
@@ -286,6 +260,85 @@ main (int argc, char **argv)
   }
   setindm (indivmarkers);
 
+  np = numeg ; 
+  n = 0;  n2  = n3 = n4 = 0 ; 
+  t = np*np*np*np ;  
+  ZALLOC(findex, t, int *) ; 
+  ZALLOC(fsnum, t, int) ; 
+  ZALLOC(jwork, t, int) ; 
+  ZALLOC(basisfn, np*np, int) ; 
+  for (k=0; k<t; ++k) { 
+   ZALLOC(findex[k], 4, int) ; 
+   ivclear(findex[k], -1, 4) ;
+  }
+  for (a=0; a<np; ++a) { 
+   for (b=a+1; b<np; ++b) { 
+     load4(findex[n], a, b, a, b) ; 
+     ++n ; ++n2 ; 
+  }} 
+  for (c=0; c<np; ++c) { 
+   for (a=0; a<np; ++a) { 
+     for (b=a+1; b<np; ++b) { 
+      if (a==c) continue ; 
+      if (b==c) continue ; 
+      load4(findex[n], c, a, c, b) ; 
+      ++n ; ++n3 ; 
+   }}} 
+   for (a=0; a<np; ++a) { 
+     for (b=a+1; b<np; ++b) { 
+      for (c=a+1; c<np; ++c) { 
+       for (d=c+1; d<np; ++d) { 
+       if (c==b) continue ; 
+       if (d==b) continue ; 
+        load4(findex[n], a, b, c, d) ; 
+        ++n ; ++n4 ; 
+   }}}} 
+   for (t=0; t<n; ++t) { 
+     fsnum[t] = kodeitb(findex[t], 4, np) ; 
+   }
+
+   nfstats = n ; 
+
+// set up basis 
+   t = np*np ; 
+   x = 0 ; nbasis = 0 ; 
+  basis = initarray_2Dint(t, 2, -1) ; 
+
+  ZALLOC(basisnum, t, int) ;  
+  ivclear(basisnum, -1, t) ;
+  ZALLOC(ind2f, t, int) ;
+  ivclear(ind2f, -1, t) ;
+  basenum = 0 ; 
+  
+  
+  for (a=1; a<np; ++a) { 
+   for (b=a; b<np; ++b) { 
+    basis[nbasis][0] = a ; 
+    basis[nbasis][1] = b ; 
+    basisnum[a*np+b] = nbasis ; 
+    basisnum[b*np+a] = nbasis ; 
+    ind2f[nbasis] = a*np + b ; 
+    ivzero(jwork, 4) ; 
+    jwork[1] = a ; 
+    jwork[3] = b ;  
+    kk = kodeitb(jwork, 4, np) ; 
+    t = findfirst(fsnum, n, kk) ; 
+    if (t<0) fatalx("logic bug\n") ;
+    basisfn[nbasis] = t ; 
+    ++nbasis ; 
+  }} 
+  printf("np: %d n: %d nbasis: %d coefsize: %d\n", np, n, nbasis, n*nbasis) ; 
+  fcoeffs = initarray_2Ddouble(n, nbasis, 0) ;  
+
+/**
+  printimatw(basisnum, 1, np*np, np) ; 
+  fflush(stdout) ; 
+*/
+                          
+  for (t=0; t<n; ++t) { 
+    loadco(fcoeffs[t], findex[t], basisnum, np) ;
+  }
+  
 
   ZALLOC (egshort, numeg, char *);
   for (i = 0; i < numeg; i++) {
@@ -296,44 +349,14 @@ main (int argc, char **argv)
   outnum = 0;
   basenum = 0;
 
-  if (outpop == NULL)
-    outpop = strdup (eglist[0]);
-  t = strcmp (outpop, "NULL");
-  if (t == 0)
-    outnum = -99;
-  t = strcmp (outpop, "NONE");
-  if (t == 0)
-    outnum = -99;
+//   outpop = strdup (eglist[0]);
 
-
-  for (k = 0; k < numeg; ++k) {
-    t = strcmp (eglist[k], outpop);
-    if (t == 0)
-      outnum = k;
-    t = strcmp (eglist[k], sss);
-    if (t == 0)
-      basenum = k;
-  }
-  if (outnum == -1) {
-    eglist[numeg] = strdup (outpop);
-    outnum = numeg;
+  if (outpop == NULL) { 
+   outpop = strdup("NULL") ; 
   }
 
-  if (outnum >= 0)
-    outpop = eglist[outnum];
-  basepop = eglist[basenum];
+  printf ("outpop: %s \n", outpop) ; 
 
-  printf ("outpop: %s  basepop: %s\n", outpop, basepop);
-
-  for (i = 0; i < numsnps; i++) {
-    cupt = snpmarkers[i];
-    if (cupt->ignore)
-      continue;
-    if (numvalidgtx (indivmarkers, cupt, YES) <= 1) {
-      printf ("nodata: %20s\n", cupt->ID);
-      cupt->ignore = YES;
-    }
-  }
 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
@@ -349,9 +372,7 @@ main (int argc, char **argv)
   }
 
   ZALLOC (xindex, numindivs, int);
-
   ZALLOC (xindlist, numindivs, Indiv *);
-  ZALLOC (rawcol, numindivs, int);
   nrows = loadindx (xindlist, xindex, indivmarkers, numindivs);
   ZALLOC (xtypes, nrows, int);
 
@@ -382,29 +403,33 @@ main (int argc, char **argv)
   printf ("before setwt numsnps: %d\n", numsnps);
   setwt (snpmarkers, numsnps, indivmarkers, nrows, xindex, xtypes, outpop,
 	 eglist, numeg);
+
   numsnps = rmsnps (snpmarkers, numsnps, NULL);	//  rid ignorable snps
   printf ("setwt numsnps: %d\n", numsnps);
   if (numsnps == 0)
     fatalx ("no valid snps\n");
 
+/**
   for (k = 0; k < numsnps; ++k) {
     if (useweights)
       break;
     cupt = snpmarkers[k];
     cupt->weight = 1;
   }
+*/
 
   setmgpos (snpmarkers, numsnps, &maxgendis);
   if ((maxgendis < .00001) || (gfromp == YES))
     setgfromp (snpmarkers, numsnps);
 
   nblocks = numblocks (snpmarkers, numsnps, blgsize);
+  xnblocks = nblocks + 10 ; 
+
   ZALLOC (blstart, nblocks, int);
   ZALLOC (blsize, nblocks, int);
   printf ("number of blocks for moving block jackknife: %d\n", nblocks);
 
   ZALLOC (xsnplist, numsnps, SNP *);
-  ZALLOC (tagnums, numsnps, int);
 
   if (popsizelimit > 0) {
     setplimit (indivmarkers, numindivs, eglist, numeg, popsizelimit);
@@ -414,54 +439,58 @@ main (int argc, char **argv)
   cntpops (popsizes, indivmarkers, numindivs, eglist, numeg);
   setpopsizes (popsizes, eglist, numeg);
 
+  for (k=0; k<numeg; ++k) { 
+   t = popsizes[k] ; 
+   if (t==0) fatalx("pop: %s has sample size 0\n", eglist[k]) ; 
+   if (inbreed && (t==1)) fatalx("pop: %s has sample size 1 and inbreed set\n", eglist[k]) ; 
+  }
+
   ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
 
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
   setblocks (blstart, blsize, &xnblocks, xsnplist, ncols, blgsize);
 
-
-  zz = initarray_2Ddouble (numeg * numeg, ncols, 0.0);
-  qplist = initarray_2Dint (numeg * numeg * numeg * numeg, 4, 0);
-  ZALLOC (qpscore, numeg * numeg * numeg * numeg, double);
-
-  ZALLOC (pmean, numeg, double);
-  ZALLOC (pnum, numeg, double);
-  ZALLOC (rawcol, nrows, int);
-
-  vmix = initarray_2Ddouble (MAXG, MAXW, 0.0);
-  ZALLOC (lmix, MAXG, int);
-  nmix = 0;
-
   ng2 = numeg * numeg;
   ng3 = numeg * ng2;
   ng4 = numeg * ng3;
 
-  ZALLOC (hest, ng2, double);
-  ZALLOC (hsig, ng2, double);
-
   ZALLOC (f2, ng2, double);
   ZALLOC (f2sig, ng2, double);
   ZALLOC (fst, ng2, double);
-  ZALLOC (www, ng2, double);
-  ZALLOC (ww2, MAXG, double);
-
   ZALLOC (ff3, ng2, double);
-  ZALLOC (gg3, ng2, double);
-  ZALLOC (ff3fit, ng2, double);
-  ZALLOC (ff3sig, ng2, double);
   ZALLOC (ff3var, ng4, double);
-// differences from basepoint 
-  x = NO;;
-  if (fstdmode)
-    x = 2;
+
+  ZALLOC(hrate, numeg, double) ; 
+  ZALLOC(hvalid, numeg, double) ; 
+ 
+   calchet (hrate, hvalid, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
+
+   for (k=0; k<numeg; ++k) { 
+    printf("pop: %15s ", eglist[k]) ;  
+    printf(" hetrate: %9.3f", hrate[k]) ; 
+    printf(" valid snps: %9.0f", hvalid[k]) ; 
+    printf(" samples: %4d", popsizes[k]) ; 
+    if (hvalid[k] < .01) printf(" *** ") ;
+    printnl() ; 
+   }
+
+
   scale =
     dofstnumx (fst, f2, f2sig, xsnplist, xindex, xtypes, nrows, ncols, numeg,
-	       nblocks, indivmarkers, x);
+	       xnblocks, indivmarkers, NO);
 
   if (lambdascale <= 0.0)
     lambdascale = scale;
 
+  if (doscale == NO) lambdascale = 1.0 ; 
+
+  if (fabs(lambdascale - scale) > 1.0e-5) { 
+    vst (f2, f2, lambdascale / scale, ng2);
+    vst (f2sig, f2sig, lambdascale / scale, ng2);
+  }
+
+  if (isnan(lambdascale)) fatalx("scaling bug!\n") ;
   printf ("lambdascale: %9.3f\n", lambdascale);
 
   printf("statistics multiplied by 1000\n") ;
@@ -476,101 +505,97 @@ main (int argc, char **argv)
   printnl ();
   printf3 ("f2:", f3file, f2, egshort, numeg);
 
-  if (phylipname != NULL) {
-    openit (phylipname, &phylipfile, "w");
-    fprintf (phylipfile, "%6d\n", numeg);
-    sss[10] = CNULL;
-    for (k1 = 0; k1 < numeg; ++k1) {
-      strncpy (sss, eglist[k1], 10);
-      fprintf (phylipfile, "%10s", sss);
-      for (k2 = 0; k2 < numeg; ++k2) {
-	y1 = f2[k1 * numeg + k2];
-	y2 = f2[k2 * numeg + k1];
-	fprintf (phylipfile, "%6.3f", (0.5 * (y1 + y2)));
-      }
-      fprintf (phylipfile, "\n");
-    }
-    fclose (phylipfile);
+
+   ZALLOC(fsmean, nfstats, double) ; 
+   ZALLOC(fssig, nfstats, double) ; 
+
+   ZALLOC(fbmean, nbasis, double) ; 
+   ZALLOC(fbcovar, nbasis*nbasis, double) ; 
+
+   if (basenum < 0) basenum = 0 ; 
+
+   cputimes(0, 2) ; 
+   kret = dofstats(fbmean, fbcovar, fcoeffs, nbasis, 
+      fsmean, fssig, findex, nfstats, 
+      xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks, lambdascale) ; 
+
+   if (kret<0) { 
+    bad = kret+1000*1000 ; 
+    printf("*** warning ***\n") ; 
+    printf("fstat with no data.  Unable to compute heterozygosity?: ") ; 
+    printimat(findex[bad], 1, 4) ; 
+   }
+
+  y = cputimes(1, 2) ; 
+  printf("time in dofstats: %9.3f\n", y) ; 
+
+
+     for (i=0; i<nbasis; ++i) { 
+      a = basis[i][0] ; 
+      b = basis[i][1] ; 
+      ff3[a*numeg+b] = ff3[b*numeg+a] = fbmean[i] ;  
+       for (j=0; j<nbasis; ++j) { 
+        c = basis[j][0] ; 
+        d = basis[j][1] ; 
+        y = fbcovar[i*nbasis+j] ; 
+        set4x(ff3var, a, b, c, d, numeg, y) ; 
+       }
+     } 
+
+     if (hires) dumpfstatshr(fstatsoutname, ff3, ff3var, eglist, numeg, ind2f, basenum) ; 
+     else dumpfstats(fstatsoutname, ff3, ff3var, eglist, numeg, ind2f, basenum) ; 
+
+/**
+   for (k=0; k<nfstats; ++k) { 
+
+    tt = findex[k] ; 
+
+    a = tt[0] ; 
+    b = tt[1] ; 
+    c = tt[2] ; 
+    d = tt[3] ; 
+
+   printf("fstats: ") ; 
+   printf(" %s",  eglist[a]) ;
+   printf(" %s",  eglist[b]) ;
+   printf(" %s",  eglist[c]) ;
+   printf(" %s",  eglist[d]) ;
+
+   printf(" %12.6f", fsmean[k]) ;
+   printf(" %12.6f", fssig[k]) ;
+   printf(" %9.3f", fsmean[k]/fssig[k]) ;
+   printnl() ; 
+
+  }
+  printf ("##end of qpfstats\n");
+*/
+
+/**
+
+  ZALLOC(www, nbasis*nbasis, double) ; 
+  vst(www, fbmean, 1000, nbasis) ; 
+  printf("fb:\n") ; printmat(www, 1, nbasis) ;
+  vst(www, fbcovar, 1000*1000, nbasis*nbasis) ; 
+  printf("fbcovar:\n") ; printmat(www, nbasis, nbasis) ;
+
+*/
+
+  for (i=0; i<nbasis; ++i) {
+   a = basis[i][0] ; 
+   b = basis[i][1] ; 
+   t = basisfn[i] ; 
+   printf("basis: %3d %3d ", a, b) ; 
+   y = fbcovar[i*nbasis+i] ; y = sqrt(y) ; 
+   printf("%12.6f %12.6f", fbmean[i], y) ; 
+   printf(" :: ") ; 
+   printf("%12.6f %12.6f", fsmean[t], fssig[t]) ; 
+   printnl() ;
+    
   }
 
-  ZALLOC (f3, ng3, double);
-  ZALLOC (f3, ng3, double);
-  ZALLOC (f3sig, ng3, double);
 
-  nh2 = numeg * (numeg - 1);
-  nh2 /= 2;
-  ZALLOC (ind2f, nh2, int);
-  ZALLOC (f2ind, ng2, int);
-
-  ZALLOC (vest, nh2, double);
-  ZALLOC (vvar, nh2 * nh2, double);
-  ZALLOC (xvvar, nh2 * nh2, double);	// adjusted
-  ZALLOC (vvinv, nh2 * nh2, double);
-  ZALLOC (xvvinv, nh2 * nh2, double);
-
-  k = 0;
-  for (a = 0; a < numeg; ++a) {
-    if (a == basenum)
-      continue;
-    for (b = a; b < numeg; ++b) {
-      if (b == basenum)
-	continue;
-      ind2f[k] = a * numeg + b;
-      f2ind[a * numeg + b] = k;
-      f2ind[b * numeg + a] = k;
-      ++k;
-    }
-  }
-
-  kk =
-    doff3 (ff3, ff3var, xsnplist, xindex, xtypes, nrows, ncols, numeg,
-	   nblocks, lambdascale);
-//checkpd(ff3var, numeg*numeg) ;
-
-  printf ("number of good snps: %d\n", kk);
-  dumpit (dumpname, ff3, ff3var, eglist, numeg);
-
-// side effect vvar made
-
-// print some values
-  printf ("ff3:");
-  printnl ();
-  printmatz (ff3, egshort, numeg);
-  printnl ();
-  printf3 ("ff3:", f3file, ff3, egshort, numeg);
-
-  for (a = 0; a < numeg; ++a) {
-    for (b = 0; b < numeg; ++b) {
-      y = dump4 (ff3var, a, b, a, b, numeg);
-      y += 1.0e-12;
-      ff3sig[a * numeg + b] = 10 * sqrt (y);
-    }
-  }
-
-  printf ("ff3sig*10:");
-  printnl ();
-  printmatz (ff3sig, egshort, numeg);
-  printnl ();
-  printf3 ("ff3sig:", f3file, ff3sig, egshort, numeg);
-  printnl ();
-
-  for (a = 0; a < numeg; a++) {
-    printf ("ff3 (base: %s)\n", eglist[a]);
-    vzero (gg3, ng2);
-    for (b = 0; b < numeg; b++) {
-      for (c = 0; c < numeg; c++) {
-	y = ff3val (ff3, a, b, c, numeg);
-	bump3 (gg3, 0, b, c, numeg, y);
-      }
-    }
-    printmatz (gg3, egshort, numeg);
-    printnl ();
-    printf3 ("ff3:", f3file, gg3, egshort, numeg);
-    printnl ();
-  }
-
-  printf ("##end of qpff3base\n");
-
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of qpfstats: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
   return 0;
 
 }
@@ -720,40 +745,6 @@ getwww (double **tmix, double *www, int n)
 }
 
 void
-loadpars (char *loadname, double *www, int nwts, double *xxans, int nedge)
-{
-  FILE *loadfile;
-
-  if (loadname == NULL)
-    return;
-  printf ("zzloadpars %d %d\n", nwts, nedge);
-  openit (loadname, &loadfile, "r");
-  read1 (loadfile, www, nwts);
-  read1 (loadfile, xxans, nedge);
-  printmat (www, 1, nwts);
-
-  printnl ();
-  printnl ();
-  printmat (xxans, 1, nedge);
-
-  fclose (loadfile);
-
-}
-
-void
-read1 (FILE * loadfile, double *ww, int n)
-{
-
-  int k;
-  vclear (ww, -1.0, n);
-  for (k = 0; k < n; ++k) {
-    fscanf (loadfile, "%lf\n", &ww[k]);
-    printf ("zzfs %d %9.3f\n", k, ww[k]);
-  }
-
-}
-
-void
 normvec (double *www, int n)
 {
   double **tmix;
@@ -841,7 +832,7 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n, t;
 
-  while ((i = getopt (argc, argv, "f:b:p:g:s:o:l:vVxh")) != -1) {
+  while ((i = getopt (argc, argv, "p:g:s:o:l:vVxh")) != -1) {
 
     switch (i) {
 
@@ -853,16 +844,8 @@ readcommands (int argc, char **argv)
       parname = strdup (optarg);
       break;
 
-    case 'f':
-      fixname = strdup (optarg);
-      break;
-
     case 's':
       seed = atoi (optarg);
-      break;
-
-    case 'b':
-      baseval = atof (optarg);
       break;
 
     case 'l':
@@ -871,10 +854,6 @@ readcommands (int argc, char **argv)
 
     case 'v':
       printf ("version: %s\n", WVERSION);
-      break;
-
-    case 'x':
-      doanalysis = NO;
       break;
 
     case 'V':
@@ -901,27 +880,23 @@ readcommands (int argc, char **argv)
   getstring (ph, "genotypename:", &genotypename);
   getstring (ph, "snpname:", &snpname);
   getstring (ph, "indivname:", &indivname);
-  getstring (ph, "phylipname:", &phylipname);
-  getstring (ph, "dumpname:", &dumpname);
-  getstring (ph, "dumpf3block:", &dumpf3block);
-  getstring (ph, "fixname:", &fixname);
   getstring (ph, "outpop:", &outpop);
   getstring (ph, "output:", &outputname);
   getstring (ph, "badsnpname:", &badsnpname);
   getstring (ph, "poplistname:", &poplistname);
+  getstring (ph, "fstatsoutname:", &fstatsoutname);
+
   getstring (ph, "f3log:", &f3name);
   getstring (ph, "root:", &rootname);
   getdbl (ph, "blgsize:", &blgsize);
   getdbl (ph, "diag:", &diag);
-  getdbl (ph, "f2diag:", &f2diag);
   getdbl (ph, "minvar:", &minvar);
   getdbl (ph, "lambdascale:", &lambdascale);
-  getint (ph, "bigiter:", &bigiter);
-  getint (ph, "startiter:", &startiter);
   getint (ph, "fstdmode:", &fstdmode);
   getint (ph, "inbreed:", &inbreed);
   getint (ph, "useallsnps:", &allsnpsmode);
   getint (ph, "allsnps:", &allsnpsmode);
+  getint (ph, "hires:", &hires);
 
   getint (ph, "noxdata:", &noxdata);
   t = -1;
@@ -931,18 +906,16 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "doanalysis:", &doanalysis);
   getint (ph, "quartet:", &quartet);
-  getint (ph, "numchrom:", &numchrom);
 
   getint (ph, "nostatslim:", &nostatslim);
   getint (ph, "popsizelimit:", &popsizelimit);
   getint (ph, "gfromp:", &gfromp);	// gen dis from phys
   getint (ph, "seed:", &seed);
   getint (ph, "details:", &details);
-  getint (ph, "forcezmode:", &forcezmode);
-  getint (ph, "lsqmode:", &lsqmode);
   getint (ph, "useweights:", &useweights);
-  getdbl (ph, "baseval:", &baseval);
-  getstring (ph, "loadname:", &loadname);
+  getint (ph, "scale:", &doscale);
+  getint (ph, "doscale:", &doscale);
+  
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");
@@ -979,6 +952,7 @@ sol2 (double *co, double *rhs, double *ans)
 
 }
 
+
 int
 doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
        int nrows, int ncols, int numeg, int nblocks, double scale)
@@ -988,7 +962,6 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
   int a, b, c;
   int ng2, ng3;
   int c1[2], c2[2], *cc;
-  int *rawcol, *popall, *pop0, *pop1;
   int k, g, i, col, j;
   double ya, yb, y, jest, jsig, mean;
   SNP *cupt;
@@ -1331,7 +1304,6 @@ int usage (char *prog, int exval)
 
   (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
   (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
-  (void)fprintf(stderr, "   -f <nam>    ... use <nam> sa fixname.\n");
   (void)fprintf(stderr, "   -b <val>    ... use <va> as base value.\n");
   (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
   (void)fprintf(stderr, "   -g <>   ... .\n");
@@ -1345,4 +1317,32 @@ int usage (char *prog, int exval)
   exit(exval);
 };
 
+void load4(int *x, int a, int b, int c, int d)  
+{
+ x[0] = a ; 
+ x[1] = b ; 
+ x[2] = c ; 
+ x[3] = d ; 
+}
 
+void loadco(double *co, int *fs, int *fsb, int np) 
+
+{
+  int a, b, c, d, t  ;  
+
+  a = fs[0] ; 
+  b = fs[1] ; 
+  c = fs[2] ; 
+  d = fs[3] ; 
+ 
+  t = fsb[a*np+c] ;  
+  if (t>=0) co[t] += 1 ; 
+  t = fsb[b*np+d] ;  
+  if (t>=0) co[t] += 1 ; 
+  t = fsb[a*np+d] ;  
+  if (t>=0) co[t] -= 1 ; 
+  t = fsb[b*np+c] ;  
+  if (t>=0) co[t] -= 1 ; 
+
+
+}

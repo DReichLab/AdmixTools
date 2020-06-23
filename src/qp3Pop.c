@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "600"
+#define WVERSION   "650"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -38,6 +38,7 @@
 // code cleanup (graph stuff deleted) and numchrom
 // outgroupmode  -- no denominator
 // count of non mono snps bugfix
+// loadaa f3scz rewritten  
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -60,6 +61,7 @@ int nostatslim = 10;
 int znval = -1;
 int popsizelimit = -1;
 int gfromp = NO;		// genetic distance from physical 
+int locount = -1, hicount = 9999999;
 int jackweight = YES;
 int pubjack = NO;
 int outgroupmode = NO;
@@ -182,8 +184,8 @@ main (int argc, char **argv)
   double gdis;
   int outliter, *badlist, nbad;
 
-  char ***plists;
-  int nplist, trun;
+  char ***qlist, ***plists, *sx;
+  int nplist=0, trun, nqlist=0;
   double ymem; 
 
   readcommands (argc, argv);
@@ -225,10 +227,39 @@ main (int argc, char **argv)
       cupt->ignore = YES;
   }
 
-  nplist = numlines (popfilename);
-  ZALLOC (plists, nplist, char **);
-  num = readpopx (popfilename, plists, 3);
-  nplist = num;
+  if (popfilename == NULL) fatalx("no popfilename!\n ") ;
+    nplist= nqlist = numlines (popfilename);
+    ZALLOC (qlist, 3, char **);
+    for (k = 0; k < 3; ++k) {
+      ZALLOC (qlist[k], nqlist, char *);
+    }
+    nqlist =
+      getnamesstripcolon (&qlist, nqlist, 3, popfilename, locount, hicount);
+    numeg = 0;
+    printf ("number of triples %d\n", nqlist);
+
+    if (nqlist==0) { 
+     printf("no triples!\n") ; 
+     return 0 ;
+    }
+
+    fflush (stdout);
+    nplist = nqlist ; 
+    ZALLOC (plists, nplist, char **);
+     for (j = 0; j < nplist; ++j) {
+      ZALLOC(plists[j], 3, char *) ; 
+     }
+    for (k = 0; k < 3; ++k) {
+      for (j = 0; j < nplist; ++j) {
+        sx = qlist[k][j];
+        plists[j][k] = strdup(sx) ;
+      }
+    }
+
+    for (k = 0; k < 3; ++k) {
+      freeup (qlist[k], nqlist);
+    }
+
   printf ("nplist: %d\n", nplist);
   if (nplist == 0)
     return 1;
@@ -383,7 +414,7 @@ readcommands (int argc, char **argv)
   int n, t;
 
   if (argc == 1) { usage(basename(argv[0]), 1); }
-  while ((i = getopt (argc, argv, "f:b:p:s:vVh")) != -1) {
+  while ((i = getopt (argc, argv, "f:b:p:s:L:H:vVh")) != -1) {
 
     switch (i) {
 
@@ -393,6 +424,14 @@ readcommands (int argc, char **argv)
 
     case 'p':
       parname = strdup (optarg);
+      break;
+
+    case 'L':
+      locount = atoi (optarg);
+      break;
+
+    case 'H':
+      hicount = atoi (optarg);
       break;
 
     case 'f':
@@ -810,7 +849,8 @@ int usage (char *prog, int exval)
   (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
   (void)fprintf(stderr, "   -f <nam>    ... use <nam> as snp details name.\n");
   (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
-  (void)fprintf(stderr, "   -s <val>    ... use <val> as base value.\n");
+  (void)fprintf(stderr, "   -L <index>  ... locount -n popfilename.\n");
+  (void)fprintf(stderr, "   -H <index>  ... hicount -n popfilename.\n");
   (void)fprintf(stderr, "   -v          ... print version and exit.\n");
   (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
 

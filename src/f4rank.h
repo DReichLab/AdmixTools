@@ -30,5 +30,6 @@ void normab(double *A, double *B, int m, int n, int rank)  ;
 int dofrank(int m, int n, int rank) ;
 void f4info_init(F4INFO *f4pt, int nl, int nr, char **popllist, char **poprlist, int rank) ;
 void printf4info(F4INFO *f4pt)  ;
+int checkmv(double *mean, double *var, int m, int n) ;
 
 

@@ -1965,6 +1965,7 @@ dumpgraph (char *graphname)
   for (k = 0; k < numvertex; ++k) {
     kk = ind[k];
     node = &vlist[kk];
+    if (node -> isdead) continue ; 
     if (node->distance == HUGEDIS)
       fprintf (fff, "##");
     y = node -> time ; 
@@ -1996,29 +1997,34 @@ dumpgraph (char *graphname)
     edge = (EDGE *) node->eleft;
 
     if (edge != NULL) {
+      edge->val = MAX (edge->val, 0.0);
       xnode = (NODE *) node->left;
-      fprintf (fff, "ledge %12s", edge->name);
-      fprintf (fff, " %12s", node->name);
-      fprintf (fff, " %12s", xnode->name);
-      fprintf (fff, sform, edge->val);
-      if (edge -> theta >= 0) { 
+      if (xnode -> isdead != 1 ) {
+       fprintf (fff, "ledge %12s", edge->name);
+       fprintf (fff, " %12s", node->name);
+       fprintf (fff, " %12s", xnode->name);
+       fprintf (fff, sform, edge->val);
+       if (edge -> theta >= 0) { 
         fprintf (fff, sformx, edge->theta);
+       }
+       fprintf (fff, "\n");
       }
-      fprintf (fff, "\n");
     }
     edge = (EDGE *) node->eright;
 
     if (edge != NULL) {
       edge->val = MAX (edge->val, 0.0);
       xnode = (NODE *) node->right;
-      fprintf (fff, "redge %12s", edge->name);
-      fprintf (fff, " %12s", node->name);
-      fprintf (fff, " %12s", xnode->name);
-      fprintf (fff, sform, edge->val);
-      if (edge -> theta > 0) { 
-        fprintf (fff, sformx, edge->theta);
+      if (xnode -> isdead != 1 ) {
+       fprintf (fff, "redge %12s", edge->name);
+       fprintf (fff, " %12s", node->name);
+       fprintf (fff, " %12s", xnode->name);
+       fprintf (fff, sform, edge->val);
+       if (edge -> theta > 0) { 
+         fprintf (fff, sformx, edge->theta);
+       }
+       fprintf (fff, "\n");
       }
-      fprintf (fff, "\n");
     }
   }
   for (k = 0; k < numvertex; ++k) {
@@ -2066,6 +2072,7 @@ exnames (char **pup, char **pdown, char **pename, int numedge)
 
 void
 addnode (char *nodename, char *edgename, double breakval)
+// given edge put node in center 
 {
 
   NODE *node1, *node2, *newvert;
@@ -3031,16 +3038,16 @@ void readadmix(char *admixname)
 
   NODE *node, *xnode, *xroot;
   EDGE *edge;
-  int k, j, t, tt, vind, kk;
+  int k, j, t, tt, vind, kk, nmix;
   int *dd, *ind;
-  double y ; 
   FILE *fff;
 
   char line[MAXSTR + 1], c;
   char *spt[MAXFF], *sx, *s1, *s2;
   int nsplit, n = 0;
   int okline;
-  double cc[2] ;
+  double cc[2], y ;
+  char *ww[2], *www ; 
 
  if (admixname == NULL) return ;
 
@@ -3051,23 +3058,30 @@ void readadmix(char *admixname)
     nsplit = splitup (line, spt, MAXFF);
     if (nsplit < 6)   
       continue;
+    t = strcmp(spt[0], "admix") ; 
+    if (t != 0) continue ; 
     kk = vertexnum (spt[1]) ;    
-    if (kk < 0)
-     fatalx("vertex %s not found!\n") ;  
-     node = &vlist[kk] ; 
-      
-    t = 2 ; 
+    if (kk < 0) fatalx("vertex %s not found!\n") ;  
+    node = &vlist[kk] ; 
+    if (node -> isfixed) continue ; 
+    t = node->numwind;
+    if (t != 2) fatalx(" %s not admixed!\n", node -> name) ; 
     cc[0] = atof(spt[4]) ;
     cc[1] = atof(spt[5]) ;
     bal1(cc,2) ; 
-
-    for (j = 0; j < t; ++j) {
+    vclear(node -> wmix, -1, 2) ;
+    for (j=0; j<2; ++j) {
       vind = node->windex[j];
       xnode = &vlist[vind];
-      tt = strcmp(xnode -> name, spt[j+1]) ; 
-      if (tt != 0) fatalx("node mismatch: %s\n", line) ;
-      node -> wmix[j] = cc[j] ;  
+      ww[j] = xnode -> name ; 
+      t = strcmp(ww[j], spt[2]) ;  
+      if (t==0) node -> wmix[j] = cc[0] ;
+      t = strcmp(ww[j], spt[3]) ;  
+      if (t==0) node -> wmix[j] = cc[1] ;
     }
+    y = asum(node -> wmix, 2) ; 
+    if (fabs(y-1.0) > .01) fatalx("node %s not loaded\n", node -> name) ; 
+    printf("admixed node %s processed!\n", node -> name) ;
   }
   fclose(fff) ;
 }
@@ -3096,7 +3110,6 @@ void writeadmix(char *admixname)
 
   for (k = 0; k < numvertex; ++k) {
     node = &vlist[k];
-    node = &vlist[kk];
     if (node->isdead) continue;
     t = node->numwind;
     if (t == 0) continue;
@@ -3112,5 +3125,47 @@ void writeadmix(char *admixname)
     fprintf (fff, "\n");
   }
   fclose(fff) ;
+}
+int vuseful() 
+{
+  int k, t , tlast, nd, j, i   ; 
+  NODE *node, *xnode ;  
+  t = 0 ; 
+  for (k = 0; k < numvertex; ++k) {
+    node = &vlist[k];
+    node -> isdead = 1 ; 
+    if (node -> label != NULL) { 
+     node -> isdead = 0 ; 
+    }
+  }
+  for (;;) { 
+   t = 0 ; 
+   for (k = 0; k < numvertex; ++k) {
+     node = &vlist[k];
+     if (node -> isdead == 0) continue ;
+      xnode = (NODE *) node -> left ; if ((xnode != NULL) && (xnode -> isdead == 0)) node -> isdead = 0 ; 
+      xnode = (NODE *) node -> right ; if ((xnode != NULL) && (xnode -> isdead == 0)) node -> isdead = 0 ; 
+      nd = node -> numadaughter ; 
+      for (i=0; i<nd; ++i) { 
+         xnode = (NODE *) node -> adaughter[i] ; 
+         if ((xnode != NULL) && (xnode -> isdead == 0)) { 
+         node -> isdead = 0 ; 
+         for (j=0; j<nd; ++j) { 
+          xnode = (NODE *) node -> adaughter[j] ; 
+          xnode -> isdead = 0 ;
+         }
+       } 
+     }
+     if (node -> isdead == 0) ++t ; 
+  }
+   if (t==0) break ;
+ }
+   t = 0 ; 
+   for (k = 0; k < numvertex; ++k) {
+     node = &vlist[k];
+//   printf("zz %s %d\n", node -> name, node -> isdead) ; 
+     if (node -> isdead == 1) ++t ; 
+   }
+   return t ; 
 }
 

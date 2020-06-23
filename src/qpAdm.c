@@ -22,7 +22,7 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "1000" 
+#define WVERSION   "1201" 
 // best analysis added
 // hires added
 // chrom: 23 added
@@ -95,9 +95,10 @@ double lambdascale;
 double *jmean;
 long *wkprint;
 int *zprint ; 
+int numboot = 1000 ; 
 
-int ldregress = 0;
-double ldlimit = 9999.0;	/* default is infinity */
+char *fstatsname = NULL ; 
+
 int fancyf4 = YES;
 
 char *outputname = NULL;
@@ -120,9 +121,12 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
 	  int nblocks);
 
 void
-calcevar (double *var, double *yvar, int nl, int nr,
+calcevar (double *mean, double *var, double *yvar, int nl, int nr,
 	  double **btop, double **bbot, double *gtop, double *gbot,
 	  int nblocks, int dim);
+
+void 
+calcevarboot(double *mean, double *var, double *ymean, double *yvar, int nl, int nr, int dim, int numboot)  ;
 
 int getf4 (int **xx, int *indx, double *ans);
 int getf4old (int **xx, int *indx, double *ans);
@@ -134,6 +138,8 @@ double gendstat(double *ca, int b1, int b2, int nr, int nl, double *mean, double
 void addscaldiag(double *mat, double scal, int n) ; 
 int isnested(int a, int b) ; 
 int usage (char *prog, int exval); 
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
+void  setktable(int *ktable, int nl,  int nr) ; 
 
 int
 main (int argc, char **argv)
@@ -189,6 +195,9 @@ main (int argc, char **argv)
   int numchromp ;  
   int pos ;
   double ymem ; 
+  int retkode ; 
+  int np ; 
+  double *ff3, *ff3var ; 
 
 
   F4INFO **f4info, *f4pt, *f4pt2, **g4info, *ggpt;
@@ -219,6 +228,7 @@ main (int argc, char **argv)
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
 
+ if (fstatsname == NULL) { 
   numsnps =
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
 
@@ -248,6 +258,8 @@ main (int argc, char **argv)
     if ((chrom == numchromp) && (xchrom != numchromp))
       cupt->ignore = YES;
   }
+
+ } 
 
   nleft = numlines (popleft);
   ZALLOC (popllist, nleft, char *);
@@ -289,6 +301,21 @@ main (int argc, char **argv)
 
   ZALLOC (nsamppops, numeg, int);
 
+  nr = nright - 1;
+  nl = nleft - 1;
+
+  ZALLOC (ktable, nleft * nright + 100, int);
+  setktable(ktable, nl,  nr) ; 
+
+  d = nl * nr;
+  dd = d * d;
+  ZALLOC (ymean, d + 10, double);
+  ZALLOC (ww, d + 10 + nl * nl, double);
+  ZALLOC (lambda,  nl, double);
+  ZALLOC (yvar, dd, double);
+
+
+ if (fstatsname == NULL) { 
   for (i = 0; i < numindivs; i++) {
     indx = indivmarkers[i];
     if (indx->ignore)
@@ -380,6 +407,7 @@ main (int argc, char **argv)
     t = bcols[k] = cupt->tagnumber;
     if (t>=xnblocks) fatalx("bad logic bug: %d %d %d\n", k, t, xnblocks) ;
   }
+ }
 
   lbase = 0;
   rbase = nleft;
@@ -387,17 +415,6 @@ main (int argc, char **argv)
   for (a = 1; a < nright; ++a) {
     rlist[a - 1] = nleft + a;
   }
-  nr = nright - 1;
-  nl = nleft - 1;
-
-  ZALLOC (ktable, nleft * nright + 100, int);
-
-  d = nl * nr;
-  dd = d * d;
-  ZALLOC (ymean, d + 10, double);
-  ZALLOC (ww, d + 10 + nl * nl, double);
-  ZALLOC (lambda,  nl, double);
-  ZALLOC (yvar, dd, double);
 
   ZALLOC (xind, nl, int);
   for (jjj = 1; jjj < nleft; ++jjj) {
@@ -422,11 +439,27 @@ main (int argc, char **argv)
   }
 
 
+ if (fstatsname == NULL) { 
   y = doq4vecb (ymean, yvar, counts, bcols,
 		nrows, ncols, lbase, xind, nl, rbase, rlist, nr, xnblocks);
 // y is jackknife dof 
-  printf ("dof (jackknife): %9.3f\n", y);
+  printf ("Effective number of blocks: %9.3f\n", y);
   printf ("numsnps used: %d\n", nsnpused);
+
+ }
+
+ else {
+  loadymv(ymean, yvar,  fstatsname, popllist, poprlist, nleft,  nright) ; 
+//  printf("loadymv exited\n") ;
+ }
+
+ retkode = checkmv(ymean, yvar, nl, nr) ; 
+
+ if (retkode == -1) printf("f4 stats all zero.  Rank 0!.  Aborting run\n") ;
+ if (retkode == -2) printf("f4 variance absurdly small.  Aborting run\n") ;
+
+ if (retkode < 0) return -1 ;
+
 
   ZALLOC (vfix, nl, int);
 
@@ -481,16 +514,23 @@ main (int argc, char **argv)
 
 //  printss (ymean, ww, nl, nr);
 
-  calcevar (var, yvar, nl, nr, btop, bbot, gtop, gbot, bnblocks, bdim);
+  
+
+  if (fstatsname == NULL) { 
+   calcevar (jmean, var, yvar, nl, nr, btop, bbot, gtop, gbot, bnblocks, bdim);
+  }
+  else { 
+   calcevarboot(jmean, var, ymean, yvar, nl, nr, nl*nr, numboot) ; 
+  }
   getdiag (ww, var, nl);
   vsp (ww, ww, 1.0e-20, nl);
   vsqrt (ww, ww, nl);
   printf ("      std. errors: ");
   
   if (hires)
-    printmatl (ww, 1, nl);
+    printmatwl (ww, 1, nl, nl);
   else
-    printmat (ww, 1, nl);
+    printmatw (ww, 1, nl, nl);
 
 
 
@@ -909,6 +949,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "outputname:", &outputname);
   getstring (ph, "badsnpname:", &badsnpname);
   getstring (ph, "blockname:", &blockname);
+  getstring (ph, "fstatsname:", &fstatsname);
 
   getdbl (ph, "blgsize:", &blgsize);
 
@@ -927,6 +968,7 @@ readcommands (int argc, char **argv)
   getint (ph, "details:", &details);
   getint (ph, "seed:", &seed) ; 
   getint (ph, "hiprec_covar:", &hiprec_covar) ; 
+  getint (ph, "numboot:", &numboot) ; 
   getdbl (ph, "diagplus:", &yscale);
 
 
@@ -937,6 +979,19 @@ writepars (ph);
 
 }
 
+void
+setktable(int *ktable,  int nl,  int nr) 
+{
+int a, b, k ; 
+k = 0;
+for (a = 0; a < nl; ++a) {
+ for (b = 0; b < nr; ++b) {
+  ktable[a * nr + b] = k;
+  ++k;
+ }
+}
+
+}
 
 double
 doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
@@ -991,7 +1046,6 @@ xt[0] = lbase;
 xt[1] = llist[a];
 xt[2] = rbase;
 xt[3] = rlist[b];
-ktable[a * nr + b] = k;
 ++k;
 // printf("xtk: %3d ", k) ; printimat(xt, 1, 4) ;
 }
@@ -1167,9 +1221,88 @@ if (indx[1] == indx[2])
 return 1;
 
 }
+void mv2D(double *mm, double *vv, double **data, int n, int dim) 
+{
+  double y ; 
+  double *ww ;  
+  int k ; 
+
+  if (n<=2) fatalx("(mv2D) number of rows too small: %d\n", n) ; 
+  y = (double) n ; 
+
+  sum2D(mm, data, n, dim) ; 
+  vst(mm, mm, 1.0/y, dim) ; 
+ 
+  ZALLOC(ww, dim, double) ; 
+  vzero(vv, dim*dim) ; 
+  for (k=0; k<n; ++k) { 
+   vvm(ww, data[k], mm, dim) ; 
+   addouter(vv, ww, dim) ;
+  }
+  
+  y = (double) (n-1) ; 
+  vst(vv, vv, 1.0/y, dim*dim) ; 
+
+ free(ww) ; 
+}
+void 
+calcevarboot(double *bootmean, double *bootvar, double *ymean, double *yvar, int nl, int nr, int dim, int numboot)  
+{
+
+ double *rvec, *rp, *svec,  *ww, *mean, **tmean, *totmean  ; 
+ int k ; 
+ F4INFO *f4wk, f4tt;
+ double yn ; 
+ double *wwcovar ;
+
+ ZALLOC(rvec, 2*dim*numboot, double) ; 
+ ZALLOC(ww, dim, double) ; 
+ ZALLOC(wwcovar, dim*dim, double) ; 
+ ZALLOC(totmean, nl, double) ; 
+ tmean = initarray_2Ddouble(2*numboot, nl, 0) ; 
+
+ genmultgauss(rvec, numboot, dim, yvar) ; 
+ svec = rvec + numboot*dim  ; 
+ for (k=0; k<numboot; ++k) { 
+  rp = rvec + k*dim ; 
+  copyarr(rp, ww, dim) ; 
+  vvp(rp, rp, ymean, dim) ; 
+  vvm(ww, ymean , ww, dim) ; 
+  copyarr(ww, svec + k*dim, dim) ; 
+ }
+ f4wk = &f4tt;
+ f4info_init (f4wk, nl, nr, popllist, poprlist, nl - 1);
+
+ doranktest (ymean, yvar, nl, nr, nl - 1, f4wk);
+ calcadm(totmean, f4wk -> A, nl) ;
+ printf("totmean:  ") ; printmat(totmean, 1, nl) ; 
+
+ for (k=0; k<numboot; ++k) { 
+  mean = rvec + k*dim ; 
+  doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
+  calcadm (tmean[2*k], f4wk->A, nl);
+  mean = svec + k*dim ; 
+  doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
+  calcadm (tmean[2*k+1], f4wk->A, nl);
+ }
+
+ yn = (double) (2*numboot) ; 
+ mv2D(ww, wwcovar, tmean, 2*numboot, nl) ; 
+ printf("boot mean: ") ; printmat(ww, 1, nl) ; 
+ copyarr(ww, bootmean, nl) ;
+ copyarr(wwcovar, bootvar, nl*nl) ; 
+
+
+ free(ww) ; 
+ free(wwcovar) ; 
+ free(rvec) ; 
+ free(totmean) ; 
+ free2D(&tmean, 2*numboot) ; 
+
+}
 
 void
-calcevar (double *var, double *yvar, int nl, int nr, double **btop,
+calcevar (double  *jmean, double *jvar, double *yvar, int nl, int nr, double **btop,
   double **bbot, double *gtop, double *gbot, int nblocks, int dim)
 {
 double *ymean, *mean, *wtop, *wbot, *totmean, **tmean, *wjack;
@@ -1218,7 +1351,7 @@ wjack[k] = asum (bbot[k], dim);
 
 }
 
-wjackvest (jmean, var, nl, totmean, tmean, wjack, nblocks);
+wjackvest (jmean, jvar, nl, totmean, tmean, wjack, nblocks);
 printf ("Jackknife mean:  ");
 if (nl==1) jmean[0] = 1 ; 
 printmatwl (jmean, 1, nl, nl);
@@ -1407,7 +1540,7 @@ double gendstat(double *ca, int b1, int b2, int nl, int nr, double *mean, double
 
  double *va, *vb, *vv, *ww ;
  int a, b, k, dim ; 
- double ym, yvar, ysig ;
+ double ym, yvar, ysig, y ;
 
  dim = nl*nr ;
  ZALLOC(va, nl, double) ;
@@ -1440,8 +1573,12 @@ double gendstat(double *ca, int b1, int b2, int nl, int nr, double *mean, double
  ym = vdot(vv, mean, dim) ;
  yvar = scx(var, NULL, vv, dim) ;
  ysig = sqrt(yvar) ;
-// printf("zzm %12.6f %12.6f %12.6f\n", ym, ysig, ym/ysig) ;
- return ym/ysig ; 
+ y = ym/ysig ;  
+ if (isnan(y)) { 
+  printf("zzm %12.6f %12.6f %12.6f\n", ym, ysig, y) ;
+  fatalx("(gendtat)\n") ; 
+ }
+ return y ; 
 
  free(va) ;
  free(vb) ;
@@ -1470,3 +1607,87 @@ int usage (char *prog, int exval)
 
   exit(exval);
 };
+
+void load4(int *x, int a, int b, int c, int d)
+{
+ x[0] = a ;
+ x[1] = b ;
+ x[2] = c ;
+ x[3] = d ;
+}
+
+
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) 
+{
+
+  char **eglist ; 
+  int numeg, np, numfs, nh2 ; 
+  double *ff3, *ff3var, *vest, *vvar ; 
+  int a, b, c, d, i, j, t, tt, k, dim ; 
+  int nl, nr ; 
+  int **fsindex, *fs ; 
+  double y, ysig, yv ; 
+
+  ZALLOC(eglist, MAXPOPS, char *) ; 
+  numeg = np = fstats2popl(fstatsname, eglist) ; 
+  ZALLOC(ff3, np*np, double) ; 
+  ZALLOC(ff3var, np*np*np*np, double) ; 
+  loadfstats(fstatsname, ff3, ff3var, eglist, numeg) ; 
+
+  nl = nleft -1 ; 
+  nr = nright -1 ; 
+
+  nh2 = numeg*(numeg-1) ; nh2 /= 2 ; 
+  ZALLOC(vest, nh2, double) ; 
+  ZALLOC(vvar, nh2*nh2, double) ;
+
+  setvv(vest, vvar, ff3, ff3var, NULL, numeg) ; 
+
+  t = nleft*nright ;  numfs = 0 ; 
+ 
+  fsindex = initarray_2Dint(t, 4, -1) ; 
+  a = indxstring(eglist, numeg, popllist[0]) ; 
+  c = indxstring(eglist, numeg, poprlist[0]) ; 
+  for (i=1; i<nleft; ++i) { 
+   b = indxstring(eglist, numeg, popllist[i]) ; 
+   for (j=1; j<nright; ++j) { 
+    d = indxstring(eglist, numeg, poprlist[j]) ; 
+    fs = fsindex[numfs] ; 
+    load4(fs, a, b, c, d) ; 
+    ivmaxmin(fs, 4, NULL, &tt) ; 
+    if (tt<0) fatalx("pop not found in fstats: %s %s %s %s\n", 
+       popllist[0], popllist[i], poprlist[0], poprlist[j]) ; 
+    ++numfs ; 
+
+  }} 
+
+  vv2ww(ymean, yvar, vest, vvar, numeg, fsindex, numfs) ;
+/**
+  printf("ymean stats %12.6f %12.6f\n", asum(ymean, numfs), asum2(ymean, numfs) ) ;
+  printf("zza %15.9f %15.9f\n", vest[0], vvar[0]) ; 
+  printf("zzb %15.9f %15.9f\n", vest[1], vvar[1]) ; 
+  printf("zzc %15.9f %15.9f\n", ymean[0], yvar[0]) ; 
+  printimat2D(fsindex, numfs, 4) ; 
+
+  dim = nl*nr ; 
+  for (i=0; i<numfs; ++i) { 
+   y = ymean[i] ; 
+   yv = yvar[i*numfs+i] ; 
+   ysig = sqrt(yv) ; 
+   printf("%12.6f ", y) ; 
+   printf("%12.6f ", ysig) ; 
+   printf("%9.3f ", y/ysig) ; 
+   printnl() ; 
+  } 
+
+*/
+
+  free(eglist) ; 
+  free(ff3) ; 
+  free(ff3var) ; 
+  free(vest) ; 
+  free(vvar) ; 
+
+  free2Dint(&fsindex, t) ; 
+
+}

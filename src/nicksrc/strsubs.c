@@ -191,6 +191,20 @@ fatalx (char *fmt, ...)
   abort ();
 }
 
+
+int
+docommand (char *fmt, ...)
+{
+  va_list args;
+
+  va_start (args, fmt);
+  vsprintf (Estr, fmt, args);
+  va_end (args);
+  fflush (stdout);
+
+  return system(Estr)  ;  
+}
+
 int
 NPisnumber (char c)
 
@@ -435,7 +449,7 @@ striplead (char *sss, char c)
   
   int len, i;
   len = strlen (sss);
-  for (i = 0 ; i <len ; +-i) {
+  for (i = 0 ; i <len ; ++i) {
     if (sss[i] != c) break ; 
     ++sx ;  
   }
@@ -719,7 +733,7 @@ openit_trap (char *name, FILE ** fff, char *type)
 {
   char *ss;
   if (name == NULL)
-    fatalx ("\n(openit_reap) null name\n");
+    fatalx ("\n(openit_trap) null name\n");
   *fff = fopen (name, type);
   if (*fff == NULL) {
     ss = strerror (errno);
@@ -1463,6 +1477,20 @@ printstringsw (char **ss, int n, int slen, int width)
 }
 
 void
+printstringsx (char **ss, int n)
+// no newline
+{
+  int k;
+
+  for (k = 0; k < n; ++k) {
+    if (ss[k] != NULL)
+      printf (" %s", ss[k]);
+    else
+      printf (" %s", "NULL");
+  }
+}
+ 
+void
 printstrings (char **ss, int n)
 {
   int k;
@@ -1475,7 +1503,7 @@ printstrings (char **ss, int n)
     printnl ();
   }
 }
-
+ 
 int
 ridfile (char *fname)
 {

@@ -25,6 +25,7 @@ eigvals (double *mat, double *evals, int n)
 
   len = n * (n + 1);
   len /= 2;
+  len += n ; 
   ZALLOC (pmat, len, double);
 
   vst (mat, mat, -1.0, n * n);
@@ -43,6 +44,7 @@ eigvecs (double *mat, double *evals, double *evecs, int n)
 
   len = n * (n + 1);
   len /= 2;
+  len += n ; 
   ZALLOC (pmat, len, double);
 
   vst (mat, mat, -1.0, n * n);

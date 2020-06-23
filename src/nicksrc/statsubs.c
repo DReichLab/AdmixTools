@@ -2166,13 +2166,8 @@ weightjackx (double *est, double *sig, double mean, double *jmean,
 
   vclear (hh, yn, g);
   vvd (hh, hh, jwt, g);
-/**
-  for (k=0; k<g; ++k) {
-   if (jwt[k] > 0.0) hh[k] /= jwt[k] ;  
-   else hh[k] *= 1.0e20 ;
-  }
-*/
-// jwt should be positive
+
+// jwt should be positive (forced by weightjack()) 
 
   vst (xtau, hh, mean, g);
   vsp (w1, hh, -1.0, g);

@@ -8,7 +8,7 @@
 extern int verbose;
 extern double yscale ;
 
-void addscaldiag(double *mat, double scal, int n) ;
+int addscaldiag(double *mat, double scal, int n) ;
 
 int
 dofrank (int m, int n, int rank)
@@ -96,6 +96,27 @@ doranktestfix (double *mean, double *var, int m, int n, int xrank,
     f4pt->A = f4pt->B = NULL;
   }
   vvm (f4pt->resid, f4pt->mean, f4pt->resid, m * n);
+}
+
+int checkmv(double *mean, double *var, int m, int n) 
+{
+ int d, dd ; 
+ double y1, y2 ;
+
+ d = m*n ; 
+ dd = d*d ; 
+
+ y1 = asum2(mean, d) ; 
+ y2 = trace(var, d) ; 
+
+ if (fabs(y1) < 1.0e-12) return -1 ;
+ if (y2 < 1.0e-12) return -2 ;
+
+ return 1 ; 
+
+
+
+
 }
 
 void
@@ -212,11 +233,11 @@ solvitforcez (double *coeffs, double *rhs, int dim, double *ans, int *vl,
   ZALLOC (tco, dim*dim, double);
 
   copyarr(coeffs, tco, dim*dim) ; 
-  addscaldiag(tco, yscale, dim) ;
+  ret = addscaldiag(tco, yscale, dim) ;
   
   ret = solvitfix(tco, rhs, dim, ans, vl, vals, nf) ; 
-
   if (ret<0) fatalx("bad solvitforcez\n") ; 
+
   free(vals) ; 
   free(tco) ;
 
@@ -225,16 +246,19 @@ solvitforcez (double *coeffs, double *rhs, int dim, double *ans, int *vl,
 
 }
 
-void addscaldiag(double *mat, double scal, int n) 
+int addscaldiag(double *mat, double scal, int n) 
 {
- double y ;  
+ double y, ytr ;  
  int i, k ; 
 
-  y = scal * trace(mat, n) ;
+  ytr = trace(mat, n) ; 
+  if (ytr<=0.0) return -1 ;
+  y = scal * ytr ;
   for (i=0; i<n; ++i) { 
    k = i*n + i ; 
    mat[k] += y ; 
   }
+  return 1 ;
 }
  
 double
@@ -255,7 +279,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
   int *vl;
   double *vfl;
 
-  int nf;
+  int nf ;
 
   nfix = t = intsum (vfix, m);
   if (t > rank)
@@ -286,8 +310,22 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
   ZALLOC (ww, d, double);
 
   copyarr(var, varinv, d*d) ; 
-  addscaldiag(varinv, yscale, d) ;
-  pdinv (varinv, varinv, d);
+
+ if (verbose) {
+  printf("rank: %d d: %d\n", rank, d) ;
+  printmatl(mean, m, n) ;
+  printnl() ; 
+  printmatl(var, d, d) ;
+  printnl() ; 
+ }
+
+  ret = addscaldiag(varinv, yscale, d) ;
+  if (ret<0) { 
+   setidmat(varinv, d) ; 
+   vst(varinv, varinv, 1.0e12, d*d) ;
+  }
+  else pdinv (varinv, varinv, d);
+
 
   adim = rank * m;
   bdim = rank * n;
@@ -456,7 +494,7 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
 {
   int d = m * n, dd;
   int i, j, a, b, s, t, r1, r2, k1, k2, u1, u2;
-  int iter, numiter = 20, retkode;
+  int iter, numiter = 20, retkode, ret;
   double *ww, *varinv;
   double T2, tail;
   double *A, *B, *wleft, *wright, *mt, *evecs, *xmean;
@@ -478,9 +516,21 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
   ZALLOC (varinv, dd, double);
   ZALLOC (ww, d, double);
 
+ if (verbose) {
+  printf("rank: %d d: %d\n", rank, d) ;
+  printmatl(mean, m, n) ;
+  printnl() ; 
+  printmatl(var, d, d) ;
+  printnl() ; 
+ }
+
   copyarr(var, varinv, d*d) ; 
-  addscaldiag(varinv, yscale, d) ;
-  pdinv (varinv, varinv, d);
+  ret = addscaldiag(varinv, yscale, d) ;
+  if (ret<0) { 
+   setidmat(varinv, d) ; 
+   vst(varinv, varinv, 1.0e12, d*d) ;
+  }
+  else pdinv (varinv, varinv, d);
 
   if (rank == 0) {
     vzero (ww, d);
