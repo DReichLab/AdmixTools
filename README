@@ -61,24 +61,26 @@ Nick Patterson
 <nickp@broadinstitute.org>
 
 
-*** NEW *** 
-1) 
-Users of ADMIXTOOLS should know that an alternate version in R (native mode -- reimplementation) 
-written by Robert Maier is also available on Github.  
-See https://github.com/uqrmaie1/admixtools
-Executables run fast, and it has features not available in this C version, such as interactive 
- exploration of graph phylogenies 
+*** NEW ***
+1)
+version 7.0 has numerous upgrades.
+a) Two new executables --qpfstats qpfmv allow precomputation of f-statistic basis.
+This can greatly reduce computation costs.
+b) qpAdm, qpWave, qpGraph support qpfstats output as input.
+*** This is a much improved way of running with allsnps: YES.    ***
+c)  A new experimental feature of qpGraph (halfscore: YES) allows
+ comparison of 2 phylogenies + a (weak) goodness of fit score.  Be careful
+ if running with a large number of populations and consider reducing block size say
+ blgsize: .005
 
-2) 
-version 7.0 has numerous upgrades. 
-a) Two new executables --qpfstats qpfmv allow precomputation of f-statistic basis.  
-This can greatly reduce computation costs.  
-b) qpAdm, qpWave, qpGraph support qpfstats output as input.  
-*** This is a much improved way of running with allsnps: YES.    *** 
-c)  A new experimental feature of qpGraph (halfscore: YES) allows 
- comparison of 2 phylogenies + a (weak) goodness of fit score.  Be careful 
- if running with a large nnumber of populations and consider reducing block size say 
- blgsize: .005 
+2)
+Note that several of the new ideas implemented in version 7.0 were developed collaboratively with Robert Maier, who has implemented them along with the great majority of other ADMIXTOOLS functionality in R:
+See https://github.com/uqrmaie1/admixtools
+Executables run fast, and it has features not available in this C version, such as interactive exploration of graph phylogenies.
+A manuscript describing the algorithmic ideas and providing documentation of the methods is in preparation.
+
+
+
 
 
 *** Fairly NEW *** 
