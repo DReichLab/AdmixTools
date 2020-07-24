@@ -76,6 +76,8 @@ void
 setallsnpsmode (int mode)
 {
   allsnpsmode = mode;
+  if (mode == YES)
+    printf ("allsnps set\n");
 }
 
 void
@@ -4371,6 +4373,7 @@ double fstatx(int *fsindex)
 {
    int a, b, c, d ; 
    double p1, p2, p3, p4, yy ; 
+   double small = -1.0e-6  ;
 
      a = fsindex[0] ; 
      b = fsindex[1] ; 
@@ -4385,10 +4388,10 @@ double fstatx(int *fsindex)
     p3 = aafreq[c] ; 
     p4 = aafreq[d] ; 
  
-    if (p1<0) return -9999 ;  
-    if (p2<0) return -9999 ;  
-    if (p3<0) return -9999 ;  
-    if (p4<0) return -9999 ;  
+    if (p1<small) return -9999 ;  
+    if (p2<small) return -9999 ;  
+    if (p3<small) return -9999 ;  
+    if (p4<small) return -9999 ;  
 
     yy = (p1-p2)*(p3-p4) ;  
 
@@ -4396,6 +4399,16 @@ double fstatx(int *fsindex)
     if (b==d)  yy += aaxadd[b] ; 
     if (a==d)  yy -= aaxadd[a] ; 
     if (b==c)  yy -= aaxadd[b] ; 
+
+    if (verbose) { 
+     printf("zzfq:  %d %d %d %d ", a, b, c, d) ; 
+     printf(" %9.3f ", p1) ; 
+     printf(" %9.3f ", p2) ; 
+     printf(" %9.3f ", p3) ; 
+     printf(" %9.3f ", p4) ; 
+     printf(" :: %d %d %9.3f %9.3f %9.3f", a, b, aaxadd[a], aaxadd[b], yy) ; 
+     printnl() ; 
+    }
 
     if (isnan(yy)) fatalx("(fstatx) yukk!\n") ; 
     return yy ; 
@@ -4443,11 +4456,11 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   double *jest, *jsig, mean, *jmean, *jwt ; 
   double *wco, *wcoinv, *wans, *wrhs, *wfb ; 
   double **vjmean ; 
-  double y, y1, *pp, ymin ; 
+  double y, y1, y2, *pp, ymin ; 
   double diag = 1.0e-8 ; 
 
   int bnum, i, j, k, col, smax, jmax, tmax, tmin  ; 
-  int ngood = 0, bad = 0 ; 
+  int ngood = 0, bad = 0, tt ; 
   SNP *cupt ; 
   int *bas2fs ; 
 
@@ -4513,13 +4526,13 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
     top = btop[bnum];
     bot = bbot[bnum];
 
-    for (k=0; k<nfstats; ++k) { 
-     yy = fstatx(fsindex[k]) ;
+    for (j=0; j<nfstats; ++j) { 
+     yy = fstatx(fsindex[j]) ;
      if (isnan(yy)) fatalx("fstatx bug\n") ; 
      if (yy < -99) continue ; 
      yy *= scale ; 
-     top[k] += wt*yy ; 
-     bot[k] += 1  ; 
+     top[j] += wt*yy ; 
+     bot[j] += 1  ; 
     }
   }
 
@@ -4538,9 +4551,42 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   printnl() ; 
 */
 
-  vlmaxmin(bot, nfstats, &tmax, &tmin) ; 
-  ymin = bot[tmin] ; 
-  if (ymin<=0.001) bad = tmin - 1000*1000 ; 
+  vlmaxmin(gbot, nfstats, &tmax, &tmin) ; 
+  ymin = gbot[tmin] ; 
+  if (ymin<=0.001) { 
+    bad = tmin - 1000*1000 ; 
+    verbose = YES ; 
+
+  tt = 0 ; 
+  for (col = 0; col < ncols; ++col) {
+    cupt = xsnplist[col];
+    if (cupt->ignore)
+      continue;
+    wt = cupt->weight;
+    if (wt <= 0.0)
+      continue;
+
+    bnum = cupt->tagnumber;
+    if (bnum < 0) continue;
+    if (bnum>=nblocks) fatalx("logic bug\n") ;
+
+    loadaa (cupt, xindex, xtypes, nrows, numeg);
+
+
+
+     j = tmin ; 
+     yy = fstatx(fsindex[j]) ;
+     if (isnan(yy)) fatalx("fstatx bug\n") ; 
+     if (yy < -99) continue ; 
+     yy *= scale ; 
+     ++tt ; 
+   }
+   verbose = NO ; 
+
+// printf("zzcount: %9.0f %d\n", ymin, tt) ; 
+//    printmat(gbot, 1, nfstats) ; 
+
+  } 
 
 
   vsp (w2, gbot, 1.0e-10, nfstats);
@@ -4560,6 +4606,14 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   vvd (gtop, gtop, gbot, nfstats);
 
   for (j=0; j<nfstats; ++j) { 
+
+   if (gbot[j] < .001) { 
+    jest[j] = 0.0 ; 
+    jsig[j] = 1.0e6 ; 
+    printf("fstat zeroed: ") ; printimat(fsindex[j], 1, 4) ; 
+    continue ;
+   }
+
    for (k = 0; k < nblocks; ++k) {
     jmean[k] = btop[k][j] ; 
     jwt[k]   = wjack[k] ; 
@@ -4567,6 +4621,14 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
 
    mean = gtop[j] ;  
    weightjack(&jest[j], &jsig[j], mean, jmean, jwt, nblocks) ; 
+
+   if (j==-1) { 
+    printf("zzjj: %9.3f %9.3f %9.3f %9.3f\n", mean, gbot[j], jest[j], jsig[j])  ;
+    printmat(jmean, 1, nblocks) ;  printnl() ; printnl() ; 
+    printmat(jwt, 1, nblocks) ;  printnl() ; printnl() ; 
+   }
+
+
   if (nfstats < 1000) { 
    printf("jest. pass 1 ") ; 
    printimatx(fsindex[j], 1, 4) ; 
@@ -4577,20 +4639,34 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
    fflush(stdout) ; 
   }
 
-/**
-   if (jsig[j] < 1.0e-6) { 
-    printf("zzbug\n") ; 
-    for (k = 0; k < nblocks; ++k) {
-     printf(" %4d %12.6f %12.6f\n", k, jmean[k], jwt[k]) ; 
-    } 
-    weightjack(&jest[j], &jsig[j], mean, jmean, jwt, nblocks) ; 
-    fatalx("yukk!\n") ;
-   }
-*/
-  } 
+ } 
 
+  for (k=0; k<nfstats; ++k) { 
+  // flatten. pretend we have gbot observations but prior on f is N(0,1)  
+  // otherwise for very small samples we get jsig 0 and bad things happen
+   y1 =  gbot[k] + 1.0 ; 
+   jest[k] = jest[k]*gbot[k] / y1 ; 
+   y2 = (jsig[k]*jsig[k]*gbot[k]) + 1.0 ;
+   jsig[k] = sqrt(y2/y1) ;
+  }
   copyarr(jest, fsmean, nfstats);  
   copyarr(jsig, fssig, nfstats);  
+
+/**
+  for (k=0; k<nfstats; ++k) { 
+   printf("zzkfs: %d : ", k) ;
+   printimatx(fsindex[k], 1, 4) ; 
+   printf(" ::") ; 
+
+   printf(" %9.3f ", fsmean[k]) ;
+   printf(" %9.3f ", fssig[k]) ;
+   printf(" %9.3f ", gbot[k]) ;
+   printnl() ;
+
+
+  }
+*/ 
+  
 
 //   printf("fbcoeffs:\n") ; 
   for (k=0; k<nfstats; ++k) { 

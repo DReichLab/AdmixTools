@@ -26,11 +26,12 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "180"
+#define WVERSION   "200"
 
 // useweight added  
 // allsnps added
 // doscale NO added
+// small bug (error check in dofstats fixed 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -524,6 +525,12 @@ rintf ("seed: %d\n", seed);
     printf("*** warning ***\n") ; 
     printf("fstat with no data.  Unable to compute heterozygosity?: ") ; 
     printimat(findex[bad], 1, 4) ; 
+    printf("bad quadruple: ") ;
+    for (k=-0; k<4; ++k) { 
+      a = findex[bad][k] ;  
+      printf(" %s ", eglist[a]) ;
+    }
+    printnl() ;
    }
 
   y = cputimes(1, 2) ; 
@@ -545,8 +552,10 @@ rintf ("seed: %d\n", seed);
      if (hires) dumpfstatshr(fstatsoutname, ff3, ff3var, eglist, numeg, ind2f, basenum) ; 
      else dumpfstats(fstatsoutname, ff3, ff3var, eglist, numeg, ind2f, basenum) ; 
 
-/**
+   if (details) printf("raw fstat table (before fit): scale:  %9.3f\n", lambdascale) ;
    for (k=0; k<nfstats; ++k) { 
+
+    if (details == NO) break ; 
 
     tt = findex[k] ; 
 
@@ -555,11 +564,15 @@ rintf ("seed: %d\n", seed);
     c = tt[2] ; 
     d = tt[3] ; 
 
-   printf("fstats: ") ; 
+   printf("fstat: ") ; 
+/**
    printf(" %s",  eglist[a]) ;
    printf(" %s",  eglist[b]) ;
    printf(" %s",  eglist[c]) ;
    printf(" %s",  eglist[d]) ;
+*/
+  
+   printimatx(tt, 1, 4) ; 
 
    printf(" %12.6f", fsmean[k]) ;
    printf(" %12.6f", fssig[k]) ;
@@ -568,17 +581,7 @@ rintf ("seed: %d\n", seed);
 
   }
   printf ("##end of qpfstats\n");
-*/
 
-/**
-
-  ZALLOC(www, nbasis*nbasis, double) ; 
-  vst(www, fbmean, 1000, nbasis) ; 
-  printf("fb:\n") ; printmat(www, 1, nbasis) ;
-  vst(www, fbcovar, 1000*1000, nbasis*nbasis) ; 
-  printf("fbcovar:\n") ; printmat(www, nbasis, nbasis) ;
-
-*/
 
   for (i=0; i<nbasis; ++i) {
    a = basis[i][0] ; 
