@@ -38,6 +38,17 @@ allsnps: YES
 When set to YES, the maximum number of snps available for each f4 statistic are used. By default,
 only the intersect of snps across all Left and Right populations are used.
 
+*** NEW *** 
+If allsnps: YES qpfstats is called to calculate the relevant f-statistics.  If you want 
+compatibility with older versions (VERSION < 1400) code:  
+allsnps: YES 
+inbreed: YES 
+oldallsnpsmode: NO  
+This is deprecated as the algorithm is inferior.
+*** stongly recommended that inbreed be set.  YES if possible.  
+
+The same feature is now also in qpAdm
+
 chrom: Only use snps in the specified chromosome.
 
 DESCRIPTION OF OUTPUT FILE:
@@ -87,6 +98,27 @@ diagplus:  0
 *** new feature (for both qpAdm and qpWave)***  
 Input can now be an fstats file -- see README.qpfstats
 For qpAdm new parameter numboot: see README.qpfstats
+
+*** NEW *** 
+If you run qpWave or qpAdm with allsnps: YES but no fstats filer, then the programs 
+call qpfstats with a system call.  If this call fails it can be tricky to debug. 
+Options to make the process more transparent:  
+fstatslog:   <your log file> 
+keeptmp:    YES 
+## (Various temporary files are created in $STMP (see below) or /tmp.  By default these are deleted. 
+fstastoutname:  <myfstats.txt> 
+In some cases it may be useful to keep this file for future runs.  
+It is not always practical, but for some projects involbing less than (say) 40 populations it will be 
+best to run qpfstats (with allsnps: YES) and then run many qpWave/qpAdm runs off the fstats file
+qpfstats may be slow but the follow on runs will be very fast. 
+
+By default /tmp is used for temporary files.  To get more control set an environment variable STMP. 
+For instance in bash code 
+
+export  STMP=~/mytrashdir               
+The directory should exist when qpWave or qpAdm are run.  
+
+
 
 
 Nick Patterson

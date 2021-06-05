@@ -12,8 +12,8 @@
 #include "qpsubs.h"
 #include "admutils.h"
 
-#define WVERSION "2000"
-#define MAXA  10
+#define WVERSION "2010"
+#define MAXA  MAXW
 
 extern int verbose;
 extern int isinit;
@@ -22,6 +22,7 @@ static int totpop = 0;
 static int *ispath = NULL;
 static int ispathlen = 0;
 static int outformat = 1 ;   
+static int debug = NO ;
 // ispath [x*numvertex=y] = 1 iff path from x -> y
 
 char *bugstring ; 
@@ -36,7 +37,7 @@ typedef struct
 
 typedef struct
 {
-  int gnode;
+  int gnode;  // number of vertex
   int glabel;
   char *name;
   char *label;
@@ -52,9 +53,12 @@ typedef struct
   struct EDGE *eleft;
   struct EDGE *eright;
   struct EDGE *eparent;
-  struct NODE *adaughter[10] ; 
+  struct NODE *adaughter[MAXA] ; 
   int numadaughter ;
-  double time;
+  double date ; //date B.P. 
+  double time;  // generation time.  Base 0 (from minimal date) 
+  int timeindex ;   // for ibdGraph index to distinct times 
+  int fixtime ;  
   int popsize;
   int numwind;
   int windex[MAXW];
@@ -70,7 +74,8 @@ typedef struct
   struct NODE *up;
   struct NODE *down;
   double theta ;
-  double val;
+  double val ;
+  double ibdexp ;
   int edgenum;
   int isfixed;
   int iszero;
@@ -89,6 +94,8 @@ static int nforce = 0;
 
 static int numedge = -1, numvertex = -1, numadmix, numpops;
 static int numancestor = 0 ;
+
+static int ibdmode = NO ;
 int ncall;
 
 void initelist (EDGE * elist, int n);
@@ -361,6 +368,69 @@ getnumvertex ()
   return numvertex;
 }
 
+void setibdexp(int num, double ibdexp)
+{
+ EDGE *edge ; 
+
+ edge = &elist[num] ; 
+ edge -> ibdexp = ibdexp ;
+
+ return ;
+
+}
+
+void printedgedata(int num)  
+{
+
+ EDGE *edge ; 
+ NODE *node ;
+ int t1, t2 ;
+ double t, yn, val, theta, y ; 
+
+ if (num<0) {  
+  printf("%18s ") ; 
+  printf(" %9s ", "UP") ; 
+  printf(" %9s ", "DOWN") ; 
+  printf(" %9s ", "time") ; 
+  printf(" %9s", "pop size") ; 
+  printf(" %12s", "coal prob") ; 
+  printf(" %12s ", "exp IBD") ; 
+  printnl() ;
+  return ;
+ }
+
+ edge = &elist[num] ; 
+ printf ("edge %3d %9s ", num, edge -> name) ; 
+ node = (NODE *) edge -> up ; 
+ printf("%9s -> ", node -> name) ;
+ node = (NODE *) edge -> down ; 
+ printf("%9s ", node -> name) ;
+
+ t1 = t2 = 1 ; 
+
+ val = edge -> val ; theta = edge -> theta ;
+
+ if ((val>0) && (val < 1.0e6)) printf("%9.3f ", val) ;
+ else { printf ("%9s ", "-") ;
+  t1 = 0 ; 
+  if (val > 1.0e6) t1 = 1 ; 
+ }
+ if (theta>0) printf("%9.3f ",  theta) ;
+ else {
+  t2 = 0 ; 
+  printf("%9s ",  "-" ) ;
+ } 
+ if ((t1==1) && (t2==1)) { 
+  printf("%12.6f ", 1-exp(-val/(2*theta))) ;
+  printf("%12.6f ", edge -> ibdexp) ;         
+ }
+ 
+ printnl() ;
+
+
+}
+
+
 int
 getnumedge ()
 {
@@ -400,6 +470,41 @@ putewts (double *ewts)
   }
 }
 
+void getnlabel(char *ss, NODE *node) 
+{
+  if (node -> label == NULL) strcpy(ss, node -> name) ;
+  else  strcpy(ss, node -> label) ;
+
+}
+
+int getedgeinfo(int edgenum, char **pupname, char **pdownname, double *length, double *popsize) 
+{
+#define MAXSTR 128
+
+  NODE *node ; 
+  EDGE *edge ; 
+  char ss[MAXSTR] ;
+ 
+  edge = &elist[edgenum] ;  
+
+  node = (NODE *) edge -> up ; 
+  getnlabel(ss, node) ; 
+  *pupname = strdup(ss) ;
+  
+  node = (NODE *) edge -> down ; 
+  getnlabel(ss, node) ; 
+  *pdownname = strdup(ss) ;
+
+  *length = edge -> val ; 
+  *popsize = edge -> theta ; 
+
+  if (*length <= 0) return 0 ; 
+  if (*length >= 1000*1000) return 0 ; 
+
+  return 1 ;
+
+}
+
 int
 getpopinfo (char *name, int *popsize, int num)
 {
@@ -412,9 +517,386 @@ getpopinfo (char *name, int *popsize, int num)
   strcpy (name, node->name);
 
   return k;
+}
+void settimeindex(NODE *node, int *pnext)  
+{
+
+ NODE *xnode ;
+ int next = *pnext ;
+ int j, k ;
+
+ if (node == NULL) return ;
+//  printf("zzst %s %d\n", node -> name , next) ;
+
+
+ for (j=0; j< node -> numwind; ++j) { 
+  k = node -> windex[j] ;  
+  xnode = &vlist[k] ; 
+  if (xnode -> timeindex == 0) continue ;
+  xnode -> timeindex = node -> timeindex ;
+  xnode -> fixtime = node -> fixtime ;
+  xnode -> time = node -> time ;
+  printf("time index: %s %d\n", xnode -> name, xnode -> timeindex) ; 
+  settimeindex(xnode, &next) ;
+ }
+
+ xnode = (NODE *) node -> parent ;
+//  if (xnode != NULL) printf("zz %s %s\n",  node -> name, xnode -> name) ;
+
+ if ((xnode != NULL) && (xnode -> timeindex < 0)) {
+  xnode -> timeindex = next ; 
+  printf("time index: %s %d\n", xnode -> name, xnode -> timeindex) ; 
+  ++next ; 
+  settimeindex(xnode, &next) ;
+ }
+
+ *pnext = next ;
 
 }
 
+void settime(NODE *node, double *tvals) 
+{
+ NODE *dd[2], *xnode ;
+ double tt[2], tmax, yadd ; 
+ int t, k, x ; 
+
+ vzero(tt, 2) ; // times of children
+ if (node == NULL) return ; 
+ if (node -> time > -1) return ;
+ 
+  t = node->numadaughter;
+  if (t>2) fatalx("(sttime bug) not implemented\n") ;
+  if (t > 0) {
+    for (k = 0; k < t; ++k) {
+      xnode = dd[k] = (NODE *) node -> adaughter[k] ; 
+      if (xnode -> time < -1) settime(xnode, tvals) ;
+      tt[k] = xnode -> time ; 
+    }
+  }
+    if (t==0) { 
+     xnode = (NODE *) node -> left ;  
+     if (xnode != NULL) {
+      settime(xnode, tvals) ;
+      tt[0] = xnode -> time ;
+     }
+     xnode = (NODE *) node -> right ;  
+     if (xnode != NULL) {
+      settime(xnode, tvals) ;
+      tt[1] = xnode -> time ;
+     }
+    }
+    tmax = MAX(tt[0], tt[1]) ;  
+    t = node -> timeindex ;
+    yadd = tvals[t] ; 
+/**
+    printf("zzqqtime %s %g %g ", node -> name, tt, yadd) ;
+    printmat(tvals, 1, t+1) ; 
+*/
+    node -> time = tmax + yadd ;
+
+    return ; 
+}
+void sortedge(int *edgeorder) 
+/** 
+ sort edges by initial time 
+ the edges of the graph form a partial order  
+ it is desirable to map this to a fixed formal order 
+ in the analysis.  Thus if we have a (generalized) path to the root 
+ from 2 leaves we can form the intersection and analyze by increasing 
+ time from present.  
+*/  
+{
+  NODE *node ; 
+  EDGE *edge ; 
+  int j, k ; 
+  double *ww ; 
+
+  if (edgeorder == NULL) return ; 
+  ZALLOC(ww, numedge, double) ;
+
+   for (k=0; k<numedge; ++k) { 
+    edge = &elist[k] ;  
+    node = (NODE *) edge -> down ; 
+    ww[k] = node -> time ;
+   }
+   sortit(ww, edgeorder, numedge) ; 
+// debug info
+
+   for (j=0; j<numedge; ++j) { 
+    if (debug == NO) break ;
+    k = edgeorder[j] ;
+    edge = &elist[k] ;  
+    printf("zzedge: %d ", k) ; 
+    node = (NODE *) edge -> down ; 
+    printf(" %s ", node -> name) ; 
+    printf(" %9.1f ", node -> time) ; 
+    node = (NODE *) edge -> up ; 
+    printf(" %s ", node -> name) ; 
+    printf(" %9.1f ", node -> time) ; 
+    printf(" %9.3f", edge -> val) ; 
+    if (edge -> theta > 0) printf(" :: %9.1f", edge -> theta) ;
+    printnl() ;
+   }
+
+ free(ww) ; 
+ return ; 
+
+}
+
+void setxnoc(double *xnoc, double *popsizes, double *edgeprob, int *edgeorder) 
+// probability of no coalescence at down vertex of each edge 
+{
+
+ int k, kk, t, j, vnode, edgenum, vind ; 
+ NODE *node,  *child, *tnode ; 
+ EDGE *edge, *tedge ; 
+ double wt, xco, yco1, yp, ttime, ysize ;  
+ double *wvert ; 
+ 
+
+ ZALLOC(wvert, numvertex, double) ; 
+ vclear(wvert, 1.0, numvertex) ;
+
+ for (k=0; k<numedge; ++k) { 
+   kk = edgeorder[k] ;  
+
+   edge = &elist[kk] ; 
+   node = (NODE *) edge -> down ;
+   vnode = node -> gnode ;
+   
+  wvert[vnode] = 0.0 ; 
+  t = node->numwind;
+  if (t > 0) {
+    for (j=0; j<t; ++j) {
+      wt = node->wmix[k];
+      vind = node->windex[k];
+      wvert[vnode] += wt * wvert[vind] ;  
+    }
+  }
+  else { 
+   xco = 0.0 ;  // probability of having ooalesced 
+   child = (NODE *) node -> left ;  
+   if (child != NULL) { 
+    tedge = (EDGE *) node -> eleft ;
+    edgenum = tedge -> edgenum ; 
+
+    ttime = node -> time - child -> time ; 
+    ysize = 2.0 * popsizes[edgenum] ;  
+    yco1 = 1.0 -exp(-ttime/ysize) ;
+// popdize is diploid; so genetic time 1 is 2 ysize generations.  ttime is in generation units
+
+    j = child -> gnode ; 
+    yp = 1.0 - wvert[j] ; 
+    yp += wvert[j] * yco1 ; 
+    xco += edgeprob[edgenum]*yp ;
+/**
+ this is probability of having coalesced  if we traverse left 
+*/ 
+   }
+   child = (NODE *) node -> right ;  
+   if (child != NULL) { 
+
+    tedge = (EDGE *) node -> eright ;
+    edgenum = tedge -> edgenum ; 
+
+    ttime = node -> time - child -> time ; 
+    ysize = 2.0 * popsizes[edgenum] ;  
+    yco1 = 1.0 -exp(-ttime/ysize) ; // dangerous bend
+    j = child -> gnode ; 
+    yp = 1.0 - wvert[j] ; 
+    yp += wvert[j] * yco1 ; 
+    xco += edgeprob[edgenum]*yp ;
+/**
+ this is probability of having coalesced  if we traverse right 
+*/ 
+   }
+   xnoc[kk] = wvert[vnode] = 1.0 - xco ;
+  }
+
+ } // end edge loop 
+
+
+
+}
+
+void setdate(double basedate, double gentime) 
+{
+ int k ; 
+ NODE *node ; 
+
+
+ for (k=0; k< numvertex; ++k) { 
+  node = &vlist[k] ; 
+//  printf("zzsd %9.3f %9.3f %9.3f\n", basedate, gentime, node -> time)  ; 
+  node -> date = (node -> time)  * gentime + basedate ; 
+ }
+
+
+}
+
+void ibdpars(double *pars, int npars, int *edgeorder) 
+// sets edge pop sizes and times  
+{
+
+ double *wpars, *wp, *vv ; 
+
+ EDGE *edge ; 
+ int k, x, t, ntime, np ; 
+ double tup, tdown, tdiff ;
+ NODE *node ;
+ 
+ ZALLOC(wpars, npars, double) ;
+ copyarr(pars, wpars, npars) ; 
+
+/** 
+ dangerous bend;  
+ pars is actual times etc;  
+ scorit works with lpars = log(pars)  
+*/
+ 
+ 
+ ntime = npars - numedge ;
+
+ for (k=0; k<numedge; ++k) { 
+  edge = &elist[k] ;  
+  edge -> theta = wpars[k] ;  // popsize ;  
+ }
+ ZALLOC(vv, numvertex, double) ;
+ vclear(vv, -99, numvertex) ; 
+ vv[0] = 1.0e20 ;  // infinite 
+ for (k=0; k<numvertex; ++k) {
+   node = &vlist[k] ; 
+   if (node -> fixtime) continue ; 
+   node -> time = -99 ;
+ }
+ wp = wpars + numedge  ;  // dangerous bend wpars[t] -> timeindex numpops 
+ np = npars - numedge ;
+ for (t=0; t<np ; ++t)  {
+  vv[numpops + 1 + t] = wp[t] ; 
+ }   
+
+ for (k=0; k<numvertex; ++k) {
+   node = &vlist[k] ; 
+   if (node -> time < -1) settime(node, vv) ;
+ }
+ for (k=0; k<numedge; ++k) { 
+  edge = &elist[k] ;  
+  node = (NODE *) edge -> up ; 
+  tup = node -> time ;  
+  node = (NODE *) edge -> down ; 
+  tdown = node -> time ;  
+  tdiff = tup - tdown ;  if (tup == 0) tdiff = 1.0e8 ; 
+  edge -> val = tdiff ;
+ }
+
+ sortedge(edgeorder) ;  // sort by start time of edge
+ free(wpars) ;
+ for (k=0; k<numedge; ++k) { 
+  edge = &elist[k] ;  
+ }
+
+}
+
+
+int mktimeindex(double *times)  
+{
+
+ int k, x, nextindex, n  ; 
+ NODE *node ;
+
+ for (k=0; k<numvertex; ++k)  { 
+   node = &vlist[k] ;  
+   node -> time = -999999 ; 
+   node -> fixtime = NO ;
+   node -> timeindex = -99 ;
+
+   if (node -> ancestornumber < 0) continue ;  
+   node -> time = 1.0e10 ;
+   node -> timeindex = 0 ;  // 0 special  meaning time index is infinite 
+   node -> fixtime = YES ;
+   printf("time index: %s %d\n", node -> name, node -> timeindex) ; 
+ }
+ nextindex = numpops + 1 ; 
+ for (x=0; x<numpops; ++x) { 
+  k = egnum[x] ; 
+  node = &vlist[k] ;  
+  node -> time = times[x] ; 
+  node -> fixtime = YES ; 
+  node -> timeindex = x+1 ;
+  printf("time index: %s %d\n", node -> name, node -> timeindex) ; 
+ }
+ for (x=0; x<numpops; ++x) { 
+  k = egnum[x] ; 
+  node = &vlist[k] ;  
+  settimeindex(node, &nextindex) ;
+ }
+ for (k=0; k<numvertex; ++k)  { 
+   node = &vlist[k] ;  
+//   printf("zzans: %s %d %d %9.0f\n", node -> name, node -> timeindex, node -> fixtime, node -> time) ;
+ }
+ n = 0 ;
+ for (k=0; k<numvertex; ++k)  { 
+   node = &vlist[k] ;  
+   if (node -> fixtime == NO) ++n ;
+ }
+
+ return n ; 
+}
+void getpud(double *psize, double *upd, double *downd, char *pop) 
+{
+ double *vv ; 
+ int i, k, x ; 
+ NODE *node ; 
+ EDGE *edge ;
+ double basetime, time ;
+
+
+ x = indxstring(eglist, numpops, pop) ; 
+ if (x<0) fatalx("(getpath) pop %s not found\n", pop) ; 
+ k = egnum[x] ; 
+ node = &vlist[k] ;  basetime = node -> time ;
+
+ for (k=0; k<numedge; ++k) {  
+   edge = &elist[k] ;  
+   psize[k] = edge -> theta ;
+   node = (NODE *) edge -> down ; 
+   downd[k] = time = node -> time ;  
+   if (downd[k] > 1.0e6) downd[k] = -1 ;
+   node = (NODE *) edge -> up ; 
+   upd[k] = time = node -> time ;  
+   if (upd[k] > 1.0e6) upd[k] = -1 ;
+ }
+}
+void getpath(double *path, char *pop) 
+{
+
+ double *vv ; 
+ int i, k, x ; 
+ NODE *node ; 
+ double *wts ; 
+
+ wts = path ; 
+ x = indxstring(eglist, numpops, pop) ; 
+ if (x<0) fatalx("(getpath) pop %s not found\n", pop) ; 
+
+ k = egnum[x] ; 
+
+ node = &vlist[k];
+ bugstring = node -> name ;
+
+// verbose = YES ;
+
+ ZALLOC (vv, numedge, double);
+ addwts (vv, NULL, node, 1.0);
+
+ copyarr(vv, wts, numedge) ;
+ 
+// verbose = NO ;
+
+ free(vv) ; 
+ return ; 
+
+}
 void
 getpwts (double *pwts, double *awts, int *nrows, int *nedge, int *nanc)
 // pwts preallocated
@@ -833,6 +1315,7 @@ addadmix (char *vertname, char **avnames, double *ww, int nt)
   addvertex (vertname);
   tbase = t = vertexnum (vertname);
   node = &vlist[t];
+  if (node -> isadmix) fatalx("node %s is admix target twice!\n") ;
   for (k = 0; k < nt; ++k) {
     t = vertexnum (avnames[k]);
     if (t == tbase)
@@ -1178,7 +1661,10 @@ loadgraph (char *rname, char ***peglist)
   ZALLOC (forcenames, maxnodes, char *);
   initvlist (vlist, maxnodes);
   initelist (elist, maxnodes);
+
+//  printf("zz0: %d\n", ibdmode) ;
   numvertex = readit (rname);
+//  printf("zz1: %d\n", ibdmode) ;
 
   node = root ();
   node->isroot = YES;
@@ -1272,6 +1758,7 @@ initelist (EDGE * elist, int n)
     edge->isleft = NO;
     edge -> theta = -1 ;  
     edge->isfixed = NO;
+    edge -> ibdexp = 0 ;  
   }
 }
 
@@ -1332,6 +1819,8 @@ readit (char *cname)
       continue;
     sx = spt[0];
     if (sx[0] == '#') {
+      if (strstr(line, "ibdgraph") != NULL) setibdmode(YES) ;
+//    printf("zzline: ibdmode %d %s", ibdmode, line) ;
       freeup (spt, nsplit);
       continue;
     }
@@ -1661,9 +2150,24 @@ dumpdotgraph_title (char *graphdotname, char *title)
   int *dd, *ind;
   char sform[10];
   double val, vmax, theta;
-  char *sss = NULL;
+  char *sss = NULL, *sx ; 
+  char s2[MAXSTR]  ; 
+  char **labels ; 
 
   if (graphdotname == NULL) return;
+
+  ZALLOC(labels, numvertex, char *) ;
+  for (k=0; k<numvertex; ++k) { 
+    node = &vlist[k] ; 
+    sx = node -> name ; 
+    if (node -> label != NULL) sx = node -> label ;  
+    if (ibdmode && (node -> date < 1.0e6)) { 
+     sprintf(s2, "%s %6.0f", sx, node -> date) ;  
+     sx = s2 ;
+    }
+    labels[k] = strdup(sx) ; 
+  }
+
 //printf ("graphdotname:  %s\n", graphdotname);
   fflush (stdout);
   openit (graphdotname, &fff, "w");
@@ -1692,15 +2196,19 @@ dumpdotgraph_title (char *graphdotname, char *title)
 
   for (k = 0; k < numvertex; ++k) {
     kk = ind[k];
+    if (labels[kk]  == NULL) continue;
     node = &vlist[kk];
-    if (node->label == NULL)
-      continue;
     freestring (&sss);
-    sss = fixss(strdup (node->name));
+    sss = strdup (node->name);
     fprintf (fff, "%12s ", sss);
-    fprintf (fff, " [ label = \"%s\" ] ; ", fixss(node->label));
+    sss = fixss(labels[kk]) ;  
+
+    fprintf (fff, " [ ") ;
+    fprintf (fff, " label = \"%s\"  ", sss) ;
+    fprintf (fff, "  ]  ; ") ; 
     fprintf (fff, "\n");
   }
+
 // dump ledge, redge 
   vmax = 0.0;
   for (k = 0; k < numvertex; ++k) {
@@ -1711,6 +2219,8 @@ dumpdotgraph_title (char *graphdotname, char *title)
       xnode = (NODE *) node->left;
       vmax = MAX (vmax, edge->val);
       val = MAX (vmax * .0001, edge->val);
+      if (ibdmode) val = edge -> val ; 
+      if (val >= 1000*1000) val = 0 ;
       pedge (fff, node, xnode, val, edge -> theta, 0);
     }
     edge = (EDGE *) node->eright;
@@ -1718,6 +2228,8 @@ dumpdotgraph_title (char *graphdotname, char *title)
       xnode = (NODE *) node->right;
       vmax = MAX (vmax, edge->val);
       val = MAX (vmax * .0001, edge->val);
+      if (ibdmode) val = edge -> val ; 
+      if (val >= 1000*1000) val = 0 ;
       pedge (fff, node, xnode, val, edge -> theta, 0);
     }
   }
@@ -1738,6 +2250,7 @@ dumpdotgraph_title (char *graphdotname, char *title)
   free (dd);
   free (ind);
   freestring (&sss);
+  freeup(labels, numvertex) ;
 }
 void
 dumpdotgraph (char *graphdotname)
@@ -1764,16 +2277,29 @@ pedge (FILE * fff, NODE * anode, NODE * bnode, double val, double theta, int mod
   }
 
   else {
+//  printf("zzpedge: %g %g\n", val, theta) ; 
     x = nnint (1000 * val);
+    if (ibdmode) x = nnint(100*val) ; 
+    if (val > 1000*1000) x = 0 ;
     if (theta>0) { 
      w = nnint(100*theta) ; 
-     sprintf (s3, "%d:%d", x,w);
+     if (ibdmode) { 
+      w = nnint(theta) ; 
+      sprintf (s3, "%d:%d", x,w);
+     }
     }
     else sprintf (s3, "%d",  x);
   }
 
   if (val > 0) {
     sprintf (s2, "label = \"%s\"", fixss(s3));
+  }
+  else { 
+   if (ibdmode && (mode == 0)) { 
+    sprintf(s3, ":%d", w) ;
+    sprintf (s2, "label = \"%s\"", fixss(s3));
+   }
+
   }
 
   freestring (&ss2);
@@ -1833,6 +2359,7 @@ dumpgraphnew (char *graphname)
   isortit (dd, ind, numvertex);	// ind stores indices in distance order
 
   //1 dump vertex
+  if (ibdmode) fprintf(fff, "## ibdgraph\n") ;
   for (k = 0; k < numvertex; ++k) {
     break ; 
     kk = ind[k];
@@ -1841,6 +2368,7 @@ dumpgraphnew (char *graphname)
     if (node->distance == HUGEDIS)
       fprintf (fff, "##");
     y = node -> time ; 
+    if (ibdmode &&(y>=1.0e6)) y==0.0 ;
     if (y<0) y=-1 ;
     fprintf (fff, "vertex %12s %9.0f\n", node->name, y) ; 
   }
@@ -1866,9 +2394,12 @@ dumpgraphnew (char *graphname)
     node = &vlist[kk];
     if (node->isdead)
       continue;
+
     edge = (EDGE *) node->eleft;
 
     if (edge != NULL) {
+      edge->val = MAX (edge->val, 0.0);
+      edge->val = MIN (edge->val, 1.0e6);
       xnode = (NODE *) node->left;
       fprintf (fff, "edge %12s", edge->name);
       fprintf (fff, " %12s", node->name);
@@ -1880,9 +2411,9 @@ dumpgraphnew (char *graphname)
       fprintf (fff, "\n");
     }
     edge = (EDGE *) node->eright;
-
     if (edge != NULL) {
       edge->val = MAX (edge->val, 0.0);
+      edge->val = MIN (edge->val, 1.0e6);
       xnode = (NODE *) node->right;
       fprintf (fff, "edge %12s", edge->name);
       fprintf (fff, " %12s", node->name);
@@ -1944,10 +2475,13 @@ dumpgraph (char *graphname)
     strcpy (sform, " %9.3f");
     strcpy (sformx, ":%.3f") ; 
   }
-  if (graphname == NULL)
+  if (graphname == NULL) {
     fff = stdout;
-  else
+  }
+  else  { 
     openit (graphname, &fff, "w");
+    fprintf(fff, "##ibdgraph\n") ; 
+  }
 
 /** 
  we process vertices from the root 
@@ -1998,13 +2532,14 @@ dumpgraph (char *graphname)
 
     if (edge != NULL) {
       edge->val = MAX (edge->val, 0.0);
+      edge->val = MIN (edge->val, 1.0e6);
       xnode = (NODE *) node->left;
       if (xnode -> isdead != 1 ) {
        fprintf (fff, "ledge %12s", edge->name);
        fprintf (fff, " %12s", node->name);
        fprintf (fff, " %12s", xnode->name);
        fprintf (fff, sform, edge->val);
-       if (edge -> theta >= 0) { 
+       if (edge -> theta > 0) { 
         fprintf (fff, sformx, edge->theta);
        }
        fprintf (fff, "\n");
@@ -2014,6 +2549,7 @@ dumpgraph (char *graphname)
 
     if (edge != NULL) {
       edge->val = MAX (edge->val, 0.0);
+      edge->val = MIN (edge->val, 1.0e6) ;
       xnode = (NODE *) node->right;
       if (xnode -> isdead != 1 ) {
        fprintf (fff, "redge %12s", edge->name);
@@ -2261,6 +2797,12 @@ edgenum (char *edgename)
   }
   return -1;
 
+}
+
+void setibdmode(int mode) 
+{
+ ibdmode = mode ; 
+ printf("ibdmode set: %d\n", mode) ;
 }
 
 int
@@ -2584,6 +3126,8 @@ qreadit (char *cname)
       continue;
     sx = spt[0];
     if (sx[0] == '#') {
+      if (strstr(line, "ibdgraph") != NULL) setibdmode(YES) ;
+//    printf("zzline: ibdmode %d %s", ibdmode, line) ;
       freeup (spt, nsplit);
       continue;
     }
@@ -3168,4 +3712,3 @@ int vuseful()
    }
    return t ; 
 }
-

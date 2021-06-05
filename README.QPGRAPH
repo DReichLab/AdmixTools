@@ -62,6 +62,9 @@ inbreed:  YES
 Genotypes are expected to be pseudo-haploid -- 2 samples at least per population or drift lengths on 
 leaves are not meaningful.  
 
+By default a short form of the pop. is given in the list of outliers.  If you want the full name
+fulloutlier:  YES  
+
 
 -g graph  
 See examples.qpGraph/gr1x 

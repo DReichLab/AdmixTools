@@ -293,6 +293,20 @@ getsnps (char *snpfname, SNP *** snpmarkpt, double spacing,
   return numsnps;
 }
 
+void freesnps(SNP ***psnpmarkers, int numsnps) 
+{ 
+ SNP **snpm = *psnpmarkers ; 
+ SNP *cupt ; 
+ int k ; 
+
+ for (k=0; k<numsnps; ++k) { 
+  cupt = snpm[k] ; 
+  freecupt(&cupt) ; 
+ }
+ free(snpm) ; 
+ *psnpmarkers = NULL ; 
+} 
+
 
 
 
@@ -890,8 +904,14 @@ loadsnps (SNP ** snpm, SNPDATA ** snpraw,
     cupt->aftrue = cupt->af_freq = fraw;
     cupt->aa_aftrue = cupt->aa_af_freq = fraw;
 
-    cupt->alleles[0] = sdpt->alleles[0];
-    cupt->alleles[1] = sdpt->alleles[1];
+    if (sdpt->alleles != NULL) {
+      cupt->alleles[0] = sdpt->alleles[0];
+      cupt->alleles[1] = sdpt->alleles[1];
+    }
+    else {
+      cupt->alleles[0] = '1';
+      cupt->alleles[1] = '2';
+    }
 
     n0 = sdpt->nn[2];
     n1 = sdpt->nn[3];
@@ -1660,7 +1680,7 @@ rmindivs (SNP ** snpm, int numsnps, Indiv ** indivmarkers, int numindivs)
   // squeeze out ignore
   // dangerous bend.  Of course indivmarkers indexing will change
   int n = 0, g, i, k;
-  int x, t;
+  int x;
   Indiv *indx;
   SNP *cupt;
 
@@ -1669,7 +1689,6 @@ rmindivs (SNP ** snpm, int numsnps, Indiv ** indivmarkers, int numindivs)
   for (k = 0; k < numindivs; ++k) {
     if (indivmarkers[k]->ignore == YES)
       continue;			// don't store
-
     if (n == k) {		// if no ignored found yet, 
       ++n;			//   next unused is next element
       continue;			//   and no need to copy
@@ -1681,17 +1700,16 @@ rmindivs (SNP ** snpm, int numsnps, Indiv ** indivmarkers, int numindivs)
     indx->idnum = n;
     for (i = 0; i < numsnps; i++) {
       cupt = snpm[i];
-
-      cupt = snpm[i];
       if (cupt->gtypes == NULL)
-	continue;
+	break;
       if (cupt->ignore)
 	continue;		// copy only genotypes of non-ignored SNPs
       g = getgtypes (cupt, k);
       putgtypes (cupt, n, g);
-    if (cupt -> diplike != NULL) { 
-     copyarr(cupt -> diplike[k], cupt -> diplike[n], 3) ; 
-    }} 
+     if (cupt -> diplike != NULL) { 
+      copyarr(cupt -> diplike[k], cupt -> diplike[n], 3) ; 
+     }
+    }
     ++n;
   }
 
@@ -1934,7 +1952,7 @@ mkchrom (char *ss, int chrom, double *ppos, int fudge, int chrmode)
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-void
+int
 printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
 	   int printfake, int printvalids)
 {
@@ -1947,9 +1965,10 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
   FILE *xfile;
   int numvcase, numvcontrol;
   char c;
+  int nsnp = 0 ;
 
   if ((snpoutfilename != NULL) && (strcmp (snpoutfilename, "NULL") == 0))
-    return;
+    return 0;
   if (snpoutfilename != NULL) {
     openit (snpoutfilename, &xfile, "w");
   }
@@ -1987,11 +2006,12 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
 	continue;
       if (!printfake && (cupt->isrfake))
 	continue;
-    }
+     }
 
     ppos = cupt->physpos;
 
     mkchrom (ss, cupt->chrom, &ppos, cupt->chimpfudge, chrmode);
+    ++nsnp ; 
     fprintf (xfile, "%20s %5s ", cupt->ID, ss);
 
     if (cupt->genpos == 0.0) {
@@ -2026,6 +2046,8 @@ printsnps (char *snpoutfilename, SNP ** snpm, int num, Indiv ** indm,
   }
   if (snpoutfilename != NULL)
     fclose (xfile);
+
+  return nsnp ;
 }
 
 
@@ -2106,9 +2128,9 @@ printdata (char *genooutfilename, char *indoutfilename,
   }
 
   if (indoutfilename == NULL)
-    return;
+    return ;
   if ((indoutfilename != NULL) && (strcmp (indoutfilename, "NULL") == 0))
-    return;
+    return ;
   if (indoutfilename != NULL)
     openit (indoutfilename, &ifile, "w");
 
@@ -2359,6 +2381,7 @@ getblocks (char *fname, SNP ** snpm, int numsnps)
 
   return tmax ;
 }
+
 
 int
 getweights (char *fname, SNP ** snpm, int numsnps)
@@ -3292,7 +3315,7 @@ genopedcnt (char *gname, int **gcounts, int nsnp)
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-void
+int
 outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
 	  Indiv ** indiv, int numsnps, int numindx, int packem, int ogmode)
 {
@@ -3300,6 +3323,7 @@ outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
 
   int sizelimit = 10000000;
   int numind;
+  int nsnp = 0 ;
 
   // Squeeze out individuals with ignore flag set
   numind = rmindivs (snpm, numsnps, indiv, numindx);
@@ -3314,76 +3338,41 @@ outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
 
   case EIGENSTRAT:
     printf ("eigenstrat output\n");
-    outeigenstrat (snpname, indname, gname, snpm, indiv, numsnps, numind);
-    return;
+    nsnp = outeigenstrat (snpname, indname, gname, snpm, indiv, numsnps, numind);
+    return nsnp;
 
   case PED:
     printf ("ped output\n");
-    outped (snpname, indname, gname, snpm, indiv, numsnps, numind, ogmode);
-    return;
+    nsnp = outped (snpname, indname, gname, snpm, indiv, numsnps, numind, ogmode);
+    return nsnp;
 
   case PACKEDPED:
     printf ("packedped output\n");
-    outpackped (snpname, indname, gname, snpm, indiv, numsnps, numind,
+    nsnp = outpackped (snpname, indname, gname, snpm, indiv, numsnps, numind,
 		ogmode);
-    return;
+    return nsnp;
 
   case PACKEDANCESTRYMAP:
     if (snpname != NULL)
-      printsnps (snpname, snpm, numsnps, indiv, NO, NO);
+      nsnp = printsnps (snpname, snpm, numsnps, indiv, NO, NO);
     packem = YES;
     printdata (gname, indname, snpm, indiv, numsnps, numind, packem);
-    return;
+    return nsnp;
 
   case ANCESTRYMAP:
   default:
     if (snpname != NULL)
-      printsnps (snpname, snpm, numsnps, indiv, NO, NO);
+      nsnp = printsnps (snpname, snpm, numsnps, indiv, NO, NO);
     packem = NO;
-    if (numsnps > (sizelimit / numind))
+    if (numsnps > (sizelimit / numind)) {
+      printf("ANCESTRYMAP set but output file will be more than 10M lines.  Output will be packed\n") ; 
       packem = YES;
+    }
     printdata (gname, indname, snpm, indiv, numsnps, numind, packem);
-    return;
+    return nsnp ;
   }
 }
 
-
-long loadprobpack(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char *bigbuff) 
-
-{
-  SNP *cupt ;
-  int rl2, i, j, x ;  
-  int sval;
-  double yy, ww[3] ;   
-  unsigned char *buff ; 
-  unsigned short bb[2] ; 
-  long numx = 0 ;
-
-  
-  
-  buff = (unsigned char *) bigbuff ;
-  rl2 = 4 ; 
-  sval = (1 <<16 ) -1 ; 
-
-  for (i=0; i<numsnps; i++) { 
-   cupt = snpmarkers[i] ; 
-   cupt -> scount = 1 ; 
-   for (j=0; j<numindivs; ++j) {
-     copyarr(cupt -> diplike[j], ww, 3) ;
-     bb[0] = bb[1] = sval ; 
-     if (ww[0] > -0.5) {     
-      bal1(ww, 3) ; 
-      yy = (double) sval * ww[0] ;  x = nnint(yy) ; bb[0] = (unsigned short) x ;
-      yy = (double) sval * ww[2] ;  x = nnint(yy) ; bb[1] = (unsigned short) x ;
-     }
-     memcpy(buff, bb, rl2) ;
-     buff += rl2 ;  
-     ++numx ;
-  }}
-
-  return numx ; 
-
-}
 void
 outprobx (char *pname, SNP ** snpm,  Indiv ** indiv, int numsnps, int numindivs, char *bigbuff) 
 // bigbbuff already loaded
@@ -3454,7 +3443,7 @@ outprob (char *pname, SNP ** snpm,  Indiv ** indiv, int numsnps)
   char *packit;
   int rl1, rl2, aa[3]  ; 
   unsigned short bb[2] ;  
-  double ww[3], yy ; 
+  double ww[3], yy, ymaxdip ; 
   int sval, x, numind = 1 ;  
   
 // dipscore and scount set 
@@ -3495,7 +3484,9 @@ outprob (char *pname, SNP ** snpm,  Indiv ** indiv, int numsnps)
     bb[0] = bb[1] = sval ;  // pattern if no reads
     vclear(ww, 1.0/3.0, 3) ;
     if (cupt -> scount > 0) { // 
-     vexp(ww, cupt -> dipscore, 3) ; 
+     vmaxmin(cupt -> dipscore, 3, &ymaxdip, NULL) ;
+     vsp(ww, cupt -> dipscore, -ymaxdip, 3) ; // max now zero  
+     vexp(ww, ww, 3) ; 
      bal1(ww, 3) ; 
      yy = (double) sval * ww[0] ;  x = nnint(yy) ; bb[0] = (unsigned short) x ; 
      yy = (double) sval * ww[2] ;  x = nnint(yy) ; bb[1] = (unsigned short) x ; 
@@ -3521,7 +3512,7 @@ outprob (char *pname, SNP ** snpm,  Indiv ** indiv, int numsnps)
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-void
+int
 outeigenstrat (char *snpname, char *indname, char *gname, SNP ** snpm,
 	       Indiv ** indiv, int numsnps, int numind)
 {
@@ -3531,11 +3522,12 @@ outeigenstrat (char *snpname, char *indname, char *gname, SNP ** snpm,
   SNP *cupt;
   Indiv *indx;
   char ss[MAXSTR];
+  int nsnp=0 ;
 
 
   settersemode (YES);
   if (snpname != NULL)
-    printsnps (snpname, snpm, numsnps, indiv, NO, NO);
+    nsnp = printsnps (snpname, snpm, numsnps, indiv, NO, NO);
 
   // Print individual data to .ind file
   if (indname != NULL) {
@@ -3556,7 +3548,7 @@ outeigenstrat (char *snpname, char *indname, char *gname, SNP ** snpm,
   }
 
   if (gname == NULL)
-    return;
+    return nsnp;
 
   // Print genotypes to .geno file
   openit (gname, &fff, "w");
@@ -3580,6 +3572,7 @@ outeigenstrat (char *snpname, char *indname, char *gname, SNP ** snpm,
     fprintf (fff, "\n");
   }
   fclose (fff);
+  return nsnp ;
 }
 
 
@@ -3761,7 +3754,7 @@ outindped (char *indname, Indiv ** indiv, int numind, int ogmode)
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-void
+int
 outped (char *snpname, char *indname, char *gname, SNP ** snpm,
 	Indiv ** indiv, int numsnps, int numind, int ogmode)
 {
@@ -3773,17 +3766,18 @@ outped (char *snpname, char *indname, char *gname, SNP ** snpm,
   char c;
   int pgender, astatus;
   int g1, g2, dcode = 1;
+  int nsnp = 0 ; 
 
   settersemode (YES);
   if (snpname != NULL)
-    printmap (snpname, snpm, numsnps, indiv);	// print .map file
+    nsnp = printmap (snpname, snpm, numsnps, indiv);	// print .map file
 
   if (indname != NULL)
     outindped (indname, indiv, numind, ogmode);	// print .pedind file
 
-  // Here, printt the .ped file
+  // Here, print the .ped file
   if (gname == NULL)
-    return;
+    return nsnp;
   openit (gname, &fff, "w");
   for (i = 0; i < numind; i++) {
     indx = indiv[i];
@@ -3834,6 +3828,8 @@ outped (char *snpname, char *indname, char *gname, SNP ** snpm,
     fprintf (fff, "\n");
   }
   fclose (fff);
+
+  return nsnp ;
 }
 
 
@@ -3878,7 +3874,7 @@ gtox (int g, char *cvals, int *p1, int *p2)
 
 
 /* ---------------------------------------------------------------------------------------------------- */
-void
+int
 outpackped (char *snpname, char *indname, char *gname, SNP ** snpm,
 	    Indiv ** indiv, int numsnps, int numind, int ogmode)
 {
@@ -3893,18 +3889,19 @@ outpackped (char *snpname, char *indname, char *gname, SNP ** snpm,
   unsigned char ibuff[3];
   unsigned char *buff;
   int fdes, ret, blen;
+  int nsnp = 0 ; 
   int *gtypes;
   double y;
 
   settersemode (YES);
   if (snpname != NULL)
-    printmap (snpname, snpm, numsnps, indiv);	// print .map (not .bim)
+    nsnp = printmap (snpname, snpm, numsnps, indiv);	// print .map (not .bim)
 
   if (indname != NULL)		// print .pedind file
     outindped (indname, indiv, numind, ogmode);
 
   if (gname == NULL)
-    return;
+    return nsnp;
 
   /*  magic constants for snp major bed file */
   ibuff[0] = 0x6C;
@@ -3961,6 +3958,8 @@ outpackped (char *snpname, char *indname, char *gname, SNP ** snpm,
 
   free (buff);
   close (fdes);
+
+  return nsnp ;
 }
 
 
@@ -4044,19 +4043,44 @@ ptoachrom (char *ss)
 }
 
 
+int strcmpreg(char *a, char *b) 
+// deal with X 23, Y 24 ambiguity
+{
+  int sa, sb, t ; 
+    
+  t = strcmp(a, b) ; 
+  if (t==0) return t ; 
+
+  sa = ptoachrom(a) ; 
+  sb = ptoachrom(b) ; 
+  if (sa==sb) return 0 ; 
+
+  return t ; 
+
+}
+
+
 /* ---------------------------------------------------------------------------------------------------- */
-void
+int
 printmap (char *snpname, SNP ** snpm, int numsnps, Indiv ** indiv)
 {
 
-  char ss[5];
+  char ss[5], *sx;
   int i;
   FILE *fff;
   SNP *cupt;
   char c;
+  int nsnp = 0, l, t  ;
+  int ismap ; 
+
+  ismap = NO ; 
+  l = strlen(snpname) ; 
+  sx = snpname + l - 4 ; 
+  t = strcmp(sx, ".map") ;
+  if (t==0) ismap = YES ;
 
   if (snpname == NULL)
-    return;
+    return 0;
   openit (snpname, &fff, "w");
   for (i = 0; i < numsnps; i++) {
     cupt = snpm[i];
@@ -4067,14 +4091,16 @@ printmap (char *snpname, SNP ** snpm, int numsnps, Indiv ** indiv)
 	continue;
     }
     atopchrom (ss, cupt->chrom);
+    ++nsnp ;
     fprintf (fff, "%-2s", ss);
     fprintf (fff, " %12s", cupt->ID);
     fprintf (fff, " %12.6f", cupt->genpos);
     fprintf (fff, " %12.0f", cupt->physpos);
-    printalleles (cupt, fff);
+    if (ismap == NO) printalleles (cupt, fff);
     fprintf (fff, "\n");
   }
   fclose (fff);
+  return nsnp ;
 }
 
 
@@ -5176,7 +5202,9 @@ sortsnps (SNP ** snpa, SNP ** snpb, int n)
   SNP **tsnp, *cupt;
   int **snppos, *snpindx;
   int i, k;
+  double maxgenpos ; 
 
+  maxgenpos = (double) BIGINT / (double) GDISMUL ; 
   snppos = initarray_2Dint (n, 3, 0);
   ZALLOC (snpindx, n, int);
   ZALLOC (tsnp, n, SNP *);
@@ -5184,6 +5212,7 @@ sortsnps (SNP ** snpa, SNP ** snpb, int n)
   for (i = 0; i < n; i++) {
     cupt = snpa[i];
     snppos[i][0] = cupt->chrom;
+    if (cupt -> genpos > maxgenpos) fatalx("genpos overflow: %s %12.6f\n", cupt -> ID, cupt -> genpos) ;
     snppos[i][1] = nnint ((cupt->genpos) * GDISMUL);
     snppos[i][2] = nnint (cupt->physpos);
   }
@@ -5596,7 +5625,7 @@ setstatuslist (Indiv ** indm, int numindivs, char **smatchlist, int slen)
  */
 
 
-/*!  \fn void printmap(char *snpname, SNP **snpm, int numsnps, Indiv **indiv)
+/*!  \fn int printmap(char *snpname, SNP **snpm, int numsnps, Indiv **indiv)
      \brief Print out SNP data in PLINK .map format
      \param snpname  Output SNP file name
      \param snpm     Array with SNP data

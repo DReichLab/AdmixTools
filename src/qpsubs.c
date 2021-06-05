@@ -234,6 +234,8 @@ loadindx (Indiv ** xindlist, int *xindex, Indiv ** indivmarkers,
 {
   int i, n = 0;
   Indiv *indx;
+  if (indivmarkers == NULL) return 0 ; 
+  if (numindivs == 0) return 0 ;
   for (i = 0; i < numindivs; i++) {
     indx = indivmarkers[i];
     if (indx->ignore)
@@ -1031,7 +1033,7 @@ f3scz (double *estn, double *estd, SNP * cupt, Indiv ** indm,
   *estd = -1;
 
   ++ncall ; 
-  if (ncall==1) printf("new f3scz!\n") ; 
+//  if (ncall==1) printf("new f3scz!\n") ; 
 
   p1 = aafreq[type1];
   h1 = hest[type1];
@@ -2353,10 +2355,22 @@ bump4 (double *x, int a, int b, int c, int d, int n, double val)
 void
 set4x (double *x, int a, int b, int c, int d, int n, double val)
 {
+/** 
+ long standing bug here.  Symmetry group for covariance has order 8 
+ generators 
+  a <-> b 
+  c <-> d 
+  a <-> c, b -> d 
+*/
   set4 (x, a, b, c, d, n, val);
   set4 (x, b, a, d, c, n, val);
   set4 (x, c, d, a, b, n, val);
   set4 (x, d, c, b, a, n, val);
+
+  set4 (x, b, a, c, d, n, val);
+  set4 (x, a, b, d, c, n, val);
+  set4 (x, d, c, a, b, n, val);
+  set4 (x, c, d, b, a, n, val);
 }
 
 void
@@ -3884,7 +3898,9 @@ setinbreed (int val)
 {
   inbreed = val;
   if (val == YES)
-    printf ("inbreed set\n");
+    printf ("inbreed set YES\n");
+  if (val == NO)
+    printf ("inbreed set NO\n");
 }
 
 void
@@ -4417,6 +4433,39 @@ double fstatx(int *fsindex)
 }
 
 
+int 
+counthets ( int *xhets, int *xvalids, 
+       SNP ** xsnplist, int *xindex, int *xtypes,
+       int nrows, int ncols, int numeg) 
+{
+// count hets and valid genotypes;  no estimates.  inbreed irrelevamt 
+  int k, col, j, t, g ; 
+  SNP *cupt ; 
+  int *hets, *valids ;
+  
+  ZALLOC(hets, numeg, int) ;
+  ZALLOC(valids, numeg, int) ;
+
+  for (col=0; col < ncols; ++col) {
+   cupt = xsnplist[col] ; 
+   for (j = 0; j < nrows; j++) {
+     t = xindex[j];
+     g = getgtypes (cupt, t);
+     if (g<0) continue ; 
+     k = xtypes[j] ;  
+     ++valids[k]  ; 
+     if (g==1) ++hets[k]  ;
+   }
+  }
+   if (xvalids != NULL) copyiarr(xvalids, valids, numeg) ;
+   copyiarr(xhets, hets, numeg) ;
+   
+  
+  free(hets) ; 
+  free(valids) ; 
+
+  return 1;  
+}
 
 int 
 calchet ( double *hets, double *valids, 
@@ -4447,7 +4496,7 @@ calchet ( double *hets, double *valids,
 int
 dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis, 
        double *fsmean, double *fssig, int **fsindex, int nfstats, 
-       SNP ** xsnplist, int *xindex, int *xtypes,
+       SNP ** xsnplist, int *xindex, int *xtypes, int *hashets, 
        int nrows, int ncols, int numeg, int nblocks, double scale)
 {
   double *top, *bot, **btop, **bbot, *wjack , yy, wt ; 
@@ -4459,12 +4508,15 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   double y, y1, y2, *pp, ymin ; 
   double diag = 1.0e-8 ; 
 
-  int bnum, i, j, k, col, smax, jmax, tmax, tmin  ; 
+  int bnum, i, j, k, col, smax, jmax, tmax, tmin, s, t  ; 
   int ngood = 0, bad = 0, tt ; 
   SNP *cupt ; 
   int *bas2fs ; 
+  int *dd ; 
 
   fflush(stdout) ; 
+
+  printf("zzdofstats") ;  printimat(hashets, 1, numeg) ;  
 // pass 1.  Jackknife to get sig
 
   smax = MAX(nfstats, nblocks) ; 
@@ -4504,6 +4556,8 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
     bas2fs[jmax] = k ; 
   }
   printimat(bas2fs, 1, nbasis) ; 
+
+  ZALLOC(dd, numeg, int) ; 
 
 
   for (col = 0; col < ncols; ++col) {
@@ -4621,15 +4675,22 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
 
    mean = gtop[j] ;  
    weightjack(&jest[j], &jsig[j], mean, jmean, jwt, nblocks) ; 
-
-   if (j==-1) { 
-    printf("zzjj: %9.3f %9.3f %9.3f %9.3f\n", mean, gbot[j], jest[j], jsig[j])  ;
-    printmat(jmean, 1, nblocks) ;  printnl() ; printnl() ; 
-    printmat(jwt, 1, nblocks) ;  printnl() ; printnl() ; 
+// now fix up jsig if hashets == 0 ; 
+   ivzero(dd, numeg) ; 
+   for (s=0; s<4; ++s) { 
+    t = fsindex[j][s] ;  
+    ++dd[t]  ;
    }
 
+  if ((allsnpsmode == YES) && (inbreed == NO)) {
+   for (t=0; t<numeg; ++t) { 
+    if ((dd[t] > 1) && (hashets[t] == 0)) jsig[j] = sqrt(jsig[j]*jsig[j] + 100.0) ;  
+   }
+  }
 
-  if (nfstats < 1000) { 
+
+/**
+  if (j < 1000) { 
    printf("jest. pass 1 ") ; 
    printimatx(fsindex[j], 1, 4) ; 
    printf("%12.6f ", mean) ; 
@@ -4638,6 +4699,7 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
    printnl() ; 
    fflush(stdout) ; 
   }
+*/
 
  } 
 
@@ -4782,6 +4844,7 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   free(jsig) ;
   free(jwt) ;
   free(bas2fs) ; 
+  free(dd) ;
 
   free2D (&btop, nblocks);
   free2D (&bbot, nblocks);
@@ -4796,7 +4859,9 @@ void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist
 {
    FILE *fff ;
    int a, b, nh2, k, x, u, v, c, d ; 
-   double y1, y2 ; 
+   double y1, y2, y ; 
+   double *vvar, *vinv ; 
+   char sx[128] ;
 
    if (fstatsname == NULL) return ; 
 
@@ -4805,6 +4870,8 @@ void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist
    
    nh2 = numeg * (numeg - 1);
    nh2 /= 2;
+   ZALLOC(vvar, nh2*nh2, double) ;
+   ZALLOC(vinv, nh2*nh2, double) ;
    for (u=0; u<nh2; ++u) { 
      x = indx[u];
      if (x<0) fatalx("(dumpfstats) bad indx: %d %d\n", u, x) ;
@@ -4827,9 +4894,35 @@ void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist
      fprintf(fff, "%15s %15s   ",  eglist[c], eglist[d ]) ; 
      fprintf(fff, "%12.6f\n", y2) ;
 
+     sprintf(sx, "%12.6f", y2) ; 
+     y = atof(sx) ;
+     vvar[u*nh2+v] = vvar[v*nh2+u] = y ; 
+
  }} 
 
    fclose(fff) ; 
+
+/**
+   for (u=0; u<nh2; ++u) { 
+    for (v=0; v<nh2; ++v) { 
+     printf("zzdump %4d %4d %12.6f\n", u, v, vvar[u*nh2+v]) ; 
+   }}
+   fflush(stdout) ;
+   printf("(dumpfstats) calling pdinv\n") ; 
+*/
+   pdinv(vinv, vvar, nh2) ;
+
+   free(vvar) ; 
+   free(vinv)  ;
+
+}
+
+void fstats2eglist(char *list, char *fstatsname) 
+// TBD
+{
+
+
+
 
 }
 
@@ -5087,20 +5180,20 @@ void weightjackfourier(double *est, double *sig, double mean, double *kmean, dou
   free(jmean) ; 
 	     
 }
-void getegnum(int *egnum, char **spt, char **eglist, int numeg, int num)  
+int getegnum(int *egnum, char **spt, char **eglist, int numeg, int num)  
 {
   int k,t  ; 
   for (k=0; k<num; ++k) { 
-
    t = indxindex(eglist, numeg, spt[k]) ; 
-   if (t<0) fatalx("pop: %s not in poplist\n", spt[k]) ; 
+   if (t<0) return -1 ;
    egnum[k] = t ; 
   }
+  return 0 ;
 }
 void   loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg)                           
 {
    FILE *fff ;
-   int a, b, nh2, k, x, u, v, c, d ; 
+   int a, b, nh2, k, x, u, v, c, d, t ; 
    int egnum[4] ; 
    double y1, y2 ; 
 
@@ -5124,13 +5217,15 @@ void   loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, 
     }
     y1 = atof(spt[nsplit-1]) ; 
     if (nsplit==3)  { 
-     getegnum(egnum, spt, eglist, numeg, 2) ;  
+     t = getegnum(egnum, spt, eglist, numeg, 2) ;  
+     if (t<0) continue ; 
      a = egnum[0] ; 
      b = egnum[1] ; 
      ff3[a*numeg+b] = ff3[b*numeg+a] = y1/1000.0 ; 
     }
     if (nsplit==5)  { 
-     getegnum(egnum, spt, eglist, numeg, 4) ;  
+     t = getegnum(egnum, spt, eglist, numeg, 4) ;  
+     if (t<0) continue ; 
      a = egnum[0] ; 
      b = egnum[1] ; 
      c = egnum[2] ; 
@@ -5342,6 +5437,7 @@ int fstats2popl(char *fstatsname, char **poplist)
     ++num ; 
     if (num==1) {      
      sx = getbasepop(spt, nsplit) ;
+     if (sx == NULL) fatalx("(fstats2popl) getbasepop fail: fstatsname: %s\n", fstatsname) ;
      poplist[npops] = strdup(sx) ; 
      ++npops ;
     }
@@ -5402,6 +5498,7 @@ setvv(double *vest, double *vvar, double *ff3, double *ff3var, int *wind2f, int 
 
 
   for (u = 0; u < nh2; u++) {
+    vvar[u*nh2+u]  = 1.0 ; 
     x = ind2f[u];
     b = x / numeg;
     a = x % numeg ; 
@@ -5413,12 +5510,6 @@ setvv(double *vest, double *vvar, double *ff3, double *ff3var, int *wind2f, int 
     y = dump4(ff3var, a, b, c, d, numeg) ; 
     vvar[u*nh2+v] = vvar[v*nh2+u] = y ; 
 
-/**
-    if (u==v) {
-      printf("zzb %d %s %s %9.3f\n", u, eglist[a], eglist[b],  y*1000*1000) ; 
-    }
-*/
-     
   }}
 
   if (wind2f != NULL) { 

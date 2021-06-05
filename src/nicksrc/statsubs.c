@@ -47,18 +47,40 @@ static int bcosize = -1;	// max val of binomial coefficient
 
 
 double
+lognordis (double zval)
+/* normal density */
+{
+  double pi, t;
+
+  pi = PI ;
+
+  t = -0.5 * zval * zval;
+  t -= 0.5*log (2.0 * pi);
+
+  return t;
+
+}
+
+
+double
 nordis (double zval)
 /* normal density */
 {
   double pi, t;
 
-  pi = 2.0 * acos (0.0);
+  pi = PI ;
 
   t = exp (-0.5 * zval * zval);
   t /= sqrt (2.0 * pi);
 
   return t;
 
+}
+
+double
+logndens (double val, double mean, double sig)
+{
+  return lognordis ((val - mean) / sig) - log(sig) ;
 }
 
 double
@@ -614,6 +636,33 @@ firstgt (double val, double *tab, int n)
     return n ;
 }
 
+void gpars(double *p, double *lam, double mean, double var)
+{
+          double l ;
+
+          if (mean<0.0) fatalx("(gpars) bad mean\n") ;
+          if (var<0.0) fatalx("(gpars) bad var\n") ;
+
+          l = mean/var ;
+          *p = l*mean ;
+          *lam = l ;
+}
+
+
+
+void mlegamma(double *a, int n, double *p, double *lam) 
+{
+
+  double y1, y2 ;  
+
+  y1 = asum(a, n)/ (double) n ; 
+  y2 = logsum(a, n)/ (double) n ; 
+
+  mleg(y1, y2, p, lam) ;
+//  printf("zzmlegamm %d %9.3f %9.3f %9.3f %9.3f\n", n, y1, y2, *p, *lam) ;
+
+}
+
 void
 mleg (double a1, double a2, double *p, double *lam)
 {
@@ -1006,17 +1055,24 @@ bprob (double p, double a, double b)
   return yl;
 }
 
+double qlog(double x) 
+{
+  return log(x) ;
+}
+
 double
 gammprob (double x, double p, double lam)
 /* gamma log density */
 {
   double xx, yl;
   xx = MAX (x, 1.0e-8);
+//  printf("zzgp %9.3f %9.3f %9.3f\n", p, xx) ;
   yl = (p - 1) * log (xx) - lam * xx;
   yl += p * log (lam);
   yl -= xlgamma (p);
   return yl;
 }
+
 
 
 double
@@ -3037,6 +3093,22 @@ double quartile(double *x, int n, double q)
  free(a) ; 
 
 }
+
+double poissloglike (int kk, double mean)
+// log likelihood
+{
+  double y;
+
+  if (kk == 0) return -mean ;   // 0 log 0 = 0 here 
+  if (mean <= 0) fatalx("(poissloglike) zero mean!\n") ;
+
+  y = -mean + (double) kk *log (mean);
+  y -= logfac (kk);
+
+  return y;
+}
+
+
 double poissexp(int k, double mean)
 // expected value of # k hits mean m
 {
@@ -3213,3 +3285,79 @@ double truncexpmean(double m, double thresh, int isupper)
 
 }
 
+void mannwhit(double *a, int na, double *b, int nb, double *pu, double *pz, double *ppv) 
+// we shold probably do fast permutation test, esp. if na or nb small. 
+{
+  double *w, ya, yb, yu, yr , y, ym ; 
+  int *ord, *ind ; 
+  int t, k, x ; 
+
+  ZALLOC(w, na+nb, double) ; 
+  ZALLOC(ord, na+nb, int) ; 
+  ZALLOC(ind,  na+nb, int) ; 
+
+  ivclear(ord, 2, na+nb) ; 
+  ivclear(ord, 1, na) ; 
+
+  copyarr(a, w, na) ; 
+  copyarr(b, w+na, nb) ;
+
+
+  jitter(w, w, na+nb) ; 
+  sortit(w, ind, na+nb) ; 
+  t = 0 ; 
+  for (k=0; k<(na+nb); ++k) { 
+   x = ind[k] ; 
+   if (ord[x] == 2) continue ; 
+   t += k+1 ;
+   printf("zz %d %d\n", k, x) ; 
+  } 
+  yr = t ; 
+  y = (double) na*(na+1) ; 
+  *pu = yu = yr -y/2 ;       
+  y = (double) na*nb*(na+nb+1) ; 
+  y /= 12.0 ; y = sqrt(y) ; // s. dev 
+  ym = (double) (na*nb) ; ym /= 2 ; 
+  printf("zzums %9.3f  %9.3f %9.3f\n", yu, ym, y) ; 
+  ya = yu - ym ;  
+  *pz = ya/y ; 
+  *ppv = ntail(*pz) ; 
+  
+  free(w) ; 
+  free(ord) ; 
+  free(ind) ; 
+
+
+}
+void jitter(double *xout, double *xin, int n)  
+{
+ double y ; 
+ double *w ;
+
+ dither(xout, xin, n) ; 
+
+}
+
+void calcms(double *a, int n, double *pmean, double *psdev) 
+{
+
+  double *ww ; 
+  double ym, yvar ; 
+
+  if (n==0) { 
+   *pmean = *psdev = 0 ; return ;
+  }
+  if (n==1) { 
+   *pmean = a[0] ; *psdev = 0 ; return ;
+  }
+
+ ZALLOC(ww, n, double) ; 
+ copyarr(a, ww, n) ;
+ *pmean = ym = asum(ww, n) / (double) n ;
+ vsp(ww, ww, -ym, n) ; 
+ yvar = asum2(ww, n) / (double) n ;  // variance 
+ *psdev = sqrt(yvar + 1.0e-20) ; 
+
+ free(ww) ; 
+ return ; 
+}

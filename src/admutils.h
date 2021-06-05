@@ -181,10 +181,10 @@ int kcode(int *w, int len, int base) ;
 // void cdup(SNP **snpm, Indiv **indm, int nsnp, int *buff, int lbuff, int iter) ;
 // void printdup(SNP **snpm, int nsnp, Indiv *inda, Indiv *indb, int nmatch, int nnomatch, int iter); 
 void killdup(Indiv *inda, Indiv *indb, SNP **snpm, int nsnp) ;
+void slowdupcheck(SNP **snpm, Indiv **indm, int nsnp, int k1, int k2) ;
 void cdup(SNP **snpm, Indiv **indm, int nsnp, int *buff, int lbuff) ;
 void printdup(SNP **snpm, int numsnp, Indiv *inda, Indiv *indb, int nmatch, int nnomatch) ;
 double kurtosis(double *a, int n) ;
-int loaddiplike (double *dip, unsigned char *sp)  ;
 int getlist(char *name, char **list) ; 
 void printvers(char *progname, char *vers) ;
 int numvalidind(Indiv **indivmarkers, int  numind)   ;
@@ -207,7 +207,7 @@ int getfalist(char **poplist, int npops, char *dbfile, char **iublist) ;
 int cmap(SNP **snpmarkers, int numsnps)  ;
 void setinfiles(char **pind, char **psnp, char **pgeno, char *stem) ;
 int getdbname(char *dbase, char *name, char **pfqname) ;
-
+int loaddiplike (double *dip, unsigned char *sp)  ;
 
 #undef max 
 #define max(A,B)  ((A) > (B) ? (A) : (B))

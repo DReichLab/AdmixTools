@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "650"
+#define WVERSION   "651"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -86,6 +86,7 @@ char *outliername = NULL;
 char *snpdetailsname = NULL;
 char *blockname = NULL;
 FILE *fff;
+
 
 char *dumpname = NULL;
 char *loadname = NULL;

@@ -5,8 +5,8 @@ BIN=$(HOMEL)/../bin
 override LDLIBS += -lgsl -lopenblas -lm -lnick
 # Some Linux distributions require separate lapacke library
 # override LDLIBS += -llapacke
-override LDFLAGS += -L./nicksrc
-override CFLAGS += -c -g -p -Wimplicit -I./ -I./nicksrc
+override LDFLAGS += -g  -L./nicksrc
+override CFLAGS += -c -g -p -pg -Wimplicit -I./ -I./nicksrc
 # Mac additions using homebrew installations
 #override CFLAGS += -I/usr/local/opt/openblas/include -I/usr/local/opt/gsl/include
 #override LDFLAGS += -L/usr/local/opt/openblas/lib -L/usr/local/opt/gsl/lib
@@ -21,9 +21,9 @@ endif
 ND = nicksrc
 NLIB = $(ND)/libnick.a
 
-PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart qpfstats qpfmv gcount kimf grabpars qpdslow
-PROGS3 = rolloff rolloffp convertf mergeit simpjack2
-PERLP = jackdiff mkpretty
+PROGS= qp3Pop qpDstat qpF4ratio qpAdm qpWave qp4diff qpdslow dowtjack expfit.sh  qpBound qpGraph qpreroot qpff3base qpDpart qpfstats qpfmv qpmix
+PROGS3 = rolloff rolloffp convertf mergeit simpjack2 grabpars kimf gcount 
+PERLP = jackdiff mkpretty numlines getresult xtractcol 
 
 ##  gcount kimf
 
@@ -92,6 +92,8 @@ qqpAdm: $(NLIB) qqpAdm.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o
 
 qpWave: $(NLIB) qpWave.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o f4rank.o eigsubs.o eigx.o
 
+qpmix:  $(NLIB)  qpmix.o qpsubs.o mcio.o ldsubs.o admutils.o  egsubs.o regsubs.o
+
 simpjack2: $(NLIB) simpjack2.o
 
 install:	all dirs tables
@@ -117,7 +119,8 @@ clean:
 	rm -f *junk*
 	rm -f core
 	$(MAKE) -C $(ND) clean
-	rm -f $(PROGS) $(PROGS3)
+	rm -f $(PROGS)
+	rm -f $(PROGS3)
 
 clobber: clean rmdirs uninstall
 

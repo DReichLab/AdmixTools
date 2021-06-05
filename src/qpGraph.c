@@ -27,7 +27,7 @@
 
 int debug = NO ; 
 
-#define WVERSION   "7365"   
+#define WVERSION   "7580"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -63,6 +63,11 @@ int debug = NO ;
 // admixout, admixin 
 // dumpfstats added (for MIT, Dimitris, Julia) .  See fstatsoutname
 // fstatsname (loadfstats) added
+// bug fixed if labels had aliass
+// MAXA bumped up to 100
+// set4x bug fixed 
+// admix mode target twice now trapped 
+// listsubset no longer called  
 
 
 #define MAXFL  50
@@ -82,9 +87,9 @@ int tersemode = NO;
 char *f3name = NULL;
 int optit = YES ; 
 
-Indiv **indivmarkers;
+Indiv **indivmarkers = NULL;
 SNP **snpmarkers;
-int numsnps, numindivs;
+int numsnps = 0 , numindivs = 0;
 int seed = 0;
 int missingmode = NO;
 int noxdata = YES;              /* default as pop structure dubious if Males and females */
@@ -94,10 +99,10 @@ int znval = -1;
 int popsizelimit = -1;
 int gfromp = NO;                // genetic distance from physical 
 int hires = NO;
-int allsnpsmode = NO;
+int allsnpsmode = -99;
 int oldallsnpsmode = NO;
 int loadf3 = NO ; 
-int inbreed = NO;
+int inbreed = -99;
 int initmixnum = -1;
 int initverbose = NO ;
 int numscorit = 0 ;
@@ -160,7 +165,7 @@ int *lmix, nmix;
 int nh2, numeg;
 int *ezero = NULL;
 double wtmin = .0001;
-double minvar = 0.0;            // minvalue for variance term
+double minvar = 1.0e-12 ;       // minvalue for variance term
 int quartet = NO;
 int xnumeg;
 
@@ -169,6 +174,7 @@ char *outputname = NULL;
 char *weightname = NULL;
 FILE *ofile;
 char **eglist;
+char **fseglist;
 char **egshort;
 char **enames;
 double zthresh = 3.0;
@@ -242,6 +248,8 @@ void    mkfstats(char *parname)   ;
 double graph2ff3(double *ff3, double *qmat, double *rhs) ; 
 void writehj(char *halfjackname, char *graphname, int seed, double *vals, double *wvals, int n) ;
 void setoutsc(double *wb,  double *fest, double *qmat, double **jmean,  int *blocktypes, int btype, int nblocks)  ;
+double pdinvx(double *aout, double *ain, int n)  ;
+void mapff3(double *ff3, double *ff3var, char **eglist, int numeg, double *fsff3, double *fsff3var, char **fseglist, int fsnumeg)  ;
 
 int usage (char *prog, int exval);
 
@@ -262,7 +270,6 @@ main (int argc, char **argv)
   int *blstart, *blsize, nblocks;
   int xnblocks;                 /* for xsnplist */
   int *bcols;
-  int **subsets;
   double maxgendis;
 
   int ch1, ch2;
@@ -313,6 +320,7 @@ main (int argc, char **argv)
   double ymin;
   double *f2, *f2sig, *fst;
   double *ff3, *ff3var, *ff3fit, *ff3sig;
+  double *fsff3, *fsff3var ; 
   double *ff3out, *ff3varout ; 
   double *vgsl;
 
@@ -352,10 +360,31 @@ main (int argc, char **argv)
   if (halfscore == NO) fullvar = NO ; 
   if (fullvar == YES) printf("all data used for covariance esimation\n") ;
 
+  if ((fstatsname != NULL) && (allsnpsmode == YES)) { 
+   printf("allsnps and fstatsname set\n") ; 
+   allsnpsmode = NO ;
+   numsnps = -1 ; 
+  }
+
+  if (inbreed == -99) { 
+   inbreed = allsnpsmode ; 
+   printf(" *** recommended that inbreed be explicitly set ***\n") ;
+  }
+
+  setinbreed(inbreed) ;
+
   cputime(0) ; 
   calcmem(0) ; 
   printf ("## qpGraph version: %s\n", WVERSION);
   if (oldallsnpsmode) loadf3 = NO ; 
+
+  if (allsnpsmode == -99) { 
+   allsnpsmode = NO ; 
+   if (fstatsname == NULL) { 
+    printf("allsnps set NO.  It is recommended that allsnps be set explicitly\n") ;
+   }
+  }
+
 
   ZALLOC (eglist, MAXPOPS, char *);
   if ((doanalysis == NO) && (poplistname != NULL)) {
@@ -452,6 +481,7 @@ main (int argc, char **argv)
   }
 
   setallsnpsmode (allsnpsmode);
+  setinbreed (inbreed);
 
   if (seed == 0)
     seed = seednum ();
@@ -518,6 +548,8 @@ main (int argc, char **argv)
   basenum = 0;
 
   printf ("root label: %s\n", sss);
+  printf("zz4\n") ; fflush(stdout) ;
+  
 
   if (outpop == NULL) {
       outpop = strdup ("NULL");
@@ -560,9 +592,6 @@ outpop:    (not present)
   basenum = 0 ; // hope this is OK
      
  
-  x = (1 << numeg);
-  subsets = initarray_2Dint (x, numeg, 0);
-
   if (outnum >= 0)
     outpop = eglist[outnum];
    basepop = eglist[basenum];
@@ -583,7 +612,7 @@ outpop:    (not present)
   ZALLOC (xindex, numindivs, int);
   ZALLOC (xindlist, numindivs, Indiv *);
   ZALLOC (rawcol, numindivs, int);
-  nrows = loadindx (xindlist, xindex, indivmarkers, numindivs);
+  nrows = loadindx (xindlist, xindex, indivmarkers, numindivs);   
   ZALLOC (xtypes, nrows, int);
 
   for (i = 0; i < nrows; i++) {
@@ -595,21 +624,27 @@ outpop:    (not present)
       xtypes[i] = outnum;
   }
 
-  ZALLOC (xpopsize, numeg, int);
- if (fstatsname == NULL) { 
+  ZALLOC (xpopsize, numeg+1, int);
   for (i = 0; i < nrows; i++) {
+    indx = xindlist[i];
     k = xtypes[i];
-    ++xpopsize[k];
+//  printf("zzxt %s %s %d\n", indx -> ID, indx -> egroup, k) ;
+    if (k>=0) ++xpopsize[k];
+  }
+
+  fflush(stdout) ; 
+
+ if (fstatsname == NULL) { 
+
+  for (k = 0; k < numeg; k++) {
+    printf ("population: %3d %30s %4d\n", k, eglist[k], xpopsize[k]);
   }
 
   for (i = 0; i < numeg; i++) {
-    printf ("population: %3d %20s %4d\n", i, eglist[i], xpopsize[i]);
-  }
-  for (i = 0; i < numeg; i++) {
     if (xpopsize[i] == 0)
-      fatalx ("zero popsize: %s\n", eglist[i]);
+      fatalx ("(qpGraph) zero popsize: %s\n", eglist[i]);
     if (inbreed &&(xpopsize[i] == 1)) 
-      fatalx ("single sample and inbreed set: %s\n", eglist[i]);
+      fatalx ("(qpGraph) single sample and inbreed set: %s\n", eglist[i]);
   }
 
 
@@ -809,8 +844,27 @@ outpop:    (not present)
  }
 
  if (fstatsname != NULL)  {
+
+   ZALLOC(fseglist, MAXPOPS, char *) ;  
+   x = fstats2popl(fstatsname, fseglist) ;
+   t = strcmp(eglist[0], fseglist[0]) ; 
+   if (t!=0) fatalx("mimatch pf basepops in graph and fstats: %s %s\n", eglist[0], fseglist[0]) ;
+
+   printstrings(eglist, numeg) ; 
+   printf("+++\n") ;
+   printstrings(fseglist, x) ; 
+   printf("+++\n") ;
+
+   printf("loading fstats\n") ; fflush(stdout) ;
    loadfstats(fstatsname, ff3, ff3var, eglist, numeg) ; 
+   printf("loaded fstats\n") ; fflush(stdout) ;
+
+   
+ //printf("enough!\n");  return 0 ;
+
    setvv(vest, vvar, ff3, ff3var, ind2f, numeg) ; 
+// dumpfstatshr("qqfstats", ff3, ff3var, eglist, numeg, ind2f, 0) ;  // debug
+
    for (u = 0; u < nh2; ++u) {
      y = vvar[u * nh2 + u];
      vvar[u * nh2 + u] = MAX (y, minvar);
@@ -823,8 +877,8 @@ outpop:    (not present)
   for (u = 0; u < nh2; ++u) {
     y = vvar[u * nh2 + u];
     xvvar[u * nh2 + u] += y * f2diag;
-  }
-   pdinv(vvinv, xvvar, nh2) ; 
+   }
+   pdinvx(vvinv, xvvar, nh2) ; 
 
    if (halfscore) { 
 
@@ -833,7 +887,7 @@ outpop:    (not present)
      y = vvar2[u * nh2 + u];
      xvvar[u * nh2 + u] += y * f2diag;
    }
-    pdinv(vvinv2, xvvar, nh2) ; 
+    pdinvx(vvinv2, xvvar, nh2) ;   // pdinvx checks diag is positive
   }
    
 
@@ -867,10 +921,6 @@ outpop:    (not present)
     if (t > 0)
       bad2 = YES;
 
-  }
-
-  for (k = 0; k < MIN (4, numeg - 3); ++k) {
-    x = listsubset (subsets, numeg - 1, k);
   }
 
   for (u = 0; u < nh2; ++u) {
@@ -963,7 +1013,7 @@ outpop:    (not present)
   y = 1.0e-5 * trace(xvvinv, nh2) ; 
   adddiag (xvvinv, www, nh2);
 
-  pdinv (xvvinv, xvvinv, nh2);
+  pdinvx (xvvinv, xvvinv, nh2);
   for (a = 1; a < numeg; a++) {
     u = f2ind[a * numeg + a];
     xvvinv[u * nh2 + u] *= f2weight;
@@ -1199,7 +1249,7 @@ outpop:    (not present)
   putewts (ww2);                // load graph
 
   dumppars (dumpname, wwtemp, nwts, ww2, nedge);
-  dumpgraph (graphoutname);
+  dumpgraphnew(graphoutname);
   dumpdotgraph_title (graphdotname, dottitle);
   fflush(stdout) ;
   writeadmix(admixout) ;
@@ -2136,6 +2186,7 @@ readcommands (int argc, char **argv)
   getint (ph, "terse:", &tersemode);
   getint (ph, "optit:", &optit);
   getdbl (ph, "precision:", &gslprecision);
+  getint (ph, "hires:", &hires);
   getstring (ph, "badpop2name:", &badpop2name);
   getstring (ph, "weightname:", &weightname);
   getstring (ph, "admixout:", &admixout);
@@ -2860,6 +2911,7 @@ void mkfstats(char *parname)
  char tpar[128] ; 
 
  int pid ; 
+ int k ; 
 
  FILE *fff ; 
 
@@ -2879,9 +2931,14 @@ void mkfstats(char *parname)
 
  fprintf(fff, "fstatsoutname: %s\n", fsx) ; 
  if (graphname == NULL) fatalx("(mkfstats) no graphname!\n") ;
+/**
  sprintf(sss, "grepcol_silent 0 label < %s | xtractcol 2 > %s\n", graphname, pops) ; 
-// printf("cmd1: %s\n", sss) ; 
  system (sss) ; 
+*/ 
+
+ writestrings(pops, eglist, numeg) ;
+ 
+// printf("cmd1: %s\n", sss) ; 
  fprintf(fff, "poplistname: %s\n", pops) ; 
  fclose(fff) ; 
 // sprintf(sss, "cat %s\n", ppp) ; 
@@ -2975,3 +3032,80 @@ writehj(char *halfjackname, char *graphname, int seed, double *vals, double *wva
 
  fclose(fff) ; 
 }
+
+double pdinvx(double *aout, double *ain, int n) 
+{
+
+  double *ww, y ; 
+  int k, isok = YES ;
+
+  ZALLOC(ww, n, double) ; 
+  getdiag(ww, ain, n) ;
+
+  for (k=0; k<n; ++k) { 
+   y = ww[k] ; 
+   if (y<=0.0) { 
+    printf("*** (pdinvx) bad diagonal: %4d %12.6f\n", k, y) ;
+    isok = NO ;
+   }
+  }
+
+/**
+  printf("zzz\n") ; 
+  printmatl(ww, 1, n) ;
+*/
+
+  free(ww) ; 
+
+  if (isok) return pdinv(aout, ain, n) ;
+  fatalx("matrix not pos. def\n") ;
+
+}
+
+
+void
+ mapff3(double *ff3, double *ff3var, char **eglist, int numeg, double *fsff3, double *fsff3var, char **fseglist, int fsnumeg)  
+{
+
+  int *perm ; 
+  int a, b, c, d, t ;
+  int pa, pb, pc, pd ;
+  double y ;
+
+  printf("zzmapff3 %d %d\n", numeg, fsnumeg) ;
+  ZALLOC(perm, numeg, int) ;
+  for (a=0; a<numeg; ++a) { 
+   t = indxstring(fseglist, fsnumeg, eglist[a]) ;  
+   if (t<0) fatalx("pop %s not found in fstats\n") ;
+   perm[a] = t ;
+   printf("zzperm %15s %3d %3d\n", eglist[a], a, t) ;
+  }
+  for (a=0; a<numeg; ++a) { 
+   for (b=0; b<numeg; ++b) { 
+   pa = perm[a] ; 
+   pb = perm[b] ; 
+   y = fsff3[pa*fsnumeg+pb] ; 
+   ff3[a*numeg+b] = ff3[b*numeg+a] = y ; 
+  }}
+
+  
+   for (a=0; a<numeg; ++a) { 
+    for (b=0; b<numeg; ++b) { 
+     for (c=0; c<numeg; ++c) { 
+      for (d=0; d<numeg; ++d) { 
+
+       pa = perm[a] ; 
+       pb = perm[b] ; 
+       pc = perm[c] ; 
+       pd = perm[d] ; 
+       y = dump4(fsff3var, pa, pb, pc, pd, fsnumeg) ;
+       set4x(ff3var, a, b, c, d, numeg, y) ;
+      if ((a+b+c+d) <= 4) printf("zzp %d %d %d %d %d %d %d %d %9.3f\n", a, b, c, d, pa, pb, pc, pd, y) ;
+ }}}}
+
+
+  free(perm) ;
+
+}
+
+

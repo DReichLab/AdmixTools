@@ -257,6 +257,7 @@ ipsortitp (int **a, int *ind, int len, int rlen, int *order)
   for (i = 0; i < len; i++) {
     k = inda[i];
     a[i] = pttt[k];
+// note that this just reorders pointers.  
   }
   if (ind != NULL)
     copyiarr (inda, ind, len);

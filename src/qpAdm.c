@@ -22,9 +22,9 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "1201" 
+#define WVERSION   "1520" 
 // best analysis added
-// hires added
+// hires added;  including on summ line
 // chrom: 23 added
 // allsnps option added
 // more hires output added
@@ -45,6 +45,8 @@
 // fancyf4 added  -- remove bias on f4 calculation
 // code cleeanup (Mac) 10/2/19 
 // fixed up boundary case (m=n) in ranktest
+// mkfstats fstatsname added; made more robust
+// keeptmp added (default NO) 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -58,6 +60,9 @@ int colcaac = YES;
 int hires = NO;
 int maxrank, rank;
 int nsnpused = 0;
+int deletefstats = NO ;
+char *fstatslog = NULL ; 
+int keeptmp = NO ;
 
 Indiv **indivmarkers;
 SNP **snpmarkers;
@@ -74,13 +79,16 @@ int zchrom = -1;
 // if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
 int lopos, hipos ; 
 
-int allsnps = NO;
+int allsnps = -99 ;
+int oldallsnpsmode = NO ;
+
 int hiprec_covar = NO ;
 
 double blgsize = 0.05;		// block size in Morgans */
 double *chitot;
 char *popleft, *popright;
 char **popllist, **poprlist;
+int nleft, nright;
 
 char *instem = NULL ; 
 char *indivname = NULL;
@@ -90,14 +98,17 @@ char *snpoutfilename = NULL;
 char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
-int inbreed = NO;
+int inbreed = -99;
 double lambdascale;
 double *jmean;
 long *wkprint;
 int *zprint ; 
 int numboot = 1000 ; 
 
+
 char *fstatsname = NULL ; 
+char *fstatsoutname = NULL ; 
+char *tmpdir = NULL ;
 
 int fancyf4 = YES;
 
@@ -140,6 +151,7 @@ int isnested(int a, int b) ;
 int usage (char *prog, int exval); 
 void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
 void  setktable(int *ktable, int nl,  int nr) ; 
+int  mkfstats(char *parname)   ; 
 
 int
 main (int argc, char **argv)
@@ -180,7 +192,6 @@ main (int argc, char **argv)
 
   int ***counts;
   int jjj, j1, j2;
-  int nleft, nright;
   int *rlist, lbase, lpop, rbase;
   int *vfix;
   double *yscbest, *ychi, *yinfeasbest;
@@ -213,6 +224,9 @@ main (int argc, char **argv)
   printf ("## qpAdm version: %s\n", WVERSION);
   if (seed==0) seed = seednum() ; 
   printf("seed: %d\n", seed) ;
+  
+  if (tmpdir != NULL) setenv("STMP", tmpdir, 1) ;
+
   if (parname == NULL)
     return 0;
 
@@ -221,9 +235,44 @@ main (int argc, char **argv)
   setinbreed (inbreed);
   setfancyf4(fancyf4) ; 
 
+  if (allsnps == -99) { 
+   allsnps = NO ; 
+   if (fstatsname == NULL) { 
+    printf("allsnps set NO.  It is recommended that allsnps be set explicitly\n") ;
+   }
+  }
+
+  if (inbreed == -99) { 
+   inbreed = allsnps ; 
+   printf(" *** recommended that inbreed be explicitly set ***\n") ;
+  }
+
+  setinbreed(inbreed) ;
+
+  nleft = numlines (popleft);
+  ZALLOC (popllist, nleft, char *);
+  nright = numlines (popright);
+  ZALLOC (poprlist, nright, char *);
+  nleft = loadlist (popllist, popleft);
+  nright = loadlist (poprlist, popright);
+
+  if (nleft==0) fatalx("no pops in left!\n") ;
+  if (nright==0) fatalx("no pops in right!\n") ;
+
+  if ((allsnps == YES) && (oldallsnpsmode == NO) && (fstatsname == NULL)) {
+   if (mkfstats(parname) < 0) { 
+    printf("qpfstats failure ... terminating\n") ;
+    return -1 ; 
+   }; 
+  }
+
   if (instem != NULL) { 
    setinfiles(&indivname, &snpname, &genotypename, instem) ; 
   } 
+
+  if ((allsnps == YES) && (oldallsnpsmode == YES)) {
+   printf("oldallsnpsmode deprecated!\n") ;
+  }
 
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
@@ -261,12 +310,6 @@ main (int argc, char **argv)
 
  } 
 
-  nleft = numlines (popleft);
-  ZALLOC (popllist, nleft, char *);
-  nright = numlines (popright);
-  ZALLOC (poprlist, nright, char *);
-  nleft = loadlist (popllist, popleft);
-  nright = loadlist (poprlist, popright);
 
   printnl ();
   printf ("left pops:\n");
@@ -587,7 +630,12 @@ main (int argc, char **argv)
   printf("summ: %s ", popllist[0]) ; 
   printf(" %3d ", nl) ; 
   printf(" %12.6f ", pval) ; 
-  printmatwx(jmean, 1, nl, nl) ; 
+  if (hires) {
+   printmatwlx(jmean, 1, nl, nl) ; 
+  }
+  else {
+   printmatwx(jmean, 1, nl, nl) ; 
+  }
   t = mktriang (ww, var, nl);
   vst (ww, ww, 1.0e6, t);
   fixitl (wkprint, ww, t);
@@ -600,7 +648,6 @@ main (int argc, char **argv)
    printf ("## end of run\n");
    return 0 ;
   }
-
 
 //  we now loop over fix patterns.  
   xmax = pow (2, nl) - 1;
@@ -760,6 +807,12 @@ main (int argc, char **argv)
      }
     }
     printnl() ;
+  }
+
+  if (deletefstats) { 
+// fstatsname has been created  
+   printf("removing %s\n", fstatsname) ;
+   remove(fstatsname) ; 
   }
 
   ymem = calcmem(1)/1.0e6 ;
@@ -950,6 +1003,9 @@ readcommands (int argc, char **argv)
   getstring (ph, "badsnpname:", &badsnpname);
   getstring (ph, "blockname:", &blockname);
   getstring (ph, "fstatsname:", &fstatsname);
+  getstring (ph, "fstatsoutname:", &fstatsoutname);
+  getstring (ph, "fstatslog:", &fstatslog);
+  getstring (ph, "tmpdir:", &tmpdir);
 
   getdbl (ph, "blgsize:", &blgsize);
 
@@ -963,8 +1019,10 @@ readcommands (int argc, char **argv)
   getint (ph, "maxrank:", &maxrank);
   getint (ph, "hires:", &hires);
   getint (ph, "allsnps:", &allsnps);
+  getint (ph, "inbreed:", &inbreed);
   getint (ph, "fancyf4:", &fancyf4);
   getint (ph, "useallsnps:", &allsnps);
+  getint (ph, "keeptmp:", &keeptmp);
   getint (ph, "details:", &details);
   getint (ph, "seed:", &seed) ; 
   getint (ph, "hiprec_covar:", &hiprec_covar) ; 
@@ -1650,8 +1708,10 @@ void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, ch
   c = indxstring(eglist, numeg, poprlist[0]) ; 
   for (i=1; i<nleft; ++i) { 
    b = indxstring(eglist, numeg, popllist[i]) ; 
+   if (b<0) fatalx("%s not found\n", popllist[i]) ;
    for (j=1; j<nright; ++j) { 
     d = indxstring(eglist, numeg, poprlist[j]) ; 
+   if (d<0) fatalx("%s not found\n", poprlist[j]) ;
     fs = fsindex[numfs] ; 
     load4(fs, a, b, c, d) ; 
     ivmaxmin(fs, 4, NULL, &tt) ; 
@@ -1689,5 +1749,87 @@ void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, ch
   free(vvar) ; 
 
   free2Dint(&fsindex, t) ; 
+
+}
+
+int mkfstats(char *parname)  
+{
+ char sss[256] ; 
+ char fsx[256] ; 
+ char ppp[256] ;  
+ char pops[256] ;  
+ char tpar[256] ; 
+ char fslog[256] ; 
+ char **poplist ; 
+ int numeg ; 
+
+ int pid ; 
+ int k ; 
+
+ int retkode, trap ;
+
+ FILE *fff ; 
+
+ numeg = nleft + nright ; 
+ ZALLOC(poplist, numeg, char *) ; 
+ 
+ copystrings(poprlist, poplist, nright) ;
+ copystrings(popllist, poplist+nright, nleft) ;
+
+ pid = getpid() ; 
+ strcpy(fsx, mytemp("fsx")) ; 
+ strcpy(ppp, mytemp("ppp")) ; 
+ strcpy(pops, mytemp("pops")) ; 
+ strcpy(tpar, mytemp("tpar")) ; 
+ strcpy(fslog, mytemp("fslog")) ; 
+ if (fstatslog != NULL) strcpy(fslog, fstatslog) ;
+
+/**
+ strcpy(pops, "tjunk") ; 
+ strcpy(ppp, "tppp") ; 
+*/
+
+ printf("tmp: %s\n", fsx) ;
+ fstatsname = strdup(fsx) ; 
+ deletefstats = YES ;  
+
+ openitntry(ppp, &fff, "w", 10) ; 
+ sprintf(sss, "fgrep -v fstatsoutname: %s | fgrep -v poplistname: > %s", parname, tpar) ; 
+ system(sss) ; 
+ copyfs(tpar, fff) ; 
+ fprintf(fff, "fstatsoutname: %s\n", fsx) ; 
+ writestrings(pops, poplist, numeg) ;
+ 
+ 
+// printf("cmd1: %s\n", sss) ; 
+ fprintf(fff, "poplistname: %s\n", pops) ; 
+ fclose(fff) ; 
+/**
+ sprintf(sss, "cat %s\n", ppp) ; 
+ system(sss) ; 
+*/
+ sprintf(sss, "qpfstats -p %s > %s", ppp, fslog) ; 
+ retkode =  system(sss) ; 
+ trap = openit_trap(fsx, &fff, "r") ;
+ fclose(fff) ; 
+ if (trap == NO) retkode = -88 ;
+ 
+ // printf("exiting mkfstats\n") ; 
+ if ((fstatsoutname != NULL) && (retkode >= 0)) { 
+  sprintf(sss, "cp %s %s", fsx, fstatsoutname) ; 
+  system(sss) ;
+  printf("fstats file: %s made\n", fstatsoutname) ;
+ } 
+ if (retkode < 0) return -1 ;
+ freeup(poplist, numeg) ;
+
+ if (keeptmp == YES) return 1  ; 
+
+ remove(ppp) ;
+ remove(pops) ;
+ remove(tpar) ; 
+
+ if (fstatslog == NULL) remove(fslog) ;
+ return 1 ; 
 
 }

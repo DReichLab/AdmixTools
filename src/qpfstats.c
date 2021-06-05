@@ -26,12 +26,13 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "200"
+#define WVERSION   "500"
 
 // useweight added  
 // allsnps added
 // doscale NO added
 // small bug (error check in dofstats fixed 
+// big bug (allsnps YES inbreed NO fixed.  allsnps YWS gives default inbreed YES
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -41,10 +42,10 @@ char *parname = NULL;
 char *rootname = NULL;
 char *trashdir = "/var/tmp";
 int details = NO;
-int hires = NO;			/* %10.4f */
+int hires = YES;			/* %12.6f */
 int qtmode = NO;
-int inbreed = NO;
-int allsnpsmode = NO;
+int inbreed = -99;
+int allsnpsmode = -99 ;
 char *f3name = NULL;
 char *fstatsoutname = NULL;
 
@@ -109,7 +110,8 @@ int xnumeg;
 char *outputname = NULL;
 char *weightname = NULL;
 FILE *ofile;
-char **eglist;
+char **eglist ;
+int *hashets ; 
 char **egshort;
 char **enames;
 double zthresh = 3.0;
@@ -237,8 +239,17 @@ main (int argc, char **argv)
   h:0
 rintf ("seed: %d\n", seed);
 */
+  if (allsnpsmode == -99) { 
+    allsnpsmode = NO ; 
+    printf("allsnps set NO.  It is recommended that allsnps be set explicitly\n") ;
+  }
 
-  setinbreed(inbreed) ;
+  if (inbreed == -99) { 
+   inbreed = allsnpsmode ; 
+   printf(" *** recommended that inbreed be explicitly set ***\n") ;
+  }
+
+  setinbreed(inbreed) ;  // prints setting 
   setallsnpsmode (allsnpsmode);
 
   numsnps =
@@ -259,6 +270,10 @@ rintf ("seed: %d\n", seed);
     ZALLOC (eglist, MAXPOPS, char *);
     numeg = makeeglist (eglist, MAXPOPS, indivmarkers, numindivs);
   }
+
+  ZALLOC(hashets, numeg, int) ;  
+  ivclear(hashets, NO, numeg) ;  
+
   setindm (indivmarkers);
 
   np = numeg ; 
@@ -397,7 +412,7 @@ rintf ("seed: %d\n", seed);
   }
   for (i = 0; i < numeg; i++) {
     if (xpopsize[i] == 0)
-      fatalx ("zero popsize\n");
+      fatalx ("(stats) zero popsize\n");
   }
 
 
@@ -466,6 +481,8 @@ rintf ("seed: %d\n", seed);
   ZALLOC(hvalid, numeg, double) ; 
  
    calchet (hrate, hvalid, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
+   counthets (hashets, NULL, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
+
 
    for (k=0; k<numeg; ++k) { 
     printf("pop: %15s ", eglist[k]) ;  
@@ -473,8 +490,11 @@ rintf ("seed: %d\n", seed);
     printf(" valid snps: %9.0f", hvalid[k]) ; 
     printf(" samples: %4d", popsizes[k]) ; 
     if (hvalid[k] < .01) printf(" *** ") ;
+    if ((inbreed == NO) && (hashets[k] = 0))  printf("variance will be adjusted") ;
     printnl() ; 
    }
+
+// printf("zzhashets: ") ; printimat(hashets, 1, numeg) ; 
 
 
   scale =
@@ -518,12 +538,12 @@ rintf ("seed: %d\n", seed);
    cputimes(0, 2) ; 
    kret = dofstats(fbmean, fbcovar, fcoeffs, nbasis, 
       fsmean, fssig, findex, nfstats, 
-      xsnplist, xindex, xtypes, nrows, ncols, numeg, nblocks, lambdascale) ; 
+      xsnplist, xindex, xtypes, hashets, nrows, ncols, numeg, nblocks, lambdascale) ; 
 
    if (kret<0) { 
     bad = kret+1000*1000 ; 
     printf("*** warning ***\n") ; 
-    printf("fstat with no data.  Unable to compute heterozygosity?: ") ; 
+    printf("fstats with no data.  Unable to compute heterozygosity?: ") ; 
     printimat(findex[bad], 1, 4) ; 
     printf("bad quadruple: ") ;
     for (k=-0; k<4; ++k) { 

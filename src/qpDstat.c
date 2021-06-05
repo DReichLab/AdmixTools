@@ -1,4 +1,4 @@
- #include <stdio.h>
+#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -26,7 +26,7 @@
 */
 
 
-#define WVERSION   "970"
+#define WVERSION   "980"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -43,10 +43,11 @@
 // nzdata;  require 10 blocks with abba/baba counts
 // xmode ;  call countpopsx which deals with gender on X
 // syntactic sugar (strip :) in popfilename  
-// numchrm added
+// numchrom added
 // formatting bug (overflow of abba counts) fixed
 // instem added 
 // cputime etc printed
+// error message if nzdata no large enough
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -782,6 +783,7 @@ readcommands (int argc, char **argv)
   getint (ph, "locount:", &locount);
   getint (ph, "hicount:", &hicount);
 
+  getint (ph, "numchrom:", &numchrom);
   getint (ph, "noxdata:", &noxdata);
   getint (ph, "xdata:", &xdata);
   getint (ph, "colcalc:", &colcalc);
@@ -1173,6 +1175,7 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
     free (jwt);
     *dzscx = 0;                 // Z score
     *dzsc = 0;
+    enuf("insufficient number of blocks -- you need 5 blocks with non zero ABBA/BABA program terminating\n") ;
     return;
   }
   ytop = asum (ztop, nblocks);

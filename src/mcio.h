@@ -17,7 +17,7 @@
 #define MTCHROM 90 
 #define XYCHROM 91
 #define BADCHROM 99
-#define GDISMUL 1000000
+#define GDISMUL 10000000
 // multiplier for gdis to make integer for sort
 
 enum outputmodetype  { 
@@ -82,7 +82,7 @@ long getgenos(char *genoname, SNP **snpmarkers, Indiv **indivmarkers,
  int numsnps, int numindivs, int nignore)  ;
 void getgenos_list(char *genotypelist, SNP **snpmarkers, Indiv **indivmarkers, 
  int  numsnps, int numindivs, int nignore) ; 
-void printsnps(char *snpoutfilename, SNP **snpm, int num, 
+int printsnps(char *snpoutfilename, SNP **snpm, int num, 
   Indiv **indm, int printfake, int printvalids) ;
 int checkxval(SNP *cupt, Indiv *indx, int val) ;
 void printdata(char *genooutfilename, char *indoutfilename, 
@@ -92,7 +92,7 @@ int numvalidind(Indiv **indivmarkers, int  numind)   ;
 int numvalidgtind(SNP **snpm, int numsnps, int ind)  ;
 int numvalidgt(Indiv **indivmarkers, SNP *cupt)   ;
 int numvalidgtx(Indiv **indivmarkers, SNP *cupt, int affst)  ;
-int getblocks(char *fname, SNP **snpm, int numsnps)   ;
+int getblocks (char *fname, SNP ** snpm, int numsnps) ;
 int getweights(char *fname, SNP **snpm, int numsnps)   ;
 int getindvals (char *fname, Indiv ** indivmarkers, int numindivs) ;
 void outpack(char *genooutfilename, SNP **snpm, Indiv **indiv, int numsnps, int numind)  ;
@@ -113,6 +113,8 @@ void genopedcnt(char *genoname, int **gcounts, int nsnp) ;
 int pedval(char *sx) ;
 int xpedval(char c) ;
 int ptoachrom(char *ss) ;
+void atopchrom (char *ss, int chrom) ;
+int strcmpreg(char *a, char *b) ;  
 
 void setgref(int **gcounts, int nsnp, int *gvar, int *gref) ;
 void cleargdata(SNP **snpmarkers, int numsnps, int numindivs) ;
@@ -126,15 +128,15 @@ int checkfake(char *ss)  ;
 void setbadpedignore() ;
 int setsdpos( SNPDATA *sdpt, int pos) ;  
 
-void
+int
 outeigenstrat(char *snpname, char *indname, char *gname, 
 SNP **snpm, Indiv **indiv, int numsnps, int numind) ;
 
-void
+int
 outped(char *snpname, char *indname, char *gname, 
 SNP **snpm, Indiv **indiv, int numsnps, int numind, int ogmode) ;
 
-void
+int
 outpackped(char *snpname, char *indname, char *gname, SNP **snpm, Indiv **indiv, 
   int numsnps, int numind, int ogmode) ;
 
@@ -144,7 +146,7 @@ int str2chrom(char *ss) ;
 
 void outindped(char *indname, Indiv **indiv, int numind, int ogmode)  ;
 
-void
+int
 printmap(char *snpname, SNP **snpm, int numsnps, Indiv **indiv) ;
 
 int maxlinelength(char *fname)  ;
@@ -152,7 +154,7 @@ int checksize(int numindivs, int numsnps, enum outputmodetype outputmode) ;
 
 void setomode(enum outputmodetype *outmode, char *omode)  ;
 
-void
+int
 outfiles(char *snpname, char *indname, char *gname, SNP **snpm, 
   Indiv **indiv, int numsnps, int numind, int packem, int ogmode) ;
 
@@ -163,6 +165,7 @@ int vvadjust(double *cc, int n, double *pmean) ;
 int killhir2(SNP **snpm, int numsnps, int numind, double physlim, double genlim, double rhothresh) ; 
 void freecupt(SNP **cupt) ;
 void freeped() ;
+void freesnps(SNP ***psnpmarkers, int numsnps) ;
 void cntpops(int *count, Indiv **indm, int numindivs, char **eglist, int numeg) ;
 void printalleles(SNP  *cupt, FILE *fff) ;
 char *getpackgenos()  ;
@@ -188,7 +191,6 @@ void ckdup(char **eglist, int n) ;
 
 long inprob (char *pname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind) ;
 long inprobx (char *pname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind, char *packprobs) ;
-long loadprobpack(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char *bigbuff) ;
 void outprob(char *oname, SNP **snpm, Indiv **indiv, int numsnps) ; 
 void outprobx(char *oname, SNP **snpm, Indiv **indiv, int numsnps, int numindivs, char *packprobs) ; 
 void sethiressnp() ;

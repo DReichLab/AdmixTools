@@ -12,7 +12,7 @@ extern "C" {
 #include <nicklib.h>
 
 #define MAXG 200
-#define MAXW 10
+#define MAXW 100
 
 #include "badpairs.h"
 #include "admutils.h"
@@ -209,6 +209,7 @@ double ff3val(double *ff3, int a, int b, int c, int n)  ;
 // graph stuff
 int loadgraph(char *readit, char ***peglist)   ;
 void dumpgraph(char *gname) ;
+void dumpgraphnew(char *gname) ;
 void dumpdotgraph(char *gdotname) ;
 void dumpdotgraph_title(char *gdotname, char *title) ;
 int  grdof() ;
@@ -219,6 +220,13 @@ int isfixed(int vind, int isleft) ;
 
 void getgmix(double **vmix, int *lmix, int *nmix) ;
 void putgmix(double **vmix) ; 
+void getpath(double *path, char *pop) ;
+int  mktimeindex(double *gendates) ;
+void ibdpars(double *pars, int npars, int *edgeorder) ;
+void setxnoc(double *xnoc, double *popsizes, double *edgeprob, int *edgeorder)  ;  
+// this is a rouitne to set p(no coalescence at bottom of edge ;  key routine for ibdGraph 
+int getedgeinfo(int edgenum, char **pupname, char **pdowname, double *length, double *popsize)  ;
+
 void getpwts(double *pwts, double *awts, int *nrows, int *nedge, int *nanc) ;
 void getpwtsx(double *pwts, int *nrows, int *nedge) ;
 int getedgelock(int *lock, double *vals) ;
@@ -226,6 +234,8 @@ void getenames(char **enames) ;
 void findename(char *ss, int n) ;
 void findvname(char *ss, int n) ;
 void getvnames (char **vnames) ;
+void setibdexp(int num, double ibdexp) ; 
+void printedgedata(int num)  ; 
 void setsimp(double *ww, int n) ;
 int edgenum(char *edgename) ;
 void addvertex(char *vertname)  ;   
@@ -269,6 +279,10 @@ void setadmfix(char *fixname) ;
 
 
 void setfancyf4 (int mode) ; 
+void setibdmode (int mode) ; 
+void setdate(double basedate, double gentime) ;
+void getpud(double *psize, double *upd, double *downd, char *pop) ;
+
 double hfix(int *aa) ; 
 int getf4 (int **xx, int *indx, double *ans) ;
 void setvv(double *vest, double *vvar, double *ff3, double *ff3var, int *ind2f, int numeg)   ; 
@@ -289,14 +303,18 @@ double getaax(int popnum) ;
 
 int dofstats (double *fbmean, double *fbcovar, double **fcoeffs, int nbasis, 
        double *fsmean, double *fssig, int **fsindex, int nfstats, 
-       SNP ** xsnplist, int *xindex, int *xtypes,
+       SNP ** xsnplist, int *xindex, int *xtypes, int *hashets, 
        int nrows, int ncols, int numeg, int nblocks, double scale) ;
 int calchet ( double *hets, double *valids, 
        SNP ** xsnplist, int *xindex, int *xtypes,
        int nrows, int ncols, int numeg)  ; 
+int 
+counthets ( int *xhets, int *xvalids, 
+       SNP ** xsnplist, int *xindex, int *xtypes,
+       int nrows, int ncols, int numeg)  ;
 
 
-void getegnum(int *egnum, char **spt, char **eglist, int numeg, int num)  ; 
+int getegnum(int *egnum, char **spt, char **eglist, int numeg, int num)  ; 
 int fstats2popl(char *fstatsname, char **poplist)  ; 
 void  loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg) ; 
 int mkcoeffs (double *yco, int **dd, int numpops, int numd)  ;

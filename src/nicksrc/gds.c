@@ -315,14 +315,24 @@ ranmod (int n)
 
   long r, big;
 
-  if (n == 0)
-    fatalx ("ranmod(0) called\n");
+  if (n <= 0)
+    fatalx ("ranmod called; bad arg %d\n", n);
   if (n == 1)
     return 0;
   big = (2 << 29) - 1;
   r = LRAND ();
   r %= big;
   return (r % n);
+
+}
+
+int iranpick(int lo, int hi) 
+{
+ int l ;  
+
+ l = hi - lo + 1 ; 
+ if (l <= 0) fatalx("(iranpick) bad interval %d %d\n", lo, hi) ;
+ return lo + ranmod(l) ;  
 
 }
 
@@ -420,7 +430,8 @@ ranpoiss1 (double xm)
 
 /* poisson variable conditioned on x>0 */
 
-/** xm should be small here 
+/** 
+ xm should be small here 
  ranpoissx is the driver. 
  Don't call this directly
 */
@@ -489,30 +500,28 @@ drand2 ()
 
 void
 ranmultinom (int *samp, int n, double *p, int len)
-// multinomial sample p is prob dist  n samples returned
-// work is O(len^2) which is silly 
+// cleaned up from old version
 {
-  int x;
-  double *pp;
 
-  if (len == 0)
-    return;
-  ivzero (samp, len);
-  if (n <= 0)
-    return;
+ double *pp ; 
+ double  y, z ; 
+ int k, m ; 
 
-  if (len == 1) {
-    samp[0] = n;
-    return;
+ ZALLOC(pp, len, double) ;
+ copyarr(p, pp, len) ; 
+ bal1(pp, len) ; 
+
+ y = 1.0 ; 
+ m = n ; 
+ for (k=len-1; k >= 0; --k) { 
+  z = MIN(pp[k]/y, 1.0) ; 
+  y = MAX(y-pp[k], 1.0e-20) ; 
+  samp[k] = ranbinom(m, z) ; 
+  if (k==0) { 
+   samp[k] = m ; break ;
   }
-
-  ZALLOC (pp, len, double);
-  copyarr (p, pp, len);
-  bal1 (pp, len);
-
-  samp[0] = x = ranbinom (n, pp[0]);
-  ranmultinom (samp + 1, n - x, p + 1, len - 1);
-  free (pp);
+  m -= samp[k] ; 
+ }
 }
 
 double
@@ -879,6 +888,7 @@ double rangeom (double theta)
 {
 // sample # trials until success  prob theta.  Min value 1
 // Knuth Vol 2, page 131;  Mean of random variable 1/theta
+// note returns double (dangerous bend) 
 double y ; 
 
  if (theta == 1.0) return 1 ; 

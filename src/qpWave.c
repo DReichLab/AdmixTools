@@ -27,10 +27,11 @@
  // bugfix in doq4vecb (same as qpAdm)
  // instem:   
  // cleaned up boundary case (m=n in ranktest) 
+ // fstats properly supported
 */
 
 
-#define WVERSION   "1200"
+#define WVERSION   "1520" 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -58,13 +59,20 @@ int gfromp = NO;		// genetic distance from physical
 int xchrom = -1;
 // if bankermode  bankers MUST be in quartet  at most one type 1 in quartet
 
-int allsnps = NO;
+int allsnps = -99 ;
+int oldallsnpsmode = NO ;
+int deletefstats = NO ; 
+char *fstatslog = NULL ; 
+char *tmpdir = NULL ;
+int keeptmp = NO ;
+
 int fancyf4 = YES;
 
 double blgsize = 0.05;		// block size in Morgans */
 double *chitot;
 char *popleft, *popright;
 char **popllist, **poprlist;
+int nleft, nright;
 
 char *instem = NULL ; 
 char *indivname = NULL;
@@ -75,12 +83,13 @@ char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
 char *blockname = NULL;
-int inbreed = NO;
+int inbreed = -99;
 double lambdascale;
 
 int numboot = 1000 ; 
 
 char *fstatsname = NULL ; 
+char *fstatsoutname = NULL ; 
 
 char *outputname = NULL;
 char *weightname = NULL;
@@ -101,6 +110,7 @@ int getf4 (int **xx, int *indx, double *ans);
 int usage (char *prog, int exval);
 
 void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
+int  mkfstats(char *parname)   ; 
 
 int
 main (int argc, char **argv)
@@ -144,7 +154,6 @@ main (int argc, char **argv)
 
   int ***counts, **ccc;
   int jjj, j1, j2;
-  int nleft, nright;
   int *rlist, lbase, lpop, rbase;
 
   F4INFO **f4info, *f4pt, *f4pt2;
@@ -161,9 +170,47 @@ main (int argc, char **argv)
   if (parname == NULL)
     return 0;
 
+  if (tmpdir != NULL) setenv("STMP", tmpdir, 1) ;
+
   numchromp = numchrom + 1 ; 
 
   setinbreed (inbreed);
+
+  nleft = numlines (popleft);
+  ZALLOC (popllist, nleft, char *);
+  nright = numlines (popright);
+  ZALLOC (poprlist, nright, char *);
+  nleft = loadlist (popllist, popleft);
+  nright = loadlist (poprlist, popright);
+
+  if (nleft==0) fatalx("no pops in left!\n") ;
+  if (nright==0) fatalx("no pops in right!\n") ;
+
+  if (allsnps == -99) { 
+   allsnps = NO ; 
+   if (fstatsname == NULL) { 
+    printf("allsnps set NO.  It is recommended that allsnps be set explicitly\n") ;
+   }
+  }
+  if (inbreed == -99) { 
+   inbreed = allsnps ; 
+   printf(" *** recommended that inbreed be explicitly set ***\n") ;
+  }
+
+  setinbreed(inbreed) ;
+
+
+  if ((allsnps == YES) && (oldallsnpsmode == NO) && (fstatsname == NULL)) {
+   if (mkfstats(parname) < 0) { 
+    printf("qpfstats failure ... terminating\n") ;
+    return -1 ; 
+   }; 
+  }
+
+
+  if ((allsnps == YES) && (oldallsnpsmode == YES)) {
+   printf("oldallsnpsmode deprecated!\n") ;
+  }
 
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
@@ -199,12 +246,9 @@ main (int argc, char **argv)
   }
  }
 
-  nleft = numlines (popleft);
-  ZALLOC (popllist, nleft, char *);
-  nright = numlines (popright);
-  ZALLOC (poprlist, nright, char *);
-  nleft = loadlist (popllist, popleft);
-  nright = loadlist (poprlist, popright);
+  if (popleft == NULL) fatalx("no popleft\n") ;
+  if (popright == NULL) fatalx("no popright\n") ;
+
 
   printnl ();
   printf ("left pops:\n");
@@ -394,6 +438,12 @@ main (int argc, char **argv)
     printf4info (f4pt);
   }
 
+  if (deletefstats) { 
+// fstatsname has been created  
+   printf("removing %s\n", fstatsname) ;
+   remove(fstatsname) ; 
+  }
+
   ymem = calcmem(1)/1.0e6 ;
   printf("##end of qpWave: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
   return 0;
@@ -465,10 +515,16 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "maxrank:", &maxrank);
   getint (ph, "allsnps:", &allsnps);
+  getint (ph, "inbreed:", &inbreed);
   getint (ph, "fancyf4:", &fancyf4);
+  getint (ph, "keeptmp:", &keeptmp);
   getdbl (ph, "diagplus:", &yscale);
   getstring (ph, "blockname:", &blockname);
   getstring (ph, "fstatsname:", &fstatsname);
+  getstring (ph, "fstatsoutname:", &fstatsoutname);
+  getstring (ph, "fstatslog:", &fstatslog);
+  getstring (ph, "tmpdir:", &tmpdir);
+
   getint (ph, "numboot:", &numboot) ; 
 
 
@@ -665,8 +721,10 @@ void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, ch
   c = indxstring(eglist, numeg, poprlist[0]) ; 
   for (i=1; i<nleft; ++i) { 
    b = indxstring(eglist, numeg, popllist[i]) ; 
+   if (b<0) fatalx("%s not found\n", popllist[i]) ;
    for (j=1; j<nright; ++j) { 
     d = indxstring(eglist, numeg, poprlist[j]) ; 
+    if (d<0) fatalx("%s not found\n", poprlist[j]) ;
     fs = fsindex[numfs] ; 
     load4(fs, a, b, c, d) ; 
     ivmaxmin(fs, 4, NULL, &tt) ; 
@@ -707,3 +765,85 @@ void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, ch
 
 }
 
+
+int mkfstats(char *parname)  
+{
+ char sss[256] ; 
+ char fsx[256] ; 
+ char ppp[256] ;  
+ char pops[256] ;  
+ char tpar[256] ; 
+ char fslog[256] ; 
+ char **poplist ; 
+ int numeg ; 
+
+ int pid ; 
+ int k ; 
+
+ int retkode, trap ;
+
+ FILE *fff ; 
+
+ numeg = nleft + nright ; 
+ ZALLOC(poplist, numeg, char *) ; 
+ 
+ copystrings(poprlist, poplist, nright) ;
+ copystrings(popllist, poplist+nright, nleft) ;
+
+ pid = getpid() ; 
+ strcpy(fsx, mytemp("fsx")) ; 
+ strcpy(ppp, mytemp("ppp")) ; 
+ strcpy(pops, mytemp("pops")) ; 
+ strcpy(tpar, mytemp("tpar")) ; 
+ strcpy(fslog, mytemp("fslog")) ; 
+ if (fstatslog != NULL) strcpy(fslog, fstatslog) ;
+
+/**
+ strcpy(pops, "tjunk") ; 
+ strcpy(ppp, "tppp") ; 
+*/
+
+ printf("tmp: %s\n", fsx) ;
+ fstatsname = strdup(fsx) ; 
+ deletefstats = YES ;  
+
+ openitntry(ppp, &fff, "w", 10) ; 
+ sprintf(sss, "fgrep -v fstatsoutname: %s | fgrep -v poplistname: > %s", parname, tpar) ; 
+ system(sss) ; 
+ copyfs(tpar, fff) ; 
+ fprintf(fff, "fstatsoutname: %s\n", fsx) ; 
+ writestrings(pops, poplist, numeg) ;
+ 
+ 
+// printf("cmd1: %s\n", sss) ; 
+ fprintf(fff, "poplistname: %s\n", pops) ; 
+ fclose(fff) ; 
+/**
+ sprintf(sss, "cat %s\n", ppp) ; 
+ system(sss) ; 
+*/
+ sprintf(sss, "qpfstats -p %s > %s", ppp, fslog) ; 
+ retkode =  system(sss) ; 
+ trap = openit_trap(fsx, &fff, "r") ;
+ fclose(fff) ; 
+ if (trap == NO) retkode = -88 ;
+ 
+ // printf("exiting mkfstats\n") ; 
+ if ((fstatsoutname != NULL) && (retkode >= 0)) { 
+  sprintf(sss, "cp %s %s", fsx, fstatsoutname) ; 
+  system(sss) ;
+  printf("fstats file: %s made\n", fstatsoutname) ;
+ } 
+ if (retkode < 0) return -1 ;
+ freeup(poplist, numeg) ;
+
+ if (keeptmp == YES) return 1  ; 
+
+ remove(ppp) ;
+ remove(pops) ;
+ remove(tpar) ; 
+
+ if (fstatslog == NULL) remove(fslog) ;
+ return 1 ; 
+
+}

@@ -13,6 +13,8 @@ char *fwhite (char *ss) ;
 char *ftab (char *ss) ;
 int NPisnumber (char c) ;
 int isnumword (char *str)  ;
+void ffprint (FILE *fff, char *fmt, ...) ; 
+void enuf( char *fmt, ...) ;
 void fatalx( char *fmt, ...) ;
 int docommand( char *fmt, ...) ;
 long seednum() ;
@@ -30,6 +32,7 @@ int upstring (char *ss)  ;
 int numcols (char *name) ;
 int numlines(char *name) ;
 int openit_trap (char *name, FILE ** fff, char *type); 
+void openitntry (char *name, FILE ** fff, char *type, int ntry) ;
 void openit(char *name, FILE **fff, char *type)  ;
 int  ftest(char *aname) ;
 void fcheckr(char *name) ;
@@ -92,6 +95,7 @@ int getxxq(double **xx, int maxrow, int numcol, char *fname) ;
 int numcolsq (char *name) ;
 int getdata(char *buff, int nbytes, char *fname)  ;
 int putdata(char *buff, int nbytes, char *fname)  ;
+void writestrings(char *fname, char **ss, int n)  ;
 
 
 #define ZALLOC(item,n,type)      if ((item = (type *)calloc((n),sizeof(type))) == NULL) \

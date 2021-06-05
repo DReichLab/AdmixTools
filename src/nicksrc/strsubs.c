@@ -176,6 +176,39 @@ fwhite (char *ss)
 
 static char Estr[MAXSTR];
 
+
+void
+ffprint (FILE *fff, char *fmt, ...)
+
+{
+  va_list args;
+
+  if (fff==NULL) return ; 
+
+  va_start (args, fmt);
+  vsprintf (Estr, fmt, args);
+  va_end (args);
+
+  fprintf (fff, "%s", Estr);
+  fflush (fff);
+
+}
+
+void enuf (char *fmt, ...) 
+{
+  va_list args;
+
+  va_start (args, fmt);
+  vsprintf (Estr, fmt, args);
+  va_end (args);
+  fflush (stdout);
+
+  fprintf (stderr, "enough!\n%s\n", Estr);
+  fflush (stderr);
+  exit(0) ;
+}
+
+
 void
 fatalx (char *fmt, ...)
 {
@@ -665,7 +698,7 @@ numcols (char *name)
   int nsplit, num = 0;
 
   if (name == NULL)
-    fatalx ("(numlines)  no name");
+    fatalx ("(numlines)  no name\n");
   openit (name, &fff, "r");
   while (fgets (line, MAXSTR, fff) != NULL) {
     nsplit = splitup (line, spt, MAXCOLS);
@@ -744,6 +777,23 @@ openit_trap (char *name, FILE ** fff, char *type)
   }
   return YES ;
   
+}
+
+void
+openitntry (char *name, FILE ** fff, char *type, int ntry)
+{
+  char *ss;
+  int iter, ret ; 
+
+  for (iter=1; iter <= ntry; ++iter) { 
+   ret = openit_trap (name, fff, type) ; 
+   if ((ret==YES) && (iter==1)) return ;
+    if (ret == YES) { 
+     printf("*** open for %s succeeds but on try %d ***\n", name, iter) ;
+     return ; 
+    }
+  }
+  fatalx("(openit) fail for %son %d tries\n", name, ntry) ; 
 }
 
 void
@@ -1000,7 +1050,7 @@ getnames (char ****pnames, int maxrow, int numcol, char *fname)
   char *sx;
   int nsplit, i, j, num = 0, maxff, numcolp;
   FILE *fff;
-  int nbad = 0;
+  int nbad = 0 ;
   char ***names;
 
   names = *pnames;
@@ -1025,10 +1075,7 @@ getnames (char ****pnames, int maxrow, int numcol, char *fname)
     }
     if (nsplit < numcol) {
       ++nbad;
-      if (nbad < 10)
-        printf ("+++ bad line: nsplit: %d numcol: %d\n%s\n", nsplit, numcol,
-                line);
-      continue;
+      fatalx ("+++ bad line: nsplit: %d numcol: %d\n%s\n", nsplit, numcol, line);
     }
     if (num >= maxrow)
       fatalx ("too much data\n");
@@ -1956,10 +2003,13 @@ char *mytemp (char *qqq)
 // make temporary file name.   qqq is header string, eg "junk1" 
 {
   char ss[MAXSTR] ; 
+  char *tmpdir ; 
   int t ; 
 
   t = (int) getpid() ; 
-  sprintf(ss, "/tmp/%s.%d", qqq, t) ; 
+  tmpdir = getenv("STMP") ;  
+  if (tmpdir == NULL) tmpdir = strdup("/tmp") ;
+  sprintf(ss, "%s/%s.%d", tmpdir, qqq, t) ; 
   return strdup(ss) ;
 }
 
@@ -2143,6 +2193,19 @@ int getdata(char *buff, int nbytes, char *fname)
 
 }
 
+void writestrings(char *fname, char **ss, int n) 
+{
+ FILE *fff ; 
+ int i ; 
+
+ openit(fname, &fff, "w") ; 
+ for (i=0; i<n; ++i) { 
+  fprintf(fff, "%s\n", ss[i]) ; 
+ }
+
+ fclose(fff) ; 
+
+}
 
 
 

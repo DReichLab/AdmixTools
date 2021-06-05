@@ -5,7 +5,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <libgen.h>
 
 #include <nicklib.h>
 #include <globals.h>
@@ -14,8 +13,9 @@
 
 #include "admutils.h"
 #include "mcio.h"
+#include "nicksam.h"
 
-#define WVERSION   "2600"
+#define WVERSION   "2710"
 #define MAXFL  50
 #define MAXSTR  512
 
@@ -27,7 +27,6 @@
 // malexhet added
 // polarmode added both input files assumed polarized
 // O2 version
-// .prob aware
 
 char *trashdir = "/var/tmp";
 extern int verbose;
@@ -40,21 +39,15 @@ int numi1, numi2;
 char *snp1 = NULL;
 char *ind1 = NULL;
 char *geno1 = NULL;
-char *xprob1 = NULL;
 
 char *snp2 = NULL;
 char *ind2 = NULL;
 char *geno2 = NULL;
-char *xprob2 = NULL;
-
-int probmode = NO ;
 
 char *indoutfilename = NULL;
 char *snpoutfilename = NULL;
 char *genooutfilename = NULL;
 char *badsnpname = NULL;
-char *proboutfilename = NULL ; 
-
 
 int packout = -1;
 int tersem = YES;
@@ -77,28 +70,30 @@ int hipos = 999999999;
 int minchrom = 1;
 int maxchrom = 97;
 
+KINFO **mhlist ; 
+int mhlen = 0 ;
+
 /** 
  docheck:  YES  allele flipping check
  hashcheck:  YES  ... NO => snp names, Indiv names changed MUST retain order and number
  strandcheck: (default YES) if NO then alleles are assumed on same strand
  allowdups: YES (second set of data ... dup individuals are killed otherwise fatal error
  rewrote mergeit()  removed call to rmindivs (bug??)
+ added chrom: 
 */
 
 char unknowngender = 'U';
 
 void setomode (enum outputmodetype *outmode, char *omode);
 void readcommands (int argc, char **argv);
-void outfiles (char *snpname, char *indname, char *gname, SNP ** snpm,
-               Indiv ** indiv, int numsnps, int numind, int packem,
-               int ogmode);
 int checkmatch (SNP * cupt1, SNP * cupt2);
 
-int usage (char *prog, int exval); 
 int
 mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
          int nums1, int nums2, int numi1, int numi2);
 
+void addmhist(int kode, int val) ;
+void printmh() ;
 
 int
 main (int argc, char **argv)
@@ -129,19 +124,19 @@ main (int argc, char **argv)
   int sorder[2];
   double ymem ; 
 
-  unsigned char *packp, *packp1, *packp2 ; 
-  long plen, plen1, plen2 ;  
-  int numx ; 
-  int rl2 = 4 ; 
-
-
-
   tersem = YES;                 // no snp counts
 
   readcommands (argc, argv);
 
   cputime(0) ;
   calcmem(0) ;
+
+  ZALLOC(mhlist, 10, KINFO *) ; 
+  for (i=0; i<10; ++i) { 
+   ZALLOC(mhlist[i], 1, KINFO) ; 
+   clearkh(mhlist[i]) ;
+  }
+
 
   setomode (&outputmode, omode);
   packmode = YES;
@@ -151,16 +146,6 @@ main (int argc, char **argv)
   if (polarmode) {
     strandcheck = NO;
     printf ("polarmode set!\n");
-  }
-
-  if (proboutfilename != NULL) { 
-   probmode = YES ; 
-   if (xprob1 == NULL) fatalx("proboutfilename set but not prob1\n") ;
-   if (xprob2 == NULL) fatalx("proboutfilename set but not prob2\n") ;
-   if (allowdups) { 
-    fatalx("dups + .prob processing not yet supprted\n") ; 
-   } 
-   printf("probmode set!\n") ;
   }
 
   nums1 = getsnps (snp1, &snpm1, 0.0, NULL, &nignore, numrisks);
@@ -181,17 +166,18 @@ main (int argc, char **argv)
   }
   for (x = 0; x < nums2; ++x) {
     cupt2 = snpm2[x];
-    t = x % 1000;
-// if (t==0) printf("zz %d %d\n", x, nums2) ;
+    if ((xchrom>0) && (cupt -> chrom != xchrom)) cupt2 -> ignore = YES ;
 
     k = snpindex (snpm1, nums1, cupt2->ID);
     if (k < 0) {
       cupt2->ignore = YES;
-      continue;
     }
+    if (cupt2 -> ignore) continue ; 
     cupt1 = snpm1[k];
     cupt1->tagnumber = x;
     t = checkmatch (cupt1, cupt2);
+    addmhist(t, 1) ;
+
     if (t == 1)
       continue;
     if (t == 2) {
@@ -239,48 +225,8 @@ main (int argc, char **argv)
   numi1 = rmindivs(snpm1, nums1, indm1, numi1)  ; 
   numi2 = rmindivs(snpm2, nums2, indm2, numi2)  ; 
 */
-  if (probmode) { 
-    plen1 = nums1*(numi1+numi2)*rl2 ;  
-    plen2 = nums2*numi2*rl2 ;  
-    ZALLOC(packp1, plen1, unsigned char) ;
-    ZALLOC(packp2, plen2, unsigned char) ;
-    inprobx (xprob1,  snpm1, indm1, nums1, numi1, packp1) ;
-    inprobx (xprob2,  snpm2, indm2, nums2, numi2, packp2) ;
-
- packp = packp1 ; 
- if (xprob1 != NULL)  {
-  for (i=0; i<nums1; i++) {
-   cupt = snpm1[i] ;
-   cupt -> probbuff = packp + i*numi1*rl2 ;
-   cupt -> diplike = initarray_2Ddouble(numi1+numi2, 3, -1) ;
-   
-   for (j=0; j<numi1; ++j) { 
-     indx = indm1[j] ; 
-     if (indx -> ignore) continue ;  
-     indx = indm1[j] ; 
-     if (indx -> ignore) continue ; 
-     loaddiplike(cupt -> diplike[j], cupt -> probbuff + j*rl2) ; 
-   } 
-  }} 
-
- packp = packp2 ; 
- if (xprob2 != NULL)  {
-  for (i=0; i<nums2; i++) {
-   cupt = snpm2[i] ;
-   cupt -> probbuff = packp + i*numi2*rl2 ;
-   cupt -> diplike = initarray_2Ddouble(numi2, 3, -1) ;
-   for (j=0; j<numi2; ++j) { 
-     indx = indm2[j] ; 
-     if (indx -> ignore) continue ; 
-     loaddiplike(cupt -> diplike[j], cupt -> probbuff + j*rl2) ; 
-   } 
-  }} 
- }
-
-
 
   packg2 = (unsigned char *) getpackgenos ();
-
   numindivs =
     mergeit (snpm1, snpm2, &indm1, indm2, nums1, nums2, numi1, numi2);
 
@@ -288,21 +234,18 @@ main (int argc, char **argv)
   numsnps = nums1;
   indivmarkers = indm1;
 
-  free (packg1);  // point here is to free packed data after mergeit 
+  free (packg1);
   free (packg2);
 
 //  numsnps = rmsnps(snpmarkers, numsnps, NULL) ;
 
-  printf ("numsnps: %d  numindivs: %d\n", numsnps, numindivs);
+  printf("numsnps input: %d %d\n", nums1, nums2) ;
 
-  outfiles (snpoutfilename, indoutfilename, genooutfilename,
+  num = outfiles (snpoutfilename, indoutfilename, genooutfilename,
             snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
 
-  if (probmode) {
-   numx = loadprobpack(snpmarkers, indivmarkers, numsnps, numindivs, packp1) ; 
-   outprobx(proboutfilename, snpmarkers, indivmarkers, numsnps, numindivs, packp1) ; 
-  }
-
+  printf ("numsnps output: %d  numindivs: %d\n", num, numindivs);
+  printmh()  ;     
 
   ymem = calcmem(1)/1.0e6 ;
   printf("##end of mergeit: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
@@ -340,22 +283,22 @@ checkmatch (SNP * cupt1, SNP * cupt2)
   if (strandcheck) {
 
     if ((a1 == 'A') && (a2 == 'T'))
-      return -1;
+      return -2;
     if ((a1 == 'T') && (a2 == 'A'))
-      return -1;
+      return -2;
     if ((a1 == 'C') && (a2 == 'G'))
-      return -1;
+      return -2;
     if ((a1 == 'G') && (a2 == 'C'))
-      return -1;
+      return -2;
 
     if ((b1 == 'A') && (b2 == 'T'))
-      return -1;
+      return -2;
     if ((b1 == 'T') && (b2 == 'A'))
-      return -1;
+      return -2;
     if ((b1 == 'C') && (b2 == 'G'))
-      return -1;
+      return -2;
     if ((b1 == 'G') && (b2 == 'C'))
-      return -1;
+      return -2;
   }
 
   if (polarmode) {
@@ -431,8 +374,6 @@ readcommands (int argc, char **argv)
   char *tempname;
   int n;
 
-  if (argc == 1) { usage(basename(argv[0]), 1); }
-
   while ((i = getopt (argc, argv, "p:vVf")) != -1) {
 
     switch (i) {
@@ -459,6 +400,10 @@ readcommands (int argc, char **argv)
     }
   }
 
+  if (parname==NULL) { 
+   printf("no parameter file (-p)\n") ; 
+   exit(1) ;
+  }
 
   pcheck (parname, 'p');
   printf ("parameter file: %s\n", parname);
@@ -468,17 +413,14 @@ readcommands (int argc, char **argv)
   getstring (ph, "geno1:", &geno1);
   getstring (ph, "snp1:", &snp1);
   getstring (ph, "ind1:", &ind1);
-  getstring (ph, "prob1:", &xprob1);
 
   getstring (ph, "geno2:", &geno2);
   getstring (ph, "snp2:", &snp2);
   getstring (ph, "ind2:", &ind2);
-  getstring (ph, "prob2:", &xprob2);
 
   getstring (ph, "indoutfilename:", &indoutfilename);
   getstring (ph, "snpoutfilename:", &snpoutfilename);
   getstring (ph, "genooutfilename:", &genooutfilename);
-  getstring (ph, "proboutfilename:", &proboutfilename);
   getstring (ph, "outputformat:", &omode);
 
   getint (ph, "malexhet:", &malexhet);
@@ -489,6 +431,7 @@ readcommands (int argc, char **argv)
   getint (ph, "strandcheck:", &strandcheck);
   getint (ph, "phasedmode:", &phasedmode);
   getint (ph, "numchrom:", &numchrom);
+  getint (ph, "chrom:", &xchrom);
   getint (ph, "allowdups:", &allowdups);
   getint (ph, "polarmode:", &polarmode);
 
@@ -567,7 +510,6 @@ mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
       if (g < 0)
         g = 3;
       wbuff ((unsigned char *) buff, tt, g);
-      if (probmode) copyarr(cupt1 -> diplike[t], cupt1 -> diplike[tt], 3) ; 
       ++tt;
     }
     for (t = 0; t < numi2; ++t) {
@@ -577,7 +519,6 @@ mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
       if (g < 0)
         g = 3;
       wbuff ((unsigned char *) buff, tt, g);
-      if (probmode) copyarr(cupt2 -> diplike[t], cupt1 -> diplike[tt], 3) ; 
       ++tt;
     }
     cupt1->ngtypes = numindivs;
@@ -587,17 +528,89 @@ mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
   *pindm1 = indivmarkers;
   return numindivs;
 }
+void clearkh(KINFO *kpt) 
+{
+  kpt -> kodeindex = -999999 ; 
+  kpt -> hist = 0 ; 
+  kpt -> string = NULL ;
+}
+void loadkh(KINFO **kh, int *inda, int x, int kode, char *string) 
+{
+  KINFO *kpt ; 
+  
+  inda[kode] = x ;      
+  kpt = kh[x] ; 
+  kpt -> kodeindex = kode ; 
+  kpt -> string = strdup(string) ; 
+}
 
-int usage (char *prog, int exval)
+void printkinfo(KINFO **kh, int len) 
+{
+   KINFO *kpt ; 
+   int x, kode ; 
+   long tot = 0, z ; 
+
+  for (x=0; x<len; ++x) { 
+   kpt = kh[x] ; 
+   z = kpt -> hist ; 
+   if (z <= 0) continue ;
+   kode = kpt -> kodeindex ; 
+   printf("kode: %4d ", kode) ; 
+   printf("%6ld", z) ; 
+   printf("  %s", kpt -> string) ; 
+   printnl() ;
+   tot += z ;
+  }
+   printf("total:%4s ","") ; 
+   printf("%10ld", tot) ; 
+   printnl() ; 
+} 
+
+void addmhist(int kode, int val) 
+{
+  static long ncall = 0 ; 
+  static int *index, *windex ; 
+  int offset = 5, ilen = 10  ; 
+  int tkode, x ; 
+  KINFO *kpt ; 
+  tkode = kode + offset ; 
+
+  if (tkode >= ilen) fatalx("(addmhist) overflow\n") ;
+  if (tkode < 0 ) fatalx("(addmhist) underflow\n") ;
+  ++ncall ;
+  if (ncall == 1) {
+
+   ZALLOC(windex, ilen, int) ; 
+   ivclear(windex, -99999, ilen) ;
+   index = windex + offset ;  
+
+   x = 0 ; 
+
+   loadkh(mhlist, index, x, -1, "X allele and strandcheck") ;  ++x ;
+   loadkh(mhlist, index, x, -2, "A/T or C/G and strandcheck") ;  ++x ;
+   loadkh(mhlist, index, x,  0, "Allele mismatch") ; ++x ;  
+   loadkh(mhlist, index, x,  1, "SNP OK (no flip)" ) ; ++x ; 
+   loadkh(mhlist, index, x,  2, "SNP OK (flip)" ) ; ++x ; 
+
+   mhlen = x ; 
+ }
+ x = index[kode] ; 
+ if (x<0) fatalx("(addmhist) unknown kode\n") ; 
+ mhlist[x] -> hist += val ;
+
+}
+
+
+
+void printmh() 
 {
 
-  (void)fprintf(stderr, "Usage: %s [options] <file>\n", prog);
-  (void)fprintf(stderr, "   -f          ... toggle phasemode ON.\n");
-  (void)fprintf(stderr, "   -h          ... Print this message and exit.\n");
-  (void)fprintf(stderr, "   -p <file>   ... use parameters from <file> .\n");
-  (void)fprintf(stderr, "   -v          ... print version and exit.\n");
-  (void)fprintf(stderr, "   -V          ... toggle verbose mode ON.\n");
+ printnl() ;
+ printnl() ;
+ printf("Histogram of checkmatch return codes\n") ; 
+ printkinfo(mhlist, mhlen)  ; 
+ printnl() ;
 
-  exit(exval);
-};
+
+}
 

@@ -69,6 +69,16 @@ gslsetup (int nmix, double *vmix)
   return 1;
 }
 
+int gslnewvals(int nmix, double *vmix) 
+{
+ int k ; 
+
+  for (k = 0; k < nmix; ++k) {
+    gsl_vector_set (x, k, vmix[k]);
+  }
+
+
+}
 
 double
 gslopt (double *wpars)

@@ -36,7 +36,7 @@ bal (double *a, double *b, int n)
 
 void xmultx(double *a, double *b, int m, int n) 
 {
- // M' x M : a is m x m 
+ // M x M' : a is m x m 
  double *tb ; 
 
  ZALLOC(tb, m*n, double) ; 

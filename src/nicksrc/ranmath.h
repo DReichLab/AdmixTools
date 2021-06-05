@@ -27,6 +27,7 @@ int randis(double *a, int n) ;  // element from discrete distribution a
 void ransamp(int *samp, int nsamp, double *p, int plen) ; // sample nsamp samples from p
 void pick2(int n, int *k1, int *k2) ;  // pick 2 elements from 0..n-1
 int ranmod(int n)  ;  // random mod n 
+int iranpick(int lo, int hi) ;  // random int in [lo, hi] 
 double ranbeta(double a, double b) ;  //  beta 
 int ranbinom(int n, double p) ;   // binomial  
 void setrand(double *vv, int n) ;  // filll vv with U[0,1]

@@ -23,6 +23,7 @@ void ivvp(int *a, int *b, int *c, int n);
 void ivvm(int *a, int *b, int *c, int n);
 void ivsp(int *a, int *b, int c, int n);
 void ivst(int *a, int *b, int c, int n);
+void ivvt (int *a, int *b, int *c, int n) ;
 void ivclear(int *a,  int c, long n) ;
 void lvclear(long *a,  long c, long n) ;
 void ivzero(int *a, int n) ;
@@ -51,6 +52,7 @@ void flipiarr(int *a, int *b, int n) ;
 void fliparr(double *a, double *b, int n)  ;
 int ipow2 (int l) ;
 
+void copyarrp (double **a, double **b, int n) ;  
 void copyarr(double *a,double *b,int n) ;
 void revarr(double *a, double *b,int n) ;
 void reviarr(int *a,int *b,int n) ;
@@ -62,6 +64,9 @@ void copyiparr(int **a,int **b,int n) ;
 
 void dpermute(double *a, int *ind, int len)  ;
 void ipermute(int *a, int *ind, int len)  ;
+
+void multperm(int *a, int *b, int *c, int n) ;
+
 void dppermute(double **a, int *ind, int len)  ;
 void ippermute(int **a, int *ind, int len)  ;
 
@@ -87,10 +92,12 @@ void printmatfile(double *a, int m, int n, FILE *fff) ;
 void printmatwfile(double *a, int m, int n, int w, FILE *fff) ;
 void printmatx(double *a, int m, int n) ;
 void printmat(double *a, int m, int n) ;
+void printmat0(double *a, int m, int n) ;
 void printmatwx(double *a, int m, int n, int w) ;
 void printmatwxfile (double *a, int m, int n, int w, FILE *fff) ;
-
 void printmatw(double *a, int m, int n, int w) ;
+void printmatw0(double *a, int m, int n, int w) ;
+void printmatw0xfile(double *a, int m, int n, int w, FILE *fff) ;
 void printmatl(double *a, int m, int n) ;
 void printmatwl(double *a, int m, int n, int w) ;
 void printmatlx(double *a, int m, int n) ;
@@ -117,6 +124,7 @@ void printimatfile(int *a, int m, int n, FILE *fff) ;
 void printimatwfile(int *a, int m, int n, int w, FILE *fff) ;
 void printimat2D(int  **a, int m, int n)  ;
 void printlmat (long *a, int m, int n) ;
+void printmatw2D(double **a, int m, int n, int w)  ;
 void printmat2D(double **a, int m, int n)  ;
 void printstring(char *ss, int width) ;
 void printstringbasepos(char *ss, int w, int basepos) ;
@@ -141,7 +149,10 @@ int hprobv(double *vprob, int n, int a, int m) ;
 /* hypergeometric probability */
 double logmultinom(int *cc, int n) ;
 double addlog(double a, double b) ;
+double sublog(double a, double b) ;
 double logsum(double *x, int n)  ;
+double addlogv(double *a, int n) ;
+double vlsum(double *x, int n) ;
 double vldot(double *x, double *y, int n) ;
 double pow10 (double x) ;
 void vpow10 (double *a, double *b, int n) ;
@@ -151,6 +162,7 @@ void transpose(double *aout, double *ain, int m, int n)  ;
 void addoutmul(double *out, double *a, double mul, int n) ;
 void addouter(double *out, double *a, int n) ;
 void subouter(double *out, double *a, int n) ;
+void addtensor (double *out, double *a, double *b, int na, int nb) ;
 int mktriang(double *out, double *in, int n) ;
 int mkfull(double *out, double *in, int n) ;
 
@@ -217,6 +229,7 @@ long lrevcomp (long xx, int stringlen) ;
 void ismatch(int *a, int *b, int n, int val) ;
 int pmult(double *a, double *b, double *c, int na, int nb) ;
 void pdiff(double *a, double *b, int deg) ;
+void ivswap(int *a, int *b, int n) ;
 void vswap(double *a, double *b, int n)  ;
 void setlong(long *pplen, long a, long b)   ;
 
@@ -229,7 +242,11 @@ double exp1minus(double x) ;
 double cputimes (int mode, int clock) ;
 double cputime (int mode) ;
 double calcmem (int mode) ;
+
+double vn2(double a, double b) ; 
 double vnorm(double *a, int n) ; 
+
 void vin(double *a, double *b, int n)  ;
 
 int visnan(double *a, int n) ; 
+int numintmatch (int *a, int len, int val) ;

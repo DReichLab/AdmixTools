@@ -185,10 +185,6 @@ void flipalleles(SNP *cupt)
     if (g<0) continue ;
     putgtypes(cupt, i, 2-g) ;
    }
-   if (cupt -> diplike == NULL) return ;  
-   for (i=0; i<n; i++) {  
-    revarr(cupt -> diplike[i], cupt -> diplike[i], 3) ; 
-   }
 }
 
 void flipalleles_phased(SNP *cupt) 
@@ -460,7 +456,7 @@ testnan(double *a, int n)
   int i ;
 
   for (i=0; i<n; i++) {
-   if (!isfinite(a[i])) fatalx("(testnan) fails:  index %d\n",i) ;
+   if (!finite(a[i])) fatalx("(testnan) fails:  index %d\n",i) ;
   }
 }
 void getgall(SNP *cupt, int *x, int n) 
@@ -744,6 +740,44 @@ fastdupcheck(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs)
  free(cbuff) ;
 }
 
+void slowdupcheck(SNP **snpm, Indiv **indm, int nsnp, int k1, int k2) 
+{ 
+ static long ncall = 0 ;
+ SNP * cupt ;
+ Indiv *inda, *indb ;
+ double ytot, yhit ;
+ int g1, g2,  match, nomatch ;
+ int i1, i2, j ;
+
+ ++ncall ;
+
+ if (ncall<=1) {
+  printf("fastdupthresh, kill: %9.3f %9.3f\n", fastdupthresh, fastdupkill) ;
+ }
+   match = nomatch = 0 ;
+   for (j=0; j<nsnp; ++j) {  
+    cupt = snpm[j] ;
+    if (cupt -> ignore) continue ;
+    if (cupt -> isfake) continue ;
+    g1 = getgtypes(cupt, k1) ;
+    g2 = getgtypes(cupt, k2) ;
+    if ( (g1<0) || (g2<0) ) continue ;
+    if (g1==g2) ++match ;
+    if (g1!=g2) ++nomatch ;
+   }
+
+   inda = indm[k1] ;
+   indb = indm[k2] ;
+   ytot = (double) (match + nomatch) ;
+   yhit = ((double) match) / ytot  ; 
+
+   if (yhit>fastdupthresh) { 
+    printdup(snpm, nsnp, inda, indb, match, nomatch)  ;
+    if (yhit>fastdupkill) killdup(inda, indb, snpm, nsnp) ;
+  }
+
+}
+
 void cdup(SNP **snpm, Indiv **indm, int nsnp, int *buff, int lbuff) 
 { 
  static int ncall = 0 ;
@@ -848,7 +882,6 @@ int
   gtypes[k] = getgtypes(cupt, k) ;
  }
 
- return 1 ; 
 }
 
 double kurtosis(double *a, int n) 
@@ -872,27 +905,6 @@ double kurtosis(double *a, int n)
 
   free(w) ;
   return y4 ; 
-
-}
-
-
-int loaddiplike (double *dip, unsigned char *sp) 
-{
-  int rl2 = 4, sval ;  
-  unsigned short bb[2] ; 
-  
-  sval = (1 << 16) - 1 ;
-  memcpy(bb, sp, rl2) ;
-
-  vclear(dip, -1, 3) ;
-  if ((bb[0] == sval) && (bb[1] == sval)) return -1 ;
-
-  dip[0] = bb[0] ; 
-  dip[2] = bb[1] ; 
-  dip[1] = sval - (bb[0] + bb[1]) ; 
-  if (dip[1] < 0) fatalx("(loaddiplike) bad bb\n") ;
-  bal1(dip, 3) ;
-  return 1 ;
 
 }
 
@@ -1099,7 +1111,7 @@ int setid2pops(char *idpopstring, Indiv **indmarkers, int numindivs)
    sx = spt[k] ;
    t = indindex(indmarkers, numindivs, sx) ; 
    if (t<0) { 
-    printf("(setid2pops): %s not found\n", sx) ;
+    printf("(setid2pops): %s not found\n") ;
     continue ;
    }
    indx = indmarkers[t] ;
@@ -1359,7 +1371,26 @@ void setinfiles(char **pind, char **psnp, char **pgeno, char *stem)
 
   printf("input files set from %s\n", stem) ; 
 
+}
 
+
+int loaddiplike (double *dip, unsigned char *sp) 
+{
+  int rl2 = 4, sval ;  
+  unsigned short bb[2] ; 
+  
+  sval = (1 << 16) - 1 ;
+  memcpy(bb, sp, rl2) ;
+
+  vclear(dip, -1, 3) ;
+  if ((bb[0] == sval) && (bb[1] == sval)) return -1 ;
+
+  dip[0] = bb[0] ; 
+  dip[2] = bb[1] ; 
+  dip[1] = sval - (bb[0] + bb[1]) ; 
+  if (dip[1] < 0) fatalx("(loaddiplike) bad bb\n") ;
+  bal1(dip, 3) ;
+  return 1 ;
 
 }
 

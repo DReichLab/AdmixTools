@@ -360,6 +360,7 @@ writepars (phandle * pp)
   for (k = 0; k < pp->numpars; k++) {
     printf ("%s %s\n", pp->ppars[k], pp->pdata[k]);
   }
+  fflush(stdout) ; 
 }
 
 void

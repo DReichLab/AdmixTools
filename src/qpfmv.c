@@ -17,7 +17,10 @@
 #include "eigsubs.h"
 #include "globals.h"
 
-#define WVERSION   "120"
+#define WVERSION   "160"
+
+// printsd added 
+// clinetest added (as in qpdslow) Makes most sense for 2 f4 stats
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -28,6 +31,9 @@ char *trashdir = "/var/tmp";
 int details = NO;
 int hires = NO;			/* %10.4f */
 int qtmode = NO;
+
+int printsd = NO ; 
+int clinetest = NO ; 
 
 char *f3name = NULL;
 char *fstatsname = NULL;
@@ -145,6 +151,9 @@ main (int argc, char **argv)
   double *w1, *w2 ; 
   char *sx ; 
   int dof ; 
+  char ***plists;
+  int nplist ; 
+  double *ww ; 
 
 
   readcommands (argc, argv);
@@ -154,6 +163,7 @@ main (int argc, char **argv)
 
   ZALLOC(eglist, MAXPOPS, char *) ; 
   numeg = np = fstats2popl(fstatsname, eglist) ; 
+  if (numeg < 0) fatalx("no poplist!\n") ;
   t = np*np ; 
 
   ZALLOC(ff3, np*np, double) ; 
@@ -254,24 +264,24 @@ main (int argc, char **argv)
   fprintf(fff,"%20s ", "P2" ) ;
   fprintf(fff,"%20s ", "P3" ) ;
   fprintf(fff,"%20s ", "P4" ) ;
-  fprintf(fff," %12s", "fstat") ; 
-  fprintf(fff," %12s", "s.err") ; 
-  fprintf(fff," %9s", "Z") ; 
+  fprintf(fff,"%12s ", "fstat") ; 
+  if (printsd) fprintf(fff,"%12s ", "s.err") ; 
+  fprintf(fff,"%9s", "Z") ; 
   fprintf(fff,"\n") ; 
   for (k=0; k<numfs; ++k) { 
    y1 = fsm[k] ; 
    y2 = fsv[k*numfs+k] ; 
    y = y1/sqrt(y2+1.0e-20) ; 
-   fprintf(fff, "%8s", "result: ") ; 
+   fprintf(fff, "%8s ", "result: ") ; 
    for (j=0; j<4; ++j) { 
      t = fsindex[k][j] ; 
      sx = eglist[t] ; 
      fprintf(fff, "%20s ", sx) ;
    }
 // printimatxfile(fsindex[k], 1, 4, fff)  ;     
-   fprintf(fff, " %12.6f ", y1) ;
-   fprintf(fff, " %12.6f ", sqrt(y2)) ;
-   fprintf(fff, " %9.3f ", y) ;
+   fprintf(fff,"%12.6f ", y1) ;
+   if (printsd) fprintf(fff, "%12.6f ", sqrt(y2)) ;
+   fprintf(fff, "%9.3f ", y) ;
    fprintf(fff, "\n") ; 
   }
    fprintf(fff, "\n") ; 
@@ -281,8 +291,11 @@ main (int argc, char **argv)
   copyarr(lambda, w1, numfs) ; 
   bal1(lambda, numfs) ;
   vst(lambda, lambda, (double) numfs, numfs) ;
-  printf("evals:\n") ; 
-  printmat(lambda, 1, numfs) ; 
+
+  if (verbose) {
+    printf("evals:\n") ; 
+    printmat(lambda, 1, numfs) ; 
+  }
 
   ychi = 0.0 ; 
   for (a=0; a<dof; ++a) { 
@@ -291,7 +304,44 @@ main (int argc, char **argv)
   }
   y1 = rtlchsq(dof, ychi) ; 
   fprintf(fff, "##Hotelling T2: %9.3f dof: %d  tail: %12.6f\n", ychi , dof, y1) ; 
+
+ nplist = numfs ; 
+ ZALLOC(ww, nplist, double) ; 
+ ZALLOC(plists, nplist, char**) ;  
+  for (a=0; a< nplist ; ++a) {
+    ZALLOC(plists[a], 4, char *) ; 
+    for (j=0; j<4; ++j) { 
+      t = fsindex[a][j] ; 
+      sx = eglist[t] ; 
+      plists[a][j] = strdup(sx) ;
+    }
+  }
+ 
   
+ for (a=0; a< nplist ; ++a) {
+    if (clinetest == NO) break ;
+     for (b=a+1; b< nplist ; ++b) {
+      printf("clinetest:: ") ;
+      printstringsx(plists[a], 4) ;
+      printf(" :: ") ;
+      printstringsx(plists[b], 4) ;
+      printnl() ;
+
+    for (k=0; k<=100; ++k) {
+     vzero(ww, nplist) ; 
+     y = ww[a] = (double) k / 100.0 ;
+     ww[b] = 1.0-y ;
+     y1 = vdot(fsm, ww, nplist) ;
+     y2 = scx(fsv, NULL, ww, nplist) ;  y2 = sqrt(y2) ;
+
+     printf("mixtable: %9.3f ", y) ;
+     printf(" %12.6f %12.6f %9.3f\n", y1, y2, y1/y2) ;
+
+    }
+  }} 
+
+
+
 
   printf("## end of qpfmv\n") ; 
   return 0 ; 
@@ -442,6 +492,8 @@ readcommands (int argc, char **argv)
   getstring (ph, "fmvoutname:", &fmvoutname);
 
   getint (ph, "seed:", &seed);
+  getint (ph, "printsd:", &printsd);
+  getint (ph, "clinetest:", &clinetest) ; 
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");
@@ -669,7 +721,7 @@ loadfsindex(int **fsindex, char ***qlist, char **eglist, int numfs, int numeg)
    for (j=0; j<4; ++j) { 
     sx = qlist[j][k] ; 
     t = indxstring(eglist, numeg, sx) ; 
-    if (t<0) fatalx("(loadfsindex) bad pop: %s :: %sd %d\n", sx, k, j) ; 
+    if (t<0) fatalx("(loadfsindex) bad pop: %s :: %d %d\n", sx, k, j) ; 
     fsindex[k][j] = t ; 
    }
 // printf("zzfs %3d ", k) ; 

@@ -23,6 +23,7 @@ qpfmv
  popfilename:      f4sslist
 ## 4 pops / line (as in qpDstat) but f2, f3, f4 can be mixed.  So code A C B C for f3 stat 
      fmvoutname:  fmvq2.out 
+ printsd:  YES  ## if you want s.err.  defualt NO. 
 
 
 New parameters for qpAdm (which should be upwards compatible) 
@@ -60,5 +61,15 @@ diag:           .0001
 *** qpfstats with allsnps: YES  is a much better way to use all the data than 
 the older allsnps mode.   Standard errors are often much reduced and the theory 
 is now defensible!
+
+*** there was a bad bug in release 7.0 when qpfstats was run with                 
+1) allsnps: YES 
+2) inbreed: NO 
+3) Samples with pseudo-diploid data.    
+
+In the new release if you do this, f-statistics involving psuedo-populations twice (such aas an f_3 with target pseudo-diploid are  
+(correctly) flagged as having very large standard error.  
+
+
 
 See ./qpfs.pdf for a brief explanation of the theory. 

@@ -22,6 +22,9 @@ double probks(double lam) ;
 
 double nordis(double z) ;
 double ndens(double val, double mean, double sig) ;
+double lognordis(double z) ;
+double logndens(double val, double mean, double sig) ;
+
 double ntail(double z) ;
 void tailstats(double *x, double a, int isupper) ; 
 double zprob(double p) ;
@@ -42,6 +45,8 @@ double bessi1(double x) ;
 void bernload() ;
 double bernum(int x) ;
 
+void gpars(double *p, double *lam, double mean, double var) ;
+void mlegamma(double *a, int n, double *p, double *lam) ;
 void mleg(double a1, double a2, double *p, double *lam) ;
 
 double dilog(double x) ;
@@ -129,3 +134,8 @@ double deg2rad(double deg) ;
 double quartile(double *x, int n, double q)  ;
 int qinterp(double *a, double *b, int n, double val, double *ans)  ;
 double truncexpmean(double m, double thresh, int isupper) ;
+
+void jitter(double *xout, double *xin, int n)   ; 
+void mannwhit(double *a, int na, double *b, int nb, double *pu, double *pv, double *ppv) ;
+void calcms(double *a, int n, double *pmean, double *psdev)  ;
+

@@ -25,13 +25,14 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "800"
+#define WVERSION   "860"
 
 // gsimplify option added
 // calctime added  
 // calctime NOT YET WORKING
 // calcscript bug fixed 
 // cleantree added
+// .ps file renoved
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -174,6 +175,7 @@ main (int argc, char **argv)
     system (sss);
     sprintf(sss, "ps2pdf %s", psname) ;
     system(sss) ;
+    remove(psname) ;
   }
   printf ("## end of qpreroot\n");
 
