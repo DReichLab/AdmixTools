@@ -1,0 +1,25 @@
+#!/usr/bin/perl  -w 
+
+($par) = @ARGV ; 
+## $par should be of form parzzzz and list zzzzlist
+die "no param file\n" unless (defined $par) ;
+die "no param file\n" unless (-r $par) ;
+$ss = $par; $ss =~ s/par// ; 
+$list = `grabpars -p $par -x popfilename: ` ; 
+chomp $list ; 
+die "$list not found\n" unless (-r $list) ;
+$nlines = `numlines $list` ; chomp $nlines ;
+print "nlines: $nlines\n" ;  
+die "no data\n" unless ($nlines > 0) ;
+$lo = 0 ; 
+$hi = 24  ;
+$num = 1000 ;   ## easier to sort afterwards
+for (;;) { 
+ last if ($lo > $nlines) ;
+  $out = "xx:$ss:$num" ; 
+  unlink $out ; 
+ system "bsubs -o $out MEM16 qpDstat -p $par -L $lo -H $hi" ;
+ ++$num ;
+ $lo +=  25 ;
+ $hi +=  25 ;
+}

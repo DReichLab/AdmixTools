@@ -1,0 +1,24 @@
+parameter file: parqp4diffa
+### THE INPUT PARAMETERS
+##PARAMETER NAME: VALUE
+DIR: ../data/
+SSS: allmap
+indivname: ../data//allmap.ind
+snpname: ../data//allmap.snp
+genotypename: ../data//allmap.geno
+popfilename: list_qp4diff
+firstf4mult: 1.2
+## qp4diff version: 340
+packed geno read OK
+end of inpack
+nplist: 1
+  0               Yoruba   21
+  1               French   26
+  2                  Han   32
+  3                Uygur    9
+  4             Japanese   28
+jackknife block size:     0.050
+snps: 621037  indivs: 116
+number of blocks for moving block jackknife: 711
+result:     Yoruba     French        Han      Uygur  :     Yoruba     French   Japanese      Uygur     0.000869     0.000069     12.676
+##end of qp4diff:       17.640 seconds cpu      447.402 Mbytes in use

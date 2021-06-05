@@ -1,0 +1,100 @@
+parameter file: parqpff3
+### THE INPUT PARAMETERS
+##PARAMETER NAME: VALUE
+DIR: ../data/
+SSS: allmap
+indivname: ../data//allmap.ind
+snpname: ../data//allmap.snp
+genotypename: ../data//allmap.geno
+poplistname: list_qpDstat
+## qpff3base version: 331
+seed: 24920198
+packed geno read OK
+end of inpack
+  0 Yoruba
+  1 French
+  2 Han
+  3 Uygur
+outpop: Yoruba  basepop: Yoruba
+nodata:        Affx-50079445
+nodata:        Affx-36048139
+nodata:        Affx-50056055
+population:   0               Yoruba   21
+population:   1               French   26
+population:   2                  Han   32
+population:   3                Uygur    9
+before setwt numsnps: 621038
+setwt numsnps: 492519
+number of blocks for moving block jackknife: 710
+snps: 492519  indivs: 88
+lambdascale:     0.342
+statistics multiplied by 1000
+fst:
+        Y    F    H    U 
+  Y     0  144  173  134
+  F   144    0  110   34
+  H   173  110    0   32
+  U   134   34   32    0
+
+f2:
+        Y    F    H    U 
+  Y     0  153  182  142
+  F   153    0   96   28
+  H   182   96    0   26
+  U   142   28   26    0
+
+ff3 (unscaled):
+        Y    F    H    U 
+  Y     0    0    0    0
+  F     0  448  350  391
+  H     0  350  534  437
+  U     0  391  437  417
+number of good snps: 492519
+ff3:
+        Y    F    H    U 
+  Y     0    0    0    0
+  F     0  153  120  134
+  H     0  120  182  149
+  U     0  134  149  142
+
+ff3sig*10:
+        Y    F    H    U 
+  Y     0    0    0    0
+  F     0   14   12   13
+  H     0   12   16   14
+  U     0   13   14   14
+
+
+ff3 (base: Yoruba)
+        Y    F    H    U 
+  Y     0    0    0    0
+  F     0  153  120  134
+  H     0  120  182  149
+  U     0  134  149  142
+
+
+ff3 (base: French)
+        Y    F    H    U 
+  Y   153    0   33   19
+  F     0    0    0    0
+  H    33    0   96   49
+  U    19    0   49   28
+
+
+ff3 (base: Han)
+        Y    F    H    U 
+  Y   182   63    0   33
+  F    63   96    0   47
+  H     0    0    0    0
+  U    33   47    0   26
+
+
+ff3 (base: Uygur)
+        Y    F    H    U 
+  Y   142    9   -7    0
+  F     9   28  -21    0
+  H    -7  -21   26    0
+  U     0    0    0    0
+
+
+##end of qpff3base

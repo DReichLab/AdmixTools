@@ -1,0 +1,26 @@
+#!/usr/bin/perl -w
+
+($COLS, $xflag) = @ARGV ;
+
+if ($COLS =~ /:/) {
+ @CC = split ":", $COLS ;
+}
+else { 
+ $CC[0] = $COLS ;
+}
+
+for (;;) {
+last if (eof(STDIN)) ;  
+ $line = <STDIN> ;
+ chomp $line ;
+ @XX = split " ", $line ;
+ if (!defined $XX[0]) {print "$line\n" if (defined $xflag); next; } ## skip blanks
+ if ($XX[0]  =~ /\#/) {print "$line\n" if (defined $xflag); next; }
+ foreach $n (@CC)  {  
+  die "bad col $n :: $line\n" unless (defined $XX[$n]) ;
+  $XX[$n] = " " ;
+ }
+ $out = join " ", @XX ;
+ print "$out" ;
+ print "\n" ;
+}

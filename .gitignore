@@ -12,6 +12,10 @@ src/admixinclude/*
 src/admixlib/*
 src/admixtables/*
 
+# Other directories
+src/xsrc/*
+src/oldsource/*
+
 #Various output files
 pdoc.aux
 pdoc.dvi

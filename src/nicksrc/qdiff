@@ -1,0 +1,71 @@
+esttime2.c diffed
+gauss.c diffed
+gcd.c diffed
+503c503,504
+< // cleaned up from old version
+---
+> // multinomial sample p is prob dist  n samples returned
+> // work is O(len^2) which is silly 
+504a506,507
+>   int x;
+>   double *pp;
+506,508c509,513
+<  double *pp ; 
+<  double  y, z ; 
+<  int k, m ; 
+---
+>   if (len == 0)
+>     return;
+>   ivzero (samp, len);
+>   if (n <= 0)
+>     return;
+510,521c515,517
+<  ZALLOC(pp, len, double) ;
+<  copyarr(p, pp, len) ; 
+<  bal1(pp, len) ; 
+< 
+<  y = 1.0 ; 
+<  m = n ; 
+<  for (k=len-1; k >= 0; --k) { 
+<   z = MIN(pp[k]/y, 1.0) ; 
+<   y = MAX(y-pp[k], 1.0e-20) ; 
+<   samp[k] = ranbinom(m, z) ; 
+<   if (k==0) { 
+<    samp[k] = m ; break ;
+---
+>   if (len == 1) {
+>     samp[0] = n;
+>     return;
+523,524c519,526
+<   m -= samp[k] ; 
+<  }
+---
+> 
+>   ZALLOC (pp, len, double);
+>   copyarr (p, pp, len);
+>   bal1 (pp, len);
+> 
+>   samp[0] = x = ranbinom (n, pp[0]);
+>   ranmultinom (samp + 1, n - x, p + 1, len - 1);
+>   free (pp);
+gds.c diffed
+getpars.c diffed
+kimf.c diffed
+linsolve.c diffed
+linsubs.c diffed
+sortit.c diffed
+statsubs.c diffed
+strsubs.c diffed
+vsubs.c diffed
+xsearch.c diffed
+getpars.h diffed
+linsubs.h diffed
+mptable.h diffed
+nicklib.h diffed
+ranmath.h diffed
+sortit.h diffed
+statsubs.h diffed
+strsubs.h diffed
+twtable.h diffed
+vsubs.h diffed
+xsearch.h diffed

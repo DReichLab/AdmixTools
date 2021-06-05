@@ -1,0 +1,32 @@
+#!/usr/bin/perl -w
+
+($COLS, $xflag) = @ARGV ;
+
+die "no columns\n" unless (defined $COLS) ; 
+if ($COLS =~ /:/) {
+ @CC = split ":", $COLS ;
+}
+else { 
+ $CC[0] = $COLS ;
+}
+
+for (;;) {
+ last if (eof(STDIN)) ;
+ $line  = <STDIN> ;  
+ chomp $line ;
+ @XX = split " ", $line ;
+ if (!defined $XX[0]) {print "$line\n" if ($xflag); next; } ## skip blanks
+ $f = $XX[0] ;
+ if ($f =~ /\#/) {print "$line\n" if ($xflag); next; }
+ $ncc = @CC ; 
+ foreach $x (1..$ncc) { 
+  $nn = $CC[$x-1] ;
+  $n = $nn ; 
+  $xx = @XX ;   
+  $n = $xx + $nn if ($nn<0) ;   ## -1 is last column  
+  die "bad col $n :: $line\n" unless (defined $XX[$n]) ;
+  print "$XX[$n]" ;
+  print " "  unless ($x == $ncc) ;
+ }
+ print "\n" ;
+}

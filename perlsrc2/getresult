@@ -1,0 +1,7 @@
+#!/usr/bin/perl -w
+
+($IN, $OUT, $tag) = @ARGV ;
+$tag = "result:" unless (defined $tag) ;
+system "fgrep $tag < $IN | xtractcolv 0 | mkpretty > $OUT" ;
+$num = `cat $OUT | wc --lines ` ;  chomp $num ;  
+print "number of results: $num\n" ; 
