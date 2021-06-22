@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "500"
+#define WVERSION   "540"
 
 // useweight added  
 // allsnps added
@@ -408,9 +408,6 @@ rintf ("seed: %d\n", seed);
   }
 
   for (i = 0; i < numeg; i++) {
-    printf ("population: %3d %20s %4d\n", i, eglist[i], xpopsize[i]);
-  }
-  for (i = 0; i < numeg; i++) {
     if (xpopsize[i] == 0)
       fatalx ("(stats) zero popsize\n");
   }
@@ -482,19 +479,21 @@ rintf ("seed: %d\n", seed);
  
    calchet (hrate, hvalid, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
    counthets (hashets, NULL, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
-
+//   printf("zzhashets: ") ; printimat(hashets, 1, numeg) ; 
 
    for (k=0; k<numeg; ++k) { 
-    printf("pop: %15s ", eglist[k]) ;  
+    printf("pop: %20s ", eglist[k]) ;  
     printf(" hetrate: %9.3f", hrate[k]) ; 
     printf(" valid snps: %9.0f", hvalid[k]) ; 
     printf(" samples: %4d", popsizes[k]) ; 
-    if (hvalid[k] < .01) printf(" *** ") ;
-    if ((inbreed == NO) && (hashets[k] = 0))  printf("variance will be adjusted") ;
+    if (hashets[k] > 0) hashets[k] = YES ; 
+    else hashets[k] = NO ;
+    if ((inbreed == NO) && (hashets[k] == NO))  printf("  variance will be adjusted") ;
+    if (hvalid[k] < .01) printf(" not many SNPS *** ") ;
     printnl() ; 
    }
 
-// printf("zzhashets: ") ; printimat(hashets, 1, numeg) ; 
+ if ((inbreed == 0) && (hashets[0] == NO)) fatalx("inbreed:NO means base population must have hets!\n") ;
 
 
   scale =
@@ -556,6 +555,15 @@ rintf ("seed: %d\n", seed);
   y = cputimes(1, 2) ; 
   printf("time in dofstats: %9.3f\n", y) ; 
 
+     for (i=0; i<nbasis; ++i) { 
+      a = basis[i][0] ; 
+      b = basis[i][1] ; 
+      if ((a==b) && (inbreed == NO) && (hashets[a] == NO)) {
+       fbmean[i] =  0.0 ;
+       fbcovar[i*nbasis+i] += 100.0  ;
+      } 
+     }
+
 
      for (i=0; i<nbasis; ++i) { 
       a = basis[i][0] ; 
@@ -600,8 +608,6 @@ rintf ("seed: %d\n", seed);
    printnl() ; 
 
   }
-  printf ("##end of qpfstats\n");
-
 
   for (i=0; i<nbasis; ++i) {
    a = basis[i][0] ; 
@@ -1018,7 +1024,6 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
   ZALLOC (vest, nh2, double);
   ZALLOC (vvar, nh2 * nh2, double);
 
-// printf("zz ") ;  printimat(ind2f, 1, nh2) ;
 
   for (col = 0; col < ncols; ++col) {
     cupt = xsnplist[col];

@@ -4458,7 +4458,7 @@ counthets ( int *xhets, int *xvalids,
    }
   }
    if (xvalids != NULL) copyiarr(xvalids, valids, numeg) ;
-   copyiarr(xhets, hets, numeg) ;
+   copyiarr(hets, xhets, numeg) ;
    
   
   free(hets) ; 
@@ -4513,10 +4513,15 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   SNP *cupt ; 
   int *bas2fs ; 
   int *dd ; 
+  int numadj = 0 ; 
 
   fflush(stdout) ; 
 
-  printf("zzdofstats") ;  printimat(hashets, 1, numeg) ;  
+   if (verbose) { 
+    printf("zzdofstats") ;  printimat(hashets, 1, numeg) ;  
+   }
+// printf("zzdofstats") ;  printimat(hashets, 1, numeg) ;  
+
 // pass 1.  Jackknife to get sig
 
   smax = MAX(nfstats, nblocks) ; 
@@ -4545,7 +4550,6 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   ivclear(bas2fs, -1, nbasis) ; 
 
 
-  printf("bas2fs:\n") ; 
   for (k=0; k<nfstats; ++k) { 
    pp = fbcoeffs[k] ; 
    y = asum2(pp, nbasis) ; 
@@ -4555,7 +4559,11 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
     if (y1<0.9) fatalx("(dofstats) logic bug\n") ;
     bas2fs[jmax] = k ; 
   }
+
+/**
+  printf("bas2fs:\n") ; 
   printimat(bas2fs, 1, nbasis) ; 
+*/
 
   ZALLOC(dd, numeg, int) ; 
 
@@ -4682,9 +4690,12 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
     ++dd[t]  ;
    }
 
-  if ((allsnpsmode == YES) && (inbreed == NO)) {
+   if (inbreed == NO) {
    for (t=0; t<numeg; ++t) { 
-    if ((dd[t] > 1) && (hashets[t] == 0)) jsig[j] = sqrt(jsig[j]*jsig[j] + 100.0) ;  
+    if ((dd[t] > 1) && (hashets[t] == 0)) { 
+     jsig[j] = sqrt(jsig[j]*jsig[j] + 100.0) ;  
+     ++numadj ; 
+    }
    }
   }
 
@@ -4694,7 +4705,7 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
    printf("jest. pass 1 ") ; 
    printimatx(fsindex[j], 1, 4) ; 
    printf("%12.6f ", mean) ; 
-   printf("%12.6f ", jmean[j]) ; 
+   printf("%12.6f ", jest[j]) ; 
    printf("%12.6f ", jsig[j]) ; 
    printnl() ; 
    fflush(stdout) ; 
@@ -4713,6 +4724,7 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   }
   copyarr(jest, fsmean, nfstats);  
   copyarr(jsig, fssig, nfstats);  
+  printf("adjusted sigs: %d\n", numadj) ;
 
 /**
   for (k=0; k<nfstats; ++k) { 
