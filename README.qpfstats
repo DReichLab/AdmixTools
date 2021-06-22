@@ -13,9 +13,16 @@ genotypename:                DIR/S1.geno
  allsnps:                          YES 
 ## default NO  -- dangerous bend
  inbreed:                           NO 
-## default NO
+## default (match allsnps:)  
  scale:                             NO 
 ## default YES -- when fstats are scaled to "match" fst in least squares sense 
+*** strongly advuse to specify allsnp: and inbreed: in the paramter file. 
+
+If inbreed: NO the base population (first in poplistname) MUST be a true diploid.   
+inbreed: NO when there are pseudo-diploid populations is dubious but may be necessary, 
+ especially if there is a population with a single sample.  In this case some f2 statistics 
+ can't be evaluated and are set in the output to have huge variance (100).  This means 
+ that in qpGraph some tail edges are set 0 -- really are undertermined. 
 
 qpfmv 
 -----
