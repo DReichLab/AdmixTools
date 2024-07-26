@@ -62,6 +62,7 @@ easycheck: $(NLIB) easycheck.o qpsubs.o mcio.o mapfile.o ldsubs.o admutils.o egs
 easylite: $(NLIB) easylite.o qpsubs.o mcio.o mapfile.o ldsubs.o admutils.o egsubs.o regsubs.o geno.o
 
 multimerge: multimerge.o mcio.o admutils.o egsubs.o geno.o $(NLIB)
+nickhash:  nickhash.o admutils.o $(NLIB)
 merge_transpose: merge_transpose.o geno.o
 transpose: transpose.o geno.o
 geno_single: geno_single.o geno.o
