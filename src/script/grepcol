@@ -1,0 +1,27 @@
+#!/usr/bin/perl -w
+
+($col, $grepstr)  = @ARGV ;     
+
+ die "Usage: grepcol col val < in >out"  unless defined ($grepstr) ;
+
+$num = 0 ; 
+for  (;;)   {
+ last if (eof(STDIN)) ;
+ $line = <STDIN> ;
+ chomp $line ;
+ @XX = split " ", $line ;
+ next unless(defined $XX[$col]) ;
+ if ($XX[0] =~ /^\#/) {  
+  print "$line\n" ;
+  next ;
+ } 
+ $tcol = $col ; 
+ if ($col < 0) { 
+  $n = @XX ; 
+  $tcol = $n + $col ;
+ }
+ next unless ($XX[$tcol] eq $grepstr) ;
+ print "$line\n" ;
+ ++$num ; 
+}
+ print STDERR "$num lines written\n" ;

@@ -1,6 +1,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <math.h>  
 // #include <openssl/md2.h>
 #include "admutils.h" 
 
@@ -10,7 +11,10 @@ static double fastdupthresh = 0.75 ;
 static double fastdupkill = 0.75 ;
 static int snptab = NO ;
 
+extern int numchrom ;
+
 #define MAXSTR 1024
+#define MAXFF   128
 
 int hashit (char *str)  ;
 
@@ -381,15 +385,24 @@ void inddupcheck (Indiv ** indivmarkers, int numindivs)
   int t, k, n;
   char **ss;
 
-  freesnpindex ();
-  n = numindivs;
+  n = numindivs ;
+  if (n==0) fatalx("numdivs zerp!\n") ;
+
   ZALLOC (ss, n, char *);
   for (k = 0; k < n; k++) {
     ss[k] = strdup (indivmarkers[k]->ID);
   }
-  t = finddup (ss, n);
+
+  if (numindivs < 100*1000) { 
+   t = finddupalt (ss, n);
+  }
+  else { 
+   freesnpindex ();
+   t = finddup (ss, n);
+  }
   if (t >= 0)
     fatalx ("duplicate sample: %s\n", ss[t]);
+
   freeup (ss, n);
   free (ss);
 }
@@ -456,7 +469,7 @@ testnan(double *a, int n)
   int i ;
 
   for (i=0; i<n; i++) {
-   if (!finite(a[i])) fatalx("(testnan) fails:  index %d\n",i) ;
+   if (!isfinite(a[i])) fatalx("(testnan) fails:  index %d\n",i) ;
   }
 }
 void getgall(SNP *cupt, int *x, int n) 
@@ -872,7 +885,7 @@ int kcode(int *w, int len, int base)
  return t ;
 }
 
-int 
+void
  grabgtypes(int *gtypes, SNP *cupt, int numindivs) 
 {
 
@@ -908,33 +921,6 @@ double kurtosis(double *a, int n)
 
 }
 
-int getlist(char *name, char **list) 
-{
-#define MAXFF 5
-  FILE *fff ;
-  char line[MAXSTR] ;
-  char *spt[MAXFF] ;
-  char *sx ;
-  int nsplit, num=0 ;
-
-  num = 0;
-  if (name == NULL) fatalx("(numlines)  no name")  ;
-  openit(name, &fff, "r") ;
-  while (fgets(line, MAXSTR, fff) != NULL)  {
-   nsplit = splitup(line, spt, MAXFF) ;
-   if (nsplit==0) continue ;
-   sx = spt[0] ;
-   if (sx[0] == '#') {
-    freeup(spt, nsplit) ;
-    continue ;
-   }
-   list[num] = strdup(sx) ;
-   ++num ;
-   freeup(spt, nsplit) ;
-  }
-  fclose(fff) ;
-  return num ;
-}
 void printvers(char *progname, char *vers) 
 {
  printf("## %s  version: %s", progname, vers) ; 
@@ -1111,7 +1097,7 @@ int setid2pops(char *idpopstring, Indiv **indmarkers, int numindivs)
    sx = spt[k] ;
    t = indindex(indmarkers, numindivs, sx) ; 
    if (t<0) { 
-    printf("(setid2pops): %s not found\n") ;
+    printf("(setid2pops): %s not found\n", sx) ;
     continue ;
    }
    indx = indmarkers[t] ;
@@ -1352,6 +1338,28 @@ int cmap(SNP **snpmarkers, int numsnps)
    return NO ;
 }
 
+
+void setoutfiles(char **pind, char **psnp, char **pgeno, char *stem) 
+{
+  char ss[MAXSTR] ; 
+
+  snprintf(ss, MAXSTR, "%s.ind", stem) ; 
+  checkwrite(ss) ; 
+  *pind = strdup(ss) ; 
+
+  snprintf(ss, MAXSTR, "%s.snp", stem) ; 
+  checkwrite(ss) ; 
+  *psnp = strdup(ss) ; 
+
+
+  snprintf(ss, MAXSTR, "%s.geno", stem) ; 
+  checkwrite(ss) ; 
+  *pgeno = strdup(ss) ; 
+
+  printf("output files set from %s\n", stem) ; 
+
+}
+
 void setinfiles(char **pind, char **psnp, char **pgeno, char *stem) 
 {
   char ss[MAXSTR] ; 
@@ -1393,4 +1401,227 @@ int loaddiplike (double *dip, unsigned char *sp)
   return 1 ;
 
 }
+
+
+int geteg(char *name, char **list)
+// modified from getlist 
+{
+  FILE *fff ;
+  char line[MAXSTR] ;
+  char *spt[MAXFF] ;
+  char *sx ;
+  int nsplit, num=0, t, k ;
+
+  num = 0;
+  if (name == NULL) fatalx("(geteg)  no name")  ;
+  openit(name, &fff, "r") ;
+  while (fgets(line, MAXSTR, fff) != NULL)  {
+   nsplit = splitup(line, spt, MAXFF) ;
+   if (nsplit==0) continue ;
+   sx = spt[0] ;
+   if (sx[0] == '#') {
+    freeup(spt, nsplit) ;
+    continue ;
+   }
+   for (k=0; k<nsplit ; ++k) { 
+    sx = spt[k] ;
+    t = indxstring(list, num, sx) ;
+    if (t>=0) continue ;
+    list[num] = strdup(sx) ;
+    ++num ;
+   }
+   freeup(spt, nsplit) ;
+  }
+  fclose(fff) ;
+  return num ;
+}
+
+int setgklist(Indiv **indm, int numindivs, char **eglist, int numeg)  
+{
+
+ int k, t ; 
+ Indiv *indx ; 
+
+ for (k=0 ; k<numindivs; ++k) { 
+  indx = indm[k] ;
+  indx -> gkode = t ; 
+  t = indxstring(eglist, numeg, indx -> egroup) ;
+  indx -> gkode = t ; // correct when t < 0  
+ }
+
+ return 1 ; 
+
+}
+
+int setgk(Indiv **indm, int numindivs, char *pname, char ***peglist, int *pnumeg) 
+{
+ int k, numeg, t ; 
+
+ char **eglist ;
+ static char **egl ; 
+ Indiv *indx ; 
+ int ncol ; 
+
+ for (k=0 ; k<numindivs; ++k) { 
+  indm[k] -> gkode = -1 ;
+ }
+ if (pname == NULL) { 
+   if (pnumeg == NULL) return 0 ;
+   *pnumeg = 0 ; 
+   *peglist = NULL  ; 
+   return 0 ; 
+  }
+ t = numlines(pname) ; 
+ ncol = numcols(pname) ; 
+ t *= MAX(ncol, 4) ;
+ ZALLOC(eglist, t, char *) ; 
+ numeg = geteg(pname, eglist) ;
+ for (k=0 ; k<numindivs; ++k) { 
+  indx = indm[k] ;
+  t = indxstring(eglist, numeg, indx -> egroup) ;
+  indx -> gkode = t ; // correct when t < 0  
+ }
+
+ if (pnumeg != NULL) { 
+  *pnumeg = numeg ; 
+  ZALLOC(egl, numeg, char *) ; 
+  copystrings(eglist, egl, numeg) ; 
+  *peglist = egl ;
+
+ }
+ 
+ return 1 ;
+}
+int gkignore(Indiv **indivmarkers, int numindivs)
+{
+ int i, n=0 ; 
+
+ Indiv *indx ; 
+  for (i = 0; i < numindivs; i++) {
+    indx = indivmarkers[i];
+
+    if (indx -> gkode < 0) { 
+     indx -> ignore = YES ;
+     ++n ;
+    }
+  }
+  return n ;
+}
+
+void setpopsize(int *popsize, char **poplist, int numeg, Indiv **indivmarkers, int numindivs) 
+{
+
+   int k, d ; 
+   char *sx ;
+   Indiv *indx ; 
+
+ 
+   if (indivmarkers == NULL) { 
+    ivclear(popsize, -1, numeg) ; 
+    return ;
+   }
+   ivzero(popsize, numeg) ; 
+
+   for (k=0; k<numindivs; ++k) { 
+    indx = indivmarkers[k] ;
+    if (indx -> ignore) continue ;
+    sx = indx -> egroup ;
+    d = indxstring(poplist, numeg, sx) ; 
+    if (d >= 0) ++popsize[d] ;  
+  }
+
+}
+
+
+void atopchrom (char *ss, int chrom)
+{
+
+  // ancestry chromosome -> map convention  
+
+/**
+  if ( chrom == numchrom+1 )  {
+    strcpy(ss, "X") ;
+    return ;
+  }
+  else if ( chrom == numchrom+2 )  {
+    strcpy(ss, "Y") ;
+    return ;
+  }
+*/
+  sprintf (ss, "%d", chrom);
+}
+
+
+int ptoachrom (char *ss)
+{
+  // map -> ancestry  
+  char c;
+  c = ss[0];
+
+  if (c == 'X')
+    return (numchrom + 1);
+  if (c == 'Y')
+    return (numchrom + 2);
+  return atoi (ss);
+}
+
+int strcmpreg(char *a, char *b) 
+// deal with X 23, Y 24 ambiguity
+{
+  int sa, sb, t ; 
+    
+  t = strcmp(a, b) ; 
+  if (t==0) return t ; 
+
+  sa = ptoachrom(a) ; 
+  sb = ptoachrom(b) ; 
+  if (sa==sb) return 0 ; 
+
+  return t ; 
+
+}
+
+void checkwrite(char *fname) 
+{
+  if (fname == NULL) return ; 
+  if (canwrite(fname) == YES) return ;
+
+  fatalx("file %s can not be written.  check file permissions!\n", fname) ;  
+
+
+}
+#define BIGL 40
+
+void testindlen(Indiv **indm, int n) 
+{
+ int k, maxlen = 0 ; 
+ Indiv *indx, *indmax ; 
+
+ if (n==0) return ;
+ for (k=0; k<n; ++k) {
+  indx = indm[k] ;
+  if (strlen(indx -> ID) > maxlen) { 
+   maxlen = strlen(indx -> ID) ;
+   indmax = indx  ;
+  }
+ }
+ if (maxlen > BIGL) printf("deprecated long ID: %s\n", indmax -> ID) ;
+}
+
+void testsnplen(SNP  **snpm, int n) 
+{
+ int k, maxlen = 0 ; 
+ SNP *cupt, *cuptmax ; 
+
+ if (n==0) return ;
+ for (k=0; k<n; ++k) {
+  cupt = snpm[k] ;
+  if (strlen(cupt -> ID) > maxlen) { 
+   maxlen = strlen(cupt -> ID) ;
+   cuptmax = cupt  ;
+  }
+ }
+ if (maxlen > BIGL) printf("deprecated long ID: %s\n", cuptmax -> ID) ;
+}
+
 

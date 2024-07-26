@@ -77,6 +77,7 @@ int gslnewvals(int nmix, double *vmix)
     gsl_vector_set (x, k, vmix[k]);
   }
 
+ return 1 ;
 
 }
 

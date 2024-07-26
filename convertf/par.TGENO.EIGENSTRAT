@@ -1,0 +1,7 @@
+genotypename:    example.tgeno
+snpname:         example.snp
+indivname:       example.ind
+outputformat:    EIGENSTRAT
+genotypeoutname: example.eigenstratgeno
+snpoutname:      example.snp
+indivoutname:    example.ind

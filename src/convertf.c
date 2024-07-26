@@ -17,7 +17,7 @@
 #include "exclude.h"
 #include "h2d.h"
 
-#define WVERSION   "5722"
+#define WVERSION   "8600"
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -106,6 +106,14 @@
  slowdup added  
 
  .map output files no longer print alleles (use .pedsnp if wanted)  
+ transpose packed format (TGEN)
+ memorymapping implemented
+
+ transform hets (1 -> 2) 
+ shuffle 
+ randomhetfix
+ indivlistname added (overrules poplistname) 
+ instem, outstem added
 */
 
 
@@ -123,6 +131,10 @@ int downsample = NO;		// make pseudo homozygotes
 int pordercheck = YES;
 int familypopnames = NO;
 int hiresgendis = NO ;
+int memorymap = NO ; 
+int transformhets = NO ; 
+int randomhetfix = NO ; 
+int shuffle = NO ;
 
 int nums2;
 
@@ -132,9 +144,12 @@ char *genotypelist = NULL;
 char *snpname = NULL;
 char *indoutfilename = NULL;
 char *snpoutfilename = NULL;
-char *genooutfilename = NULL;
+char  *genooutfilename = NULL;
+char *tgenooutfilename = NULL;
 char *indivname = NULL;
 char *newindivname = NULL;
+
+char *instem = NULL, *outstem = NULL ;
 
 char *probfilename = NULL;
 char *proboutfilename = NULL;
@@ -153,6 +168,8 @@ int flipreference = YES;
 int remapcheck = YES;
 
 char *poplistname = NULL;
+char *indivlistname = NULL ; 
+
 char *fillmissingpoplistname = NULL ; 
 int haploidfill = NO ;
 char **fpops ;
@@ -235,6 +252,7 @@ int testmisspop(SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int numindi
 int fillmiss(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char **fpops, int nfpops)  ;
 int fixsnpdistance(SNP **snpm, int numsnps)  ; 
 long loadprobpack(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs, char *bigbuff) ;
+void doshuffle(SNP **snpm, int numsnps, int numindivs)   ; 
 
 
 
@@ -244,7 +262,7 @@ main (int argc, char **argv)
 
   int **snppos;
   int *snpindx;
-  char **snpnamelist, **indnamelist;
+  char **snpnames, **indnames;
   char **eglist;
   int lsnplist, lindlist, numeg;
   int i, j;
@@ -312,6 +330,16 @@ main (int argc, char **argv)
   if (familypopnames) {
     setfamilypopnames (YES);
   }
+  if (outputall) memorymap = NO ;  // need to read in all data 
+  if (memorymap) setmemorymap(YES) ;
+
+  if (instem != NULL) setinfiles(&indivname, &snpname, &genotypename, instem) ;
+  if (outstem != NULL) setoutfiles(&indoutfilename, &snpoutfilename, &genooutfilename, outstem) ;
+  if (indivlistname != NULL) poplistname = NULL ;
+
+  if (rmcompress == NO) { 
+   fatalx("rmcompress obsolete -- use outputall!\n") ; 
+  }
 
   setomode (&outputmode, omode);
   packmode = YES;
@@ -364,7 +392,40 @@ main (int argc, char **argv)
       fatalx ("polarid %s not found\n", polarid);
   }
 
+  if (poplistname != NULL) {
+    ZALLOC (eglist, numindivs, char *);
+    numeg = loadlist (eglist, poplistname);
+    seteglist (indivmarkers, numindivs, poplistname);
+    for (i = 0; i < numindivs; ++i) {
+      indx = indivmarkers[i];
+      if (indx->affstatus == NO)
+	indx->ignore = YES;
+    }
+  }
+  else {
+    setstatus (indivmarkers, numindivs, NULL) ; 
+  }
+
+  
+  setgk(indivmarkers, numindivs, poplistname, NULL, NULL) ; 
+
   inddupcheck (indivmarkers, numindivs);
+
+  if (indivlistname != NULL) { 
+   lindlist = numlines(indivlistname) ; 
+   ZALLOC(indnames, lindlist, char *) ; 
+   lindlist = getlist(indivlistname, indnames) ;
+   for (k=0; k<numindivs; ++k) { 
+    indx = indivmarkers[k] ; 
+    indx -> ignore = YES ; 
+    indx -> gkode = -1 ; 
+    t = indxstring(indnames, lindlist, indx -> ID) ; 
+    if (t>=0) { 
+     indx -> ignore = NO ; 
+     indx -> gkode = 1 ; 
+    }
+   }
+  }
 
   if (genotypelist != NULL) {
     getgenos_list (genotypelist, snpmarkers, indivmarkers,
@@ -377,6 +438,28 @@ main (int argc, char **argv)
 	      numsnps, numindivs, nignore);
   }
 
+  for (i=0; i< numsnps; ++i) { 
+   if (transformhets == NO) break ;
+// het -> countallele
+   cupt = snpmarkers[i] ; 
+   for (j=0; j<numindivs; ++j) { 
+    g = getgtypes(cupt, j) ; 
+    if (g==1) putgtypes(cupt, j, 2) ;  
+   }
+  }
+
+  for (i=0; i< numsnps; ++i) { 
+   if (randomhetfix == NO) break ;
+// het -> random homozygote
+   cupt = snpmarkers[i] ; 
+   for (j=0; j<numindivs; ++j) { 
+    g = getgtypes(cupt, j) ; 
+    if (g==1) {
+      g = 2 * ranmod(2) ; 
+      putgtypes(cupt, j, g) ;  
+    }
+   }
+  }
 
 // read in probs
   numprobindivs = 0 ; 
@@ -399,7 +482,7 @@ main (int argc, char **argv)
     plen = numsnps*numprobindivs*rl2 ;  
     ZALLOC(packp, plen, unsigned char) ;
     printf("calling inprobx: hashcheck: %d\n",  hashcheck) ; 
-    inprobx (probfilename,  snpmarkers, probindivs, numsnps, numprobindivs, packp) ;
+    inprobx (probfilename,  snpmarkers, probindivs, numsnps, numprobindivs, (char *) packp) ;
   }
 
 
@@ -407,7 +490,7 @@ main (int argc, char **argv)
  if (numprobindivs > 0) {
   for (i=0; i<numsnps; i++) {
    cupt = snpmarkers[i] ;
-   cupt -> probbuff = packp + i*numprobindivs*rl2 ;
+   cupt -> probbuff = (char *) packp + i*numprobindivs*rl2 ;
    ZALLOC(cupt -> diplike, numindivs, double *) ; 
    for (j=0; j<numindivs; ++j) { 
      indx = indivmarkers[j] ; 
@@ -424,12 +507,12 @@ main (int argc, char **argv)
      if (k<0) continue ;  
      indx = indivmarkers[k] ; 
      if (indx -> ignore) continue ; 
-     x = loaddiplike(cupt -> diplike[k], cupt -> probbuff + j*rl2) ; 
+     x = loaddiplike(cupt -> diplike[k], (unsigned char *) cupt -> probbuff + j*rl2) ; 
      jlast = MAX(j, jlast) ;
    } 
   }
  }
- if (makemiss > 0) printf("forcing missing with prob: %9.f\n") ;
+ if (makemiss > 0) printf("forcing missing with prob: %9.f\n", makemiss) ;
 
   if (newsnpname != NULL) {
     numindivs = rmindivs (snpmarkers, numsnps, indivmarkers, numindivs);
@@ -498,7 +581,7 @@ main (int argc, char **argv)
    plen2 = numsnps*numindivs*rl2 ; 
    ZALLOC(packp2, plen2, unsigned char) ;
 
-   numx = loadprobpack(snpmarkers, indivmarkers, numsnps, numindivs, packp2) ; 
+   numx = loadprobpack(snpmarkers, indivmarkers, numsnps, numindivs,  (char *) packp2) ; 
   }
   
 
@@ -553,13 +636,14 @@ main (int argc, char **argv)
 
    if (proboutfilename != NULL) {
     printf("calling outprob\n") ; fflush(stdout) ; 
-    outprobx(proboutfilename, snpmarkers, indivmarkers, numsnps, numindivs, packp2) ; 
+    outprobx(proboutfilename, snpmarkers, indivmarkers, numsnps, numindivs, (char *) packp2) ; 
     printf("PROB file %s written: %ld records\n", proboutfilename, numx) ;
    }
 
     printf ("##end of convertf run (outputall mode)\n");
     return 0;
   }
+
 
   if (usesamples != NULL) {
     poplistname = NULL;
@@ -573,25 +657,14 @@ main (int argc, char **argv)
    printf("%10d missing genotypes filled\n", t) ;
   }
 
-  if (poplistname != NULL) {
-    ZALLOC (eglist, numindivs, char *);
-    numeg = loadlist (eglist, poplistname);
-    seteglist (indivmarkers, numindivs, poplistname);
-    for (i = 0; i < numindivs; ++i) {
-      indx = indivmarkers[i];
-      if (indx->affstatus == NO)
-	indx->ignore = YES;
-    }
-  }
-  else
-    setstatus (indivmarkers, numindivs, "Case");
-
   if (rmcompress) { 
    printf("before compress: snps: %d indivs: %d\n", numsnps, numindivs) ;
    numsnps = rmsnps (snpmarkers, numsnps, deletesnpoutname);
    numindivs = rmindivs (snpmarkers, numsnps, indivmarkers, numindivs);
    printf("after compress: snps: %d indivs: %d\n", numsnps, numindivs) ;
   }
+  fflush(stdout) ;
+  if (shuffle) doshuffle(snpmarkers, numsnps, numindivs) ;
   forcemiss(makemiss) ;
 //  printf("got here! 2\n") ; fflush(stdout) ;
 
@@ -623,6 +696,7 @@ main (int argc, char **argv)
 
 
   numvalidind = 0;
+  cputimes(0, 1) ;
   for (i = 0; i < numindivs; ++i) {
     indx = indivmarkers[i];
     if (indx->ignore)
@@ -639,13 +713,18 @@ main (int argc, char **argv)
     maxmiss = (int) (maxmissfrac * (double) numvalidind + 1);
   printf ("numvalidind:  %5d  maxmiss: %5d\n", numvalidind, maxmiss);
 
+//   printf("clock 1: %9.3f\n", cputimes(1, 1)) ;
+
   if ((numvalidind == 0) && (probprintname ==  NULL))  
     fatalx ("no samples with valid genotypes!\n");
 
+  cputimes(0, 2) ;
   t = testmisspop(snpmarkers, numsnps, indivmarkers, numindivs, minvalpop) ; 
   if (minvalpop>0) printf("minvalpop: deleted %d   retained %d\n", t, numsnps-t) ;
 
+//   printf("clock 2: %9.3f\n", cputimes(1, 2)) ;
 
+  cputimes(0, 3) ;
   for (k = 0; k < numsnps; ++k) {
     if (maxmiss > numvalidind)
       break;
@@ -664,6 +743,7 @@ main (int argc, char **argv)
 
   }
 
+//   printf("clock 3: %9.3f\n", cputimes(1, 3)) ;
   if (slowdup) { 
    fastdup = NO ; 
    fastdupthresh = 0.5 ;  fastdupkill = 2.0 ;
@@ -695,10 +775,23 @@ main (int argc, char **argv)
     snpdecimate (snpmarkers, numsnps, decim, dmindis, dmaxdis);
   }
 
+  cputimes(0, 4) ;
+  printf("callng outfiles\n") ;
+  fflush(stdout) ;
+
   numout = outfiles (snpoutfilename, indoutfilename, genooutfilename,
 	    snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
 
+  if (tgenooutfilename != NULL) { 
+    settrans(YES) ;
+    outpack (tgenooutfilename, snpmarkers, indivmarkers, numsnps, numindivs);
+  }
+
+
+//   printf("clock 4: %9.3f\n", cputimes(1, 4)) ;
   printf("numsnps output: %d\n", numout) ;
+  fflush(stdout) ;
+
 /**
   x = snpindex(snpmarkers, numsnps, "rs12626123") ;
   cupt = snpmarkers[x] ; 
@@ -708,8 +801,8 @@ main (int argc, char **argv)
 
    if (proboutfilename != NULL) {
     if (numprobindivs <= 0) fatalx("proboutfilename set but not probindivname\n") ; 
-    numx = loadprobpack(snpmarkers, indivmarkers, numsnps, numindivs, packp2) ; 
-    outprobx(proboutfilename, snpmarkers, indivmarkers, numsnps, numindivs, packp2) ; 
+    numx = loadprobpack(snpmarkers, indivmarkers, numsnps, numindivs, (char *) packp2) ; 
+    outprobx(proboutfilename, snpmarkers, indivmarkers, numsnps, numindivs, (char *) packp2) ; 
     printf("PROB file %s written: %ld records\n", proboutfilename, numx) ;
     fflush(stdout) ;
    }
@@ -738,7 +831,6 @@ main (int argc, char **argv)
   }
   fclose(probfile) ; 
  }
-
 
   ymem = calcmem(1)/1.0e6 ;
   printf("##end of convertf: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
@@ -806,12 +898,16 @@ output:        eurout
   getstring (ph, "snpoutfilename:", &snpoutfilename);
   getstring (ph, "snpoutname:", &snpoutfilename);	/* changed 11/02/06 */
   getstring (ph, "genooutfilename:", &genooutfilename);
+  getstring (ph, "tgenooutfilename:", &tgenooutfilename);
   getstring (ph, "genotypeoutname:", &genooutfilename);	/* changed 11/02/06 */
+  getstring (ph, "tgenotypeoutname:", &tgenooutfilename) ;
   getstring (ph, "outputformat:", &omode);
   getstring (ph, "outputmode:", &omode);
   getstring (ph, "polarize:", &polarid);
   getstring (ph, "usesamples:", &usesamples);
   getint (ph, "zerodistance:", &zerodistance);
+  getint (ph, "memorymap:", &memorymap);
+  getint (ph, "mmap:", &memorymap);
   getint (ph, "checksizemode:", &checksizemode);
   getint (ph, "badpedignore:", &badpedignore);
   getint (ph, "downsample:", &downsample);
@@ -869,6 +965,9 @@ output:        eurout
   getdbl (ph, "makemiss:", &makemiss) ;
 
   getstring (ph, "poplistname:", &poplistname);
+  getstring (ph, "indivlistname:", &indivlistname);
+  getstring (ph, "instem:", &instem) ;
+  getstring (ph, "outstem:", &outstem) ;
   getstring (ph, "fillmissingpoplistname:", &fillmissingpoplistname);
   getstring (ph, "newsnpname:", &newsnpname);
   getint (ph, "newignore:", &newignore);
@@ -888,6 +987,9 @@ output:        eurout
   getstring (ph, "printprob:", &probprintname) ;
   getstring (ph, "probprintname:", &probprintname) ;
   getint (ph, "haploidfill:", &haploidfill) ;
+  getint (ph, "transformhets:", &transformhets) ;
+  getint (ph, "randomhetfix:", &randomhetfix) ;
+  getint (ph, "shuffle:", &shuffle) ;
 
   writepars (ph);
   closepars (ph);
@@ -1548,3 +1650,27 @@ long loadprobpack(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numin
 
 }
 
+void doshuffle(SNP **snpm, int numsnps, int numindivs)  
+// permute genetypes destroying LD + pop structure.  Retain inbreed 
+{
+  int *a, n = numindivs, i, k, g ; 
+  SNP *cupt ;
+
+  printf("doing shuffle!\n") ;
+
+  ZALLOC(a, n, int) ;
+  for (i=0; i< numsnps; ++i) { 
+   cupt = snpm[i] ; 
+
+   for (k=0; k<n; ++k) { 
+    a[k] = getgtypes(cupt, k) ;
+   }
+   ranperm(a, n) ; 
+   for (k=0; k<n; ++k) { 
+     putgtypes(cupt, k, a[k]) ;
+   }
+ 
+  }
+
+  free(a) ;
+}

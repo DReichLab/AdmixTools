@@ -8,7 +8,6 @@
 extern int verbose;
 extern double yscale ;
 
-int addscaldiag(double *mat, double scal, int n) ;
 
 int
 dofrank (int m, int n, int rank)
@@ -246,20 +245,6 @@ solvitforcez (double *coeffs, double *rhs, int dim, double *ans, int *vl,
 
 }
 
-int addscaldiag(double *mat, double scal, int n) 
-{
- double y, ytr ;  
- int i, k ; 
-
-  ytr = trace(mat, n) ; 
-  if (ytr<=0.0) return -1 ;
-  y = scal * ytr ;
-  for (i=0; i<n; ++i) { 
-   k = i*n + i ; 
-   mat[k] += y ; 
-  }
-  return 1 ;
-}
  
 double
 ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
@@ -268,7 +253,7 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
 {
   int d = m * n, dd;
   int nfix, f, i, j, k, l, a, b, s, t, r1, r2, k1, k2, u1, u2;
-  int iter, numiter = 20, ret;
+  int iter, numiter = 50, ret;
   double *ww, *varinv;
   double T2, tail;
   double *A, *B, *wleft, *wright, *mt, *evecs, *xmean;
@@ -330,8 +315,9 @@ ranktestfix (double *mean, double *var, int m, int n, int rank, double *pA,
   adim = rank * m;
   bdim = rank * n;
   tdim = MAX (adim, bdim);
-  ZALLOC (A, adim, double);
-  ZALLOC (B, bdim, double);
+  tdim = MAX(tdim, m*n) ;
+  ZALLOC (A, tdim, double);
+  ZALLOC (B, tdim, double);
   ZALLOC (wright, n * n, double);
   ZALLOC (evecs, n * n, double);
   ZALLOC (mt, m * n, double);
@@ -546,8 +532,9 @@ ranktest (double *mean, double *var, int m, int n, int rank, double *pA,
   adim = rank * m;
   bdim = rank * n;
   tdim = MAX (adim, bdim);
-  ZALLOC (A, adim, double);
-  ZALLOC (B, bdim, double);
+  tdim = MAX (adim, m*n);
+  ZALLOC (A, tdim, double);
+  ZALLOC (B, tdim, double);
   ZALLOC (wright, n * n, double);
   ZALLOC (evecs, n * n, double);
   ZALLOC (mt, m * n, double);
@@ -746,8 +733,8 @@ f4info_init (F4INFO * f4pt, int nl, int nr, char **popllist, char **poprlist,
     f4pt->A = f4pt->B = NULL;
   }
   else {
-    ZALLOC (f4pt->A, nl * rank, double);
-    ZALLOC (f4pt->B, nr * rank, double);
+    ZALLOC (f4pt->A, nl * nr, double);
+    ZALLOC (f4pt->B, nr * nr, double);
   }
   ZALLOC (f4pt->mean, nl * nr, double);
   ZALLOC (f4pt->resid, nl * nr, double);

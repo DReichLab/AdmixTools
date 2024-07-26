@@ -1,4 +1,4 @@
-ADMIXTOOLS version 7.0.2  6/22/21 (for Linux and Mac)
+ADMIXTOOLS version 8.0.0  7/30/24 (for Linux and Mac)
 
 See README.INSTALL for installation info. 
 
@@ -31,15 +31,15 @@ recompile the programs, type
 If you are building on a Mac, you will need gsl and openblas installed. 
 "brew install gsl"
 "brew install openblas"
-Uncomment the lines in src/Makefile that modify the CFLAGS and LDFLAGS. 
+"brew install argp" 
+
+make using Makefile.mac in src
 
 If these packages are not in standard directories, you can specify the 
 appropriate include and library directories with the CFLAGS and LDFLAGS 
 make variables. 
 For example, on the Harvard Medical School O2 cluster, the command is:
 'make CFLAGS="-I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include" LDFLAGS="-L/n/app/openblas/0.2.19/lib -L/n/app/gsl/2.3/lib/"'
-On Mac OSX:
-'make CFLAGS="-I/usr/local/opt/openblas/include -I/usr/local/opt/gsl/include" LDFLAGS="-L/usr/local/opt/openblas/lib -L/usr/local/opt/gsl/lib"'
 
 If you have issues with missing lapacke symbols, for example "undefined reference to `LAPACKE_dlange'", run make with the corresponding additional libraries linked:
 'make LDLIBS="-llapacke"' on Linux Mint 18. 
@@ -80,12 +80,11 @@ c)  A new experimental feature of qpGraph (halfscore: YES) allows
 Version 7.0.2 has important bugfixes to qpfstats.  See README.qpfstats  
 
 2)
-Note that several of the new ideas implemented in version 7.0 were developed collaboratively with Robert Maier, who has implemented them along with the great majority of other ADMIXTOOLS functionality in R:
+Note that several of the new ideas implemented in version 7.0 were developed collaboratively with Robert Maier, 
+who has implemented them along with the great majority of other ADMIXTOOLS functionality in R:
 See https://github.com/uqrmaie1/admixtools
 Executables run fast, and it has features not available in this C version, such as interactive exploration of graph phylogenies.
 A manuscript describing the algorithmic ideas and providing documentation of the methods is in preparation.
-
-
 
 
 
@@ -103,6 +102,11 @@ blockname:  <bbb>
 bbb should contain a list of snps 1 / line followed by a block number (integer) 
 block number should be at least 1.  -1 -> snp ignored.  If this option is used 
 snps not in list will be ignored. 
+
+*** New data format *** 
+This release supports a new data format transpose_geno (or tgeno) 
+See ./transpose_info and ./convertf/README 
+The key code for this was written by Matthew Mah 
 
 ----------------------------
 SOFTWARE COPYRIGHT NOTICE AGREEMENT

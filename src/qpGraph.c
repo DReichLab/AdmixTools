@@ -1,4 +1,3 @@
-#include <string.h>
 
 #include <unistd.h>
 #include <math.h>
@@ -27,7 +26,7 @@
 
 int debug = NO ; 
 
-#define WVERSION   "7580"   
+#define WVERSION   "7950"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -68,6 +67,9 @@ int debug = NO ;
 // set4x bug fixed 
 // admix mode target twice now trapped 
 // listsubset no longer called  
+// sizeweight added 
+// fstatslog added 
+// setgk and tgeno addes
 
 
 #define MAXFL  50
@@ -106,6 +108,7 @@ int inbreed = -99;
 int initmixnum = -1;
 int initverbose = NO ;
 int numscorit = 0 ;
+int sizeweight = NO ;
 
 double blgsize = 0.05;          // block size in Morgans */ double *chitot ;
 double diag = 0.0;
@@ -135,6 +138,7 @@ char *dottitle = NULL ;
 char *outliername = NULL ; 
 char *fstatsname = NULL ; 
 char *fstatsoutname = NULL ; 
+char *fstatslog = NULL ; 
 
 
 char *admixout = NULL;
@@ -311,6 +315,7 @@ main (int argc, char **argv)
   int *popsizes;
   double *qpscore;
   double scale;
+  char *fsbasep ;
 
 
   double **zzn, **zzd;
@@ -353,29 +358,57 @@ main (int argc, char **argv)
 
   readcommands (argc, argv);
 
+  if (parname == NULL) {   
+   return 0 ; 
+  }
+
+/**
   if (halfjackname != NULL) halfscore = YES ; 
   if (halfscore && (fstatsname != NULL)) fatalx("halfscore, fstatsname incompatible\n") ; 
   if (halfscore && (seed == 0)) printf("*** warning: halfscore.  seed not set!\n") ;
   if ((fullvar == -999) && (halfscore == YES)) fullvar = YES ;
   if (halfscore == NO) fullvar = NO ; 
   if (fullvar == YES) printf("all data used for covariance esimation\n") ;
-
-  if ((fstatsname != NULL) && (allsnpsmode == YES)) { 
-   printf("allsnps and fstatsname set\n") ; 
-   allsnpsmode = NO ;
-   numsnps = -1 ; 
-  }
+*/
+  printcmdline(argc, argv) ; 
+  setsizeweight(sizeweight) ; 
 
   if (inbreed == -99) { 
    inbreed = allsnpsmode ; 
    printf(" *** recommended that inbreed be explicitly set ***\n") ;
   }
 
+   ZALLOC (eglist, MAXPOPS, char *);
+   numeg = loadgraph (graphname, &eglist);
+   getpops(eglist, &t) ; 
+   if (t != numeg) fatalx("badbug\n") ; 
+
+   if (fstatsname == NULL) { 
+    mkfstats(parname) ;   // sets fstatsname 
+    printf("woeking fstatsname: %s\n", fstatsname) ; 
+   }
+
+    ZALLOC(fseglist, MAXPOPS, char *) ;  
+    fstats2popl(fstatsname, fseglist) ;
+    fsbasep = fseglist[0] ;  
+    setbasep(fsbasep) ;
+    loadf3 = YES ;
+
+   printstrings(eglist, numeg) ; 
+   printf("+++\n") ;
+   printstrings(fseglist, x) ; 
+   printf("+++\n") ;
+
+   
+ //printf("enough!\n");  return 0 ;
+
+
   setinbreed(inbreed) ;
 
   cputime(0) ; 
   calcmem(0) ; 
   printf ("## qpGraph version: %s\n", WVERSION);
+
   if (oldallsnpsmode) loadf3 = NO ; 
 
   if (allsnpsmode == -99) { 
@@ -386,7 +419,6 @@ main (int argc, char **argv)
   }
 
 
-  ZALLOC (eglist, MAXPOPS, char *);
   if ((doanalysis == NO) && (poplistname != NULL)) {
     numeg = loadlist (eglist, poplistname);
     strcpy(sss, eglist[0]) ;
@@ -406,9 +438,7 @@ main (int argc, char **argv)
 */
     printnl ();
     printnl ();
-    numeg = loadgraph (graphname, &eglist);
-    getpops(eglist, &t) ; 
-    if (t != numeg) fatalx("badbug\n") ; 
+
     if (rootname != NULL) reroot (rootname);
     nedge = getnumedge ();
     nanc = getnumanc ();
@@ -428,38 +458,31 @@ main (int argc, char **argv)
 
   i = 999 ; 
 
-  if (fstatsname != NULL) loadf3 = YES ; 
-  if (loadf3 && (fstatsname == NULL))  { 
-   fflush(stdout) ; 
-   mkfstats(parname) ;   // sets fstatsname 
-   printf("temporary fstatsname: %s\n", fstatsname) ; 
-   fflush(stdout) ; 
-  }
-
-  if (loadf3 && lsqmode) fatalx("lsqmode not compatible with loadf3 or fstatsname\n") ; 
-
   if (parname == NULL)
     return 0;
   if (outpop != NULL)
     printf ("outpop:  %s\n", outpop);
-  if (lsqmode)
-    printf ("simple lsqmode\n");
+  if (lsqmode) {
+    printf ("lsqmode obsolete -- not used\n");
+    lsqmode = NO ;
+  }
+
   if (outputname != NULL)
     openit (outputname, &ofile, "w");
   if (f3name != NULL)
     openit (f3name, &f3file, "w");
 
+ if (fstatsname == NULL) {
 
- if (fstatsname == NULL) { 
-  if (instem != NULL) { 
-   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
-// set up names.  Nothing read
-  } 
   numsnps =
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
 
   numindivs = getindivs (indivname, &indivmarkers);
   setindm (indivmarkers);
+
+  setgklist(indivmarkers, numindivs, eglist, numeg)   ;
+  gkignore(indivmarkers, numindivs) ;
+
   k = getgenos (genotypename, snpmarkers, indivmarkers,
                 numsnps, numindivs, nignore);
 
@@ -475,6 +498,7 @@ main (int argc, char **argv)
     if ((xnochrom > 0) && (xnochrom == chrom))
       cupt->ignore = YES;
   }
+ }
 
   for (i = 0; i < numeg; i++) {
     setstatus (indivmarkers, numindivs, eglist[i]);
@@ -492,17 +516,18 @@ main (int argc, char **argv)
 
   if (xchrom == (numchrom + 1))
     noxdata = NO;
+
   printnl ();
 
- }
 
   xnumeg = numeg;
 
- ZALLOC (egshort, numeg, char *);
+  ZALLOC (egshort, numeg, char *);
 
   for (i = 0; i < numeg; i++) {
     egshort[i] = strdup (getshort (eglist[i], 5));
   }
+
   fflush(stdout) ; 
 //  printf("egshort set!\n") ;
 
@@ -540,6 +565,10 @@ main (int argc, char **argv)
   }
 // differences from basepoint 
 
+   printf("loading fstats:: %s\n", fstatsname) ; fflush(stdout) ;
+   loadfstats(fstatsname, ff3, ff3var, eglist, numeg) ; 
+   printf("loaded fstats\n") ; fflush(stdout) ;
+
 
   if (doanalysis)
     printf ("jackknife block size: %9.3f\n", blgsize);
@@ -548,7 +577,6 @@ main (int argc, char **argv)
   basenum = 0;
 
   printf ("root label: %s\n", sss);
-  printf("zz4\n") ; fflush(stdout) ;
   
 
   if (outpop == NULL) {
@@ -689,7 +717,7 @@ outpop:    (not present)
   cntpops (popsizes, indivmarkers, numindivs, eglist, numeg);
   setpopsizes (popsizes, eglist, numeg);
 
-  ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
+  ncols = loadsnpxx (xsnplist, snpmarkers, numsnps, xindlist, nrows);
 
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
@@ -845,10 +873,8 @@ outpop:    (not present)
 
  if (fstatsname != NULL)  {
 
-   ZALLOC(fseglist, MAXPOPS, char *) ;  
-   x = fstats2popl(fstatsname, fseglist) ;
-   t = strcmp(eglist[0], fseglist[0]) ; 
-   if (t!=0) fatalx("mimatch pf basepops in graph and fstats: %s %s\n", eglist[0], fseglist[0]) ;
+   t = strcmp(eglist[0], fsbasep) ; 
+   if (t!=0) fatalx("mimatch pf basepops in graph and fstats: %s %s\n", eglist[0], fsbasep) ;
 
    printstrings(eglist, numeg) ; 
    printf("+++\n") ;
@@ -2166,6 +2192,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "badsnpname:", &badsnpname);
   getstring (ph, "poplistname:", &poplistname);
   getstring (ph, "f3log:", &f3name);
+  getstring (ph, "fstatslog:", &fstatslog);
   getstring (ph, "root:", &rootname);
   getdbl (ph, "blgsize:", &blgsize);
   getdbl (ph, "diag:", &diag);
@@ -2211,6 +2238,7 @@ readcommands (int argc, char **argv)
   getint (ph, "fstdmode:", &fstdmode);
   getint (ph, "halfscore:", &halfscore);
   getint (ph, "fullvar:", &fullvar);
+  getint (ph, "sizeweight:", &sizeweight);
 
   getstring (ph, "dumpname:", &dumpname);
   getstring (ph, "loadname:", &loadname);
@@ -2909,6 +2937,7 @@ void mkfstats(char *parname)
  char ppp[128] ;  
  char pops[128] ;  
  char tpar[128] ; 
+ char fslog[256] ; 
 
  int pid ; 
  int k ; 
@@ -2919,7 +2948,9 @@ void mkfstats(char *parname)
  strcpy(fsx, mytemp("fsx")) ; 
  strcpy(ppp, mytemp("ppp")) ; 
  strcpy(pops, mytemp("pops")) ; 
- strcpy(tpar, mytemp("tpar")) ; 
+ strcpy(tpar, mytemp("fstpar")) ; 
+ strcpy(fslog, mytemp("fslog")) ; 
+// if (fstatslog != NULL) strcpy(fslog, fstatslog) ;
 
  printf("tmp: %s\n", fsx) ;
  fstatsname = strdup(fsx) ; 
@@ -2943,15 +2974,24 @@ void mkfstats(char *parname)
  fclose(fff) ; 
 // sprintf(sss, "cat %s\n", ppp) ; 
 // system(sss) ; 
- sprintf(sss, "qpfstats -p %s > /tmp/qqlog:%d", ppp, pid) ; 
+ sprintf(sss, "qpfstats -p %s > %s ", ppp, fslog) ; 
+ printf("qpfstatscall:: %s\n", sss) ; 
+ fflush(stdout) ;
+
  system(sss) ; 
+ if (fstatslog != NULL) { 
+  sprintf(sss, "cp %s %s", fslog, fstatslog) ; 
+  system(sss) ;
+ }
  // printf("exiting mkfstats\n") ; 
  if (fstatsoutname != NULL) { 
   sprintf(sss, "cp %s %s", fsx, fstatsoutname) ; 
   system(sss) ;
   printf("fstats file: %s made\n", fstatsoutname) ;
+  fstatsname = strdup(fstatsoutname) ;
  } 
- return ; 
+ remove(fslog) ;
+ return  ; 
 
 }
 double graph2ff3(double *ff3, double *qmat, double *rhs) 
@@ -3059,6 +3099,8 @@ double pdinvx(double *aout, double *ain, int n)
 
   if (isok) return pdinv(aout, ain, n) ;
   fatalx("matrix not pos. def\n") ;
+
+  return -1 ; 
 
 }
 

@@ -10,6 +10,7 @@
  a simple set of sort routines
 */
 
+static char **sttt ;
 static double *ttt;
 static long *lttt;
 static int *ittt;
@@ -344,3 +345,49 @@ mkrank (int *rank, double *xin, int n)
 
 
 }
+
+void
+sortstrings (char **a, int *ind, int len)
+{
+  int i, k;
+  int *inda;
+
+  if (len == 0)
+    fatalx ("(sortstrings) len = 0\n");
+
+  ZALLOC (sttt, len, char *);
+  ZALLOC (inda, len, int);
+
+  for (i = 0; i < len; i++) {
+    inda[i] = i;
+  }
+
+  copystrings (a, sttt, len);
+  qsort ((int *) inda, len, sizeof (int),
+         (int (*)(const void *, const void *)) scompit);
+
+  freeup(a, len) ; // a must be on heap 
+  for (i = 0; i < len; i++) {
+    k = inda[i];
+    a[i] = strdup(sttt[k]);
+  }
+  freeup (sttt, len);
+  free(sttt) ; 
+  if (ind != NULL)
+    copyiarr (inda, ind, len);
+  free (inda);
+}
+
+int
+scompit (int *a1, int *a2)
+{
+  int t ;    
+
+  t = strcmp(sttt[*a1], sttt[*a2]) ; 
+  if (t<0)   return -1;
+  if (t>0)   return 1;
+  return 0;
+}
+
+
+

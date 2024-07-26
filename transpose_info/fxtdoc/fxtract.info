@@ -1,0 +1,49 @@
+fxtract  See ~np29/fxtdoc for example 
+fxtract -p <parfile> [-V]  
+
+### sample parfile
+### ~np29//pullsource/tgsrc/testconvertf/fxtdir
+DD:  /n/groups/reich/DAVID_RELEASE/V58/V58.0 
+instem:  DD/v58_1240k_all
+outstem: testz2 
+poplistname:  chb
+##tempdir:  junkdir  
+
+OR
+
+instem: cdx
+outstem: cdfxp 
+##poplistname:  pjunk
+indivlistname:  p1list
+## list of individual IDs  1 per line 
+tempdir:    junkd 
+
+### 
+A wrapper for Matt Mah's fast extract scripts.  
+fxtract does a very simple job -- extract samples from a 
+TGENO dataset to make a new TGENO dataset with fewer samples
+
+
+If you run fxtract then ~np29/o2bin should be in your path. 
+
+
+#########################################################
+This exact parfile ws above will also work for convertf 
+*** new convertf feature *** 
+--- instem and outstem -- stem for .ind .snp .geno files 
+fxtract is a bare bones script -- a driver for Matt Mah's fast extract on tgeno files 
+
+If you want fancy features of convertf or to make plink files first run fxtract and 
+then convertf on the output.  
+
+tempdir: usage is a little complicated but intended to be flexible and convenient
+If you do nothing, then w scratch working directory is used in /tmp 
+This is not ideal as on O2 /tmp is sometimes full.  
+If you set an environment variable $STMP then a scratch directory 
+is used under that (and then deleted) 
+I have STMP=/n/scratch/users/n/np29 
+Alternatively a working directory can be specified explicitly by tempdir: 
+
+Nick 3/13/24
+
+

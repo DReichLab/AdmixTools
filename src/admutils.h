@@ -1,7 +1,7 @@
 #include <ctype.h>
 #include <nicklib.h>
 #include <xsearch.h> 
-#define IDSIZE 40
+#define IDSIZE 129
 
 #ifndef ADMUTILS
 
@@ -18,6 +18,7 @@ typedef struct {
   int idnum ;
   int affstatus;      /* affected status */
   int ignore ;        /* YES => do not use */
+  int flag ; 
   double thetatrue ;
   double Xthetatrue ;
   double lambdatrue ;
@@ -27,6 +28,8 @@ typedef struct {
   double rawqval ;
   double qval ;
   int ishaploid ;  
+  int hasxhets ; 
+  int gkode ;   /* codes for groups used ; gkode < 0 => ignore  */
 } Indiv; 
 
 typedef struct {
@@ -69,6 +72,8 @@ typedef struct {
   void *pcupt ;
   int tagnumber ;
   char alleles[2] ;
+  double cf[4] ; 
+  int bcount[3] ;  
   int chimpfudge ;
   char cbest ;
   int scount ; 
@@ -176,7 +181,7 @@ void setfastdupnum(int num) ;
 void setfastdupthresh(double thresh, double kill) ;
 void killxhets(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs) ;
 void fastdupcheck(SNP **snpmarkers, Indiv **indivmarkers, int numsnps, int numindivs) ;
-int grabgtypes(int *gtypes, SNP *cupt, int numindivs) ;
+void grabgtypes(int *gtypes, SNP *cupt, int numindivs) ;
 int kcode(int *w, int len, int base) ;
 // void cdup(SNP **snpm, Indiv **indm, int nsnp, int *buff, int lbuff, int iter) ;
 // void printdup(SNP **snpm, int nsnp, Indiv *inda, Indiv *indb, int nmatch, int nnomatch, int iter); 
@@ -206,8 +211,20 @@ int setfalist(char **poplist, int npops, char *dbfile, char **iublist, char *tab
 int getfalist(char **poplist, int npops, char *dbfile, char **iublist) ;
 int cmap(SNP **snpmarkers, int numsnps)  ;
 void setinfiles(char **pind, char **psnp, char **pgeno, char *stem) ;
+void setoutfiles(char **pind, char **psnp, char **pgeno, char *stem) ;
 int getdbname(char *dbase, char *name, char **pfqname) ;
 int loaddiplike (double *dip, unsigned char *sp)  ;
+int geteg(char *name, char **list) ;
+int setgklist(Indiv **indm, int numindivs, char **eglist, int numeg)   ;
+int setgk(Indiv **indm, int numindivs, char *pname, char ***peglist, int *pnumeg) ;
+void setpopsize(int *popsize, char **poplist, int numeg, Indiv **indivmarkers, int numindivs)  ;
+void atopchrom (char *ss, int chrom) ;
+int ptoachrom (char *ss) ;
+int strcmpreg(char *a, char *b)  ;
+int gkignore(Indiv **indivmarkers, int numindivs) ;
+void checkwrite(char *fname) ;
+void testindlen(Indiv **indm, int n) ;
+void testsnplen(SNP  **snpm, int n) ;
 
 #undef max 
 #define max(A,B)  ((A) > (B) ? (A) : (B))

@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "651"
+#define WVERSION   "701"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -39,6 +39,7 @@
 // outgroupmode  -- no denominator
 // count of non mono snps bugfix
 // loadaa f3scz rewritten  
+// inreed NO get check 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -65,6 +66,7 @@ int locount = -1, hicount = 9999999;
 int jackweight = YES;
 int pubjack = NO;
 int outgroupmode = NO;
+int sizeweight = NO ;
 
 double blgsize = 0.05;		// block size in Morgans */ double *chitot ;
 int xchrom = -1;
@@ -112,6 +114,7 @@ double wtmin = .0001;
 double minvar = 0.0;		// minvalue for variance term
 int quartet = NO;
 int inbreed = NO;
+int inbreed_override = NO ;
 int xnumeg;
 
 
@@ -210,6 +213,11 @@ main (int argc, char **argv)
 
   numindivs = getindivs (indivname, &indivmarkers);
   setindm (indivmarkers);
+
+  if (popfilename != NULL) setgk(indivmarkers, numindivs, popfilename, NULL, NULL) ; 
+
+  gkignore(indivmarkers, numindivs) ;
+
   k = getgenos (genotypename, snpmarkers, indivmarkers,
 		numsnps, numindivs, nignore);
 
@@ -316,6 +324,7 @@ dopop3 (char **eglist, SNP ** xsnplist, int ncols, int nblocks)
   double f2score, f2scoresig, y, y1, y2, p, q;
   int nsnp = 0;
   static int ncall = 0;
+  int hashets[3] ; 
 
 
   ++ncall;
@@ -354,6 +363,13 @@ dopop3 (char **eglist, SNP ** xsnplist, int ncols, int nblocks)
     indx = xindlist[i];
     k = indxindex (eglist, numeg, indx->egroup);
     xtypes[i] = k;
+  }
+  ivclear(hashets, YES, numeg) ;
+  if ((inbreed == NO) && (inbreed_override == NO)) { 
+   counthets (hashets, NULL, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
+   if (hashets[2] == NO)  { 
+    fatalx("%s has no hets and inbreed NO set. \n inbreed_override: YES if you really want to do this\n", eglist[2]) ;
+   }
   }
 
   nsnp = dof3score (&f3score, &f3scoresig, xsnplist, xindex, xtypes,
@@ -486,6 +502,9 @@ readcommands (int argc, char **argv)
   getint (ph, "numchrom:", &numchrom);
   getint (ph, "inbreed:", &inbreed);
   getint (ph, "outgroupmode:", &outgroupmode);
+  getint (ph, "inbreed_override:", &inbreed_override);
+  getint (ph, "sizeweight:", &sizeweight);
+
 
   getint (ph, "noxdata:", &noxdata);
   t = -1;
@@ -700,7 +719,6 @@ dof2score (double *f2score, double *f2scoresig, SNP ** xsnplist, int *xindex,
   free (bbot);
 
 }
-
 int
 dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
 	   int *xtypes, int nrows, int ncols, int numeg, int nblocks)
@@ -711,7 +729,7 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
   int a, b, c, d;
   int c1[2], c2[2], *cc;
   int *rawcol, *popall, *pop0, *pop1;
-  int k, g, i, col, j;
+  int k, g, i, col, j, t;
   double ya, yb, y, jest, jsig, mean;
   SNP *cupt;
   double top, bot, *djack, *wjack, gtop, gbot, *wbot, *wtop;
@@ -719,6 +737,7 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
   double ytop, ybot;
   double y1, y2, yscal;
   double *w1, *w2, *ww, m1, m2;
+  double weight ;
   int bnum, totnum;
   FILE *fff;
   double xn[3], xmean[3], xh[3];
@@ -758,15 +777,23 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
     if (bnum >= nblocks)
       fatalx ("logic bug\n");
 
+ //   t = strcmp("rs112077330", cupt -> ID) ;
+ //    if (t==0) verbose = YES ;
+
     ret = f3sc (&ytop, &ybot, cupt, indivmarkers, xindex, xtypes, nrows, 2, 0, 1);
-// -1 => no good, 0 => mon 
-    if (isnan (ytop))
-      fatalx ("zznan\n");
-    if (ybot < -0.5)
-      continue;
+
+
+  // printf("zzqqf3 %d %s %9.3f %9.3f :: %d\n", col, cupt -> ID, ytop, ybot, ret) ;
+    verbose = NO ;
+
+// -1 => no good, 0 => monomorphic 
+    if (isnan (ytop)) fatalx ("zznan\n");
+    if (ybot < -0.5) continue;
     if (ret<0) continue ;
+
     if (outgroupmode) ybot = 0.001 ;   
 //  if ((dzeromode == NO) && (ybot <= 0.001)) continue;
+
     if (snpdetailsname != NULL) {
 
       finfo (xn + 0, xmean + 0, xh + 0, 0);
@@ -790,6 +817,12 @@ dof3score (double *f3score, double *f3scoresig, SNP ** xsnplist, int *xindex,
     }
 
     if (outgroupmode) ybot = 0.001 ;   
+
+    if (sizeweight) { 
+     weight = sw(2, 0, 2, 1) ; 
+     ytop *= weight ; 
+     ybot *= weight ;
+    }
 
     btop[bnum] += ytop;
     bbot[bnum] += ybot;

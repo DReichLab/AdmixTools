@@ -15,9 +15,8 @@
 #include "mcio.h"
 #include "nicksam.h"
 
-#define WVERSION   "2710"
+#define WVERSION   "3130"
 #define MAXFL  50
-#define MAXSTR  512
 
 // phasedmode added
 // bugfix for pedcols
@@ -27,6 +26,11 @@
 // malexhet added
 // polarmode added both input files assumed polarized
 // O2 version
+// proper merging of dup individuals
+// cksnpdup added
+// check that physpos matches
+// override with testmismatch: NO
+// hapdipcheck added
 
 char *trashdir = "/var/tmp";
 extern int verbose;
@@ -51,6 +55,7 @@ char *badsnpname = NULL;
 
 int packout = -1;
 int tersem = YES;
+int testmismatch = YES;
 extern enum outputmodetype outputmode;
 extern int checksizemode;
 char *omode = "packedancestrymap";
@@ -69,6 +74,7 @@ int lopos = -999999999;
 int hipos = 999999999;
 int minchrom = 1;
 int maxchrom = 97;
+int hapdipcheck = YES ; 
 
 KINFO **mhlist ; 
 int mhlen = 0 ;
@@ -87,6 +93,8 @@ char unknowngender = 'U';
 void setomode (enum outputmodetype *outmode, char *omode);
 void readcommands (int argc, char **argv);
 int checkmatch (SNP * cupt1, SNP * cupt2);
+int hashet(SNP **snpm, int nums, int a)  ;
+int  dohapdipcheck(SNP **snpm1, int nums1, int a1, SNP **snpm2, int nums2, int a2)  ;
 
 int
 mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
@@ -106,7 +114,7 @@ main (int argc, char **argv)
   int **snppos;
   int *snpindx;
   int lsnplist, lindlist, numeg;
-  int i, j;
+  int i, j, jj;
   SNP *cupt, *cupt1, *cupt2, *cupt3;
   Indiv *indx;
 
@@ -114,7 +122,7 @@ main (int argc, char **argv)
   int fmnum, lmnum;
   int num, n1, n2;
   int nkill = 0;
-  int t, k, x;
+  int t, k, x, g, g1, g2, tt ;
 
   int nignore, numrisks = 1;
 
@@ -128,6 +136,7 @@ main (int argc, char **argv)
 
   readcommands (argc, argv);
 
+  printf ("## mergeit version: %s\n", WVERSION);
   cputime(0) ;
   calcmem(0) ;
 
@@ -148,14 +157,14 @@ main (int argc, char **argv)
     printf ("polarmode set!\n");
   }
 
-  nums1 = getsnps (snp1, &snpm1, 0.0, NULL, &nignore, numrisks);
+  nums1 = getsnps (snp1, &snpm1, 0.0, badsnpname, &nignore, numrisks);
 
   sorder[0] = getsnpordered ();
   putped (1);
   freeped ();
 
   sorder[1] = getsnpordered ();
-  nums2 = getsnps (snp2, &snpm2, 0.0, NULL, &nignore, numrisks);
+  nums2 = getsnps (snp2, &snpm2, 0.0, badsnpname, &nignore, numrisks);
 
   putped (2);
   freeped ();
@@ -175,7 +184,17 @@ main (int argc, char **argv)
     if (cupt2 -> ignore) continue ; 
     cupt1 = snpm1[k];
     cupt1->tagnumber = x;
+    tt = nnint(cupt1 -> physpos - cupt2 -> physpos) ; 
     t = checkmatch (cupt1, cupt2);
+    if ((cupt1 -> chrom != cupt2 -> chrom) || (tt != 0)) { 
+     if (testmismatch) 
+     fatalx("*** mismatch for SNP %s %d:%12.0f %d:%12.0f\n", cupt1 -> ID, 
+       cupt1 -> chrom, cupt1 -> physpos, cupt2 -> chrom, cupt2 -> physpos) ;
+     else {
+      cupt2 -> chrom = cupt1 -> chrom ;
+      cupt2 -> physpos = cupt1 -> physpos ;
+     } 
+    }
     addmhist(t, 1) ;
 
     if (t == 1)
@@ -199,14 +218,8 @@ main (int argc, char **argv)
   numi1 = getindivs (ind1, &indm1);
   numi2 = getindivs (ind2, &indm2);
 
-  for (x = 0; x < numi2; ++x) {
-    k = indindex (indm1, numi1, indm2[x]->ID);
-    if ((k >= 0) && (allowdups == NO))
-      fatalx ("dup ind: %s\n", indm2[x]->ID);   // fix later?  
-    if ((k >= 0) && (allowdups) && (indm1[k]->ignore == NO))
-      indm2[x]->ignore = YES;
-  }
-
+  inddupcheck(indm1, numi1) ;
+  inddupcheck(indm2, numi2) ;
 
   setgenotypename (&geno1, ind1);
   getped (1);
@@ -220,6 +233,35 @@ main (int argc, char **argv)
   getped (2);
   putsnpordered (sorder[1]);
   getgenos (geno2, snpm2, indm2, nums2, numi2, nignore);
+
+  for (x = 0; x < numi2; ++x) {
+    if (indm2[x] -> ignore) continue ;
+    k = indindex (indm1, numi1, indm2[x]->ID);
+    if ((k >= 0) && (allowdups == NO))
+      fatalx ("dup ind: %s\n", indm2[x]->ID);   // fix later?  
+      if ((k >= 0) && (allowdups) && (indm1[k]->ignore == NO)) {
+       t = dohapdipcheck(snpm1, nums1, k, snpm2, nums2, x) ; 
+       if (t == NO) { 
+        printf("faploid and diploid for %s\n", indm2[x] -> ID) ;
+        printf("hapdipcheck: NO to override\n ") ;
+        fatalx("hapdip check fails!\n") ; 
+       }
+  
+      indm2[x]->ignore = YES;
+      for (j=0; j<nums1; ++j) { 
+       cupt1 = snpm1[j] ; 
+       if (cupt1 -> ignore) continue ; 
+       if ((jj = cupt1 -> tagnumber) < 0) continue ; 
+       g1 = g = getgtypes(cupt1, k) ; 
+       if (g>=0) continue ; // have genotype
+       cupt2 = snpm2[jj] ;  
+       g2 = g = getgtypes(cupt2, x); 
+       if (g<0) continue ; 
+       putgtypes(cupt1, k, g) ;
+      }
+     }
+  }
+
 
 /**
   numi1 = rmindivs(snpm1, nums1, indm1, numi1)  ; 
@@ -241,6 +283,8 @@ main (int argc, char **argv)
 
   printf("numsnps input: %d %d\n", nums1, nums2) ;
 
+  cksnpdup(snpmarkers, numsnps) ;
+
   num = outfiles (snpoutfilename, indoutfilename, genooutfilename,
             snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
 
@@ -260,10 +304,6 @@ checkmatch (SNP * cupt1, SNP * cupt2)
 
   if (docheck == NO)
     return 1;
-  if (cupt1->alleles == NULL)
-    return -1;
-  if (cupt2->alleles == NULL)
-    return -1;
 
   a1 = cupt1->alleles[0];
   a2 = cupt1->alleles[1];
@@ -417,6 +457,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "geno2:", &geno2);
   getstring (ph, "snp2:", &snp2);
   getstring (ph, "ind2:", &ind2);
+  getstring (ph, "badsnpname:", &badsnpname);
 
   getstring (ph, "indoutfilename:", &indoutfilename);
   getstring (ph, "snpoutfilename:", &snpoutfilename);
@@ -434,6 +475,9 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "allowdups:", &allowdups);
   getint (ph, "polarmode:", &polarmode);
+  getint (ph, "testmismatch:", &testmismatch);
+  getint (ph, "testmissmatch:", &testmismatch);
+  getint (ph, "hapdipcheck:", &hapdipcheck); // check diploid + haploid not in same sample 
 
 
   writepars (ph);
@@ -484,7 +528,7 @@ mergeit (SNP ** snpm1, SNP ** snpm2, Indiv *** pindm1, Indiv ** indm2,
   rlen = MAX (rlen, 48);
   packlen = numsnps * rlen;
   ZALLOC (packg, packlen, unsigned char);
-  clearepath (packg);
+  clearepath ((char *) packg);
 // wipe to invalid
 
   buff = packg;
@@ -614,3 +658,32 @@ void printmh()
 
 }
 
+int hashet(SNP **snpm, int nums, int a) 
+{
+ int x, g ; 
+ SNP *cupt ;
+  
+ for (x=0; x<nums; ++x)  {
+  cupt = snpm[x] ; 
+  g = getgtypes(cupt, a) ; 
+  if (g==1) return YES ; 
+ }
+
+ return NO ;
+
+}
+
+int  dohapdipcheck(SNP **snpm1, int nums1, int a1, SNP **snpm2, int nums2, int a2)  
+{
+
+  int has1, has2 ; 
+
+  if (hapdipcheck == NO) return YES ;
+  has1 = hashet(snpm1, nums1, a1) ;
+  has2 = hashet(snpm2, nums2, a2) ;
+
+  if (has1 != has2) return NO ;
+  return YES ;
+
+
+}

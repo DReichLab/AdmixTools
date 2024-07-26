@@ -16,4 +16,6 @@ void ipsortitp(int **a, int *ind, int len, int rlen, int *pp)  ;
 void setorder (int *pp, int rlen) ;
 void mkirank(int *rank, int *xin, int n) ;
 void mkrank(int *rank, double *xin, int n) ;
+void sortstrings (char **a, int *ind, int len) ;
+int scompit (int *a1, int *a2) ; 
 

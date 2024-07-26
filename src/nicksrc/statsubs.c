@@ -229,7 +229,7 @@ double
 ks2 (int *cls, int len, int *n0, int *n1, double *kstail)
 {
 /*
- compute KS statistic 
+ compute KS statistic  (Kolomogorov-Smirnov) 
  cls should be 0 or 1.  if larger take as invalid
 */
   int i;
@@ -635,6 +635,23 @@ firstgt (double val, double *tab, int n)
 
     return n ;
 }
+int
+lastgt (double val, double *tab, int n)
+{
+/* tab sorted in descending order */
+  int i;
+
+  if (val >= tab[0])
+    return -1;
+  for (i = n-1; i >=0; i--)
+    {
+      if (val < tab[i])
+	return i;
+    }
+
+    return -1 ;
+}
+
 
 void gpars(double *p, double *lam, double mean, double var)
 {
@@ -3361,3 +3378,104 @@ void calcms(double *a, int n, double *pmean, double *psdev)
  free(ww) ; 
  return ; 
 }
+
+double poissmeanx (double mean) 
+// mean of poisson conditional on at least 1
+{
+ double bot ; 
+
+ bot = 1.0 - exp(-mean) ;
+ if (bot <= 1.0e-8) return (1.0+0.5*mean) ; 
+ return mean/bot ; 
+
+}
+
+void balancemat(double *gam, double *pp, int n) 
+// max \sum gam[i, j] log pp[i, j] s.t. pp is double stochastic and symmetric
+// converges (I think) to global optimum
+{
+
+  double *gg ; 
+  double *lam, *theta,  y ; 
+  int iter, niter = 10000, i, j  ; 
+
+  ZALLOC(gg, n*n, double) ; 
+  transpose(gg, gam, n, n) ;
+  vvp(gg, gg, gam, n*n) ;
+
+  ZALLOC(lam, n, double) ;
+  ZALLOC(theta, n, double) ;
+
+  vclear(lam, 1.0, n) ; 
+  for (iter = 1 ; iter <= niter; ++iter) { 
+    for (i=0; i<n; ++i)  { 
+     for (j=i; j<n; ++j) { 
+      pp[i*n+j] = pp[j*n+i] = gg[i*n+j]/(lam[i] + lam[j]) ; 
+     }
+    }
+    rowsum(pp, theta, n) ; 
+    vvt(lam, lam, theta, n) ;
+    vsp(theta, theta, -1.0, n) ; 
+    y = asum2(theta, n) / (double) n ; 
+    y = sqrt(y + 1.0e-10) ;
+    if (y<.0001) break ;
+//  printf("theta: %12.6f   ", y) ; printmat(theta, 1, n) ;
+  }
+
+
+ free(gg) ; 
+ free(lam) ; 
+ free(theta) ; 
+}
+
+
+static double foldf2(double x) 
+{ 
+
+  int n ;  
+  double z ; 
+
+  if (x < 0) return foldf2(-x) ; 
+  n = (int) 0.5*x ;  
+  z = x - trunc (0.5*x) * 2 ;
+  if (z>1) return 2 - z ; 
+
+  return z ;
+
+}
+static double foldf1(double top, double val) 
+{ 
+
+  return foldf2(val/top) * top ;
+  
+}
+double foldfun(double lo, double hi, double val) 
+/** 
+ evaluate periodic function f(x) = x (on (lo, hi) 
+ f(x) = then linear f(2*hi-lo) = lo on (hi, 2*hi-lo) then periodic  
+ useful in optimizing;  map variable to lo, hi and penalty can be x - foldfun(x) 
+*/ 
+{
+
+  return foldf1(hi-lo, val-lo) + lo ;
+
+}
+
+
+double ess(double *wt, int n) 
+// http://www.nowozin.net/sebastian/blog/effective-sample-size-in-importance-sampling.html 
+{
+
+  double *ww ; 
+  double y ; 
+
+  ZALLOC(ww, n, double) ; 
+
+  copyarr(wt, ww, n) ;
+  bal1(ww, n) ;  
+  y = 1.0/asum2(ww, n) ;
+  free (ww) ;
+  return y ; 
+
+}
+   

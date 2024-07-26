@@ -4,7 +4,7 @@
 #include <stdarg.h>
 
 #define MAXSTR  5000
-#define MAXPARS 200
+#define MAXPARS 400
 
 #include "nicklib.h"
 #include "getpars.h"
@@ -21,32 +21,32 @@ void stripcomment (char *str);
 int findpname (phandle * pp, char *parname);
 int indxstring (char **ppars, int npars, char *ww);
 
+static int plusloopcheck = 0 ;
+
 static int parchange = 0;
 static int debug = NO;
+static int readpars(phandle *pp, char *fname, char **ppars, char **pdata) ;
 
-phandle *
-openpars (char *fname)
-
-/* constructor */
+int
+readpars(phandle *pp, char *fname, char **ppars, char **pdata) 
 {
-  phandle *pp;
-  FILE *ff;
 
   char line[MAXSTR + 1];
   char str[MAXSTR];
   char ww[MAXSTR];
   char rest[MAXSTR];
 
-  char *ppars[MAXPARS];
-  char *pdata[MAXPARS];
-
   int npars = 0, i;
   int len, plen, t;
 
-  pp = (phandle *) malloc (sizeof (phandle));
+  FILE *ff;
+
+  ++plusloopcheck ; 
+  if (plusloopcheck >= 100) fatalx("+++ include files looping\n") ;
+
   ff = pp->fx = fopen (fname, "r");
   if (ff == NULL) {
-    perror ("Can't open file\n");
+    perror ("(getpars) Can't open file \n");
     fatalx ("can't open %s\n", fname);
   }
 
@@ -63,6 +63,13 @@ openpars (char *fname)
       if (ww[0] == '#')
         continue;
       /*AT: 12/2/04: Adding check to make sure that the parameter name ends in : */
+      t = strcmp(ww, "+++") ; 
+      if (t==0) { 
+        stripcomment (rest);
+        striptrail (rest, ' ');   /* no trailing blanks */
+        npars += readpars(pp, rest, ppars+npars, pdata + npars) ;
+        continue ;
+      }
       plen = strlen (ww);
       if (ww[plen - 1] != ':')
         printf
@@ -84,6 +91,28 @@ openpars (char *fname)
 
     }
   }
+
+
+  return npars ;
+
+
+}
+
+phandle *
+openpars (char *fname)
+
+/* constructor */
+{
+  phandle *pp;
+
+  char *ppars[MAXPARS];
+  char *pdata[MAXPARS];
+
+  int npars = 0, i;
+
+  pp = (phandle *) malloc (sizeof (phandle));
+
+  npars = readpars(pp, fname, ppars, pdata) ;
   pp->numpars = npars;
 
   if (npars > 0) {
@@ -212,6 +241,34 @@ getint (phandle * pp, char *parname, int *kret)
   *kret = atoi (str);
   return 1;
 }
+
+int
+getlong (phandle * pp, char *parname, long *kret)
+{
+
+  char *field[MAXFIELD];
+  char str[MAXSTR];
+  int n, kode;
+
+  kode = findpname (pp, parname);
+  if (kode < 0)
+    return kode;
+  n = splitup (pp->pdata[kode], field, MAXFIELD);
+  strcpy (str, field[0]);
+  freeup (field, n);
+  if (strcmp (str, "YES") == 0) {
+    *kret = YES;
+    return 1;
+  }
+  if (strcmp (str, "NO") == 0) {
+    *kret = NO;
+    return 1;
+  }
+
+  *kret = atol (str);
+  return 1;
+}
+
 
 int
 getints (phandle * pp, char *parname, int *aint, int nint)

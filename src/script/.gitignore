@@ -1,0 +1,5 @@
+__pycache__
+build
+nick_hash.c
+nick_hash.html
+nick_hash.cpython*.so

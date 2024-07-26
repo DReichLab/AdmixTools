@@ -63,9 +63,12 @@ typedef struct {
   int lobasequal ;
   int ispair ;
   int isdup ;
+  int rckode ;
+  int isfix ; 
   double pmdscore ;
   char *readbuff ;
   int zz[3] ; 
+  void *parent ;
 } READ  ;
 
 typedef struct {
@@ -128,11 +131,8 @@ typedef struct  {
  int bq ; 
  int strand ;
  int  pp ;   // - is 3' end  
- long hist[16] ; 
- long hsum ; 
- long oldhsum ; 
- double erate[6] ; 
- double deamin[2] ;  
+ int hist[16] ; 
+ int hsum ; 
  int ignore ; 
 } HIST ;
 
@@ -141,14 +141,12 @@ typedef struct  {
  int bq ; 
  int strand ;
  int  pp ;   // - is 3' end  
- double erate[6] ; 
  double deamin[2] ;  
  int ignore ; 
- int flag[6] ;
+// int flag[6] ;
  int hitcount ; 
- long hist[16] ;
- double errprob[4] ; 
- double bcprob[16] ; 
+ int hist[16] ;
+// double bcprob[16] ;
 } HISTS ;
     
     
@@ -156,14 +154,16 @@ typedef struct  {
  int maxmq ; 
  int maxbq ; 
  int nump ; 
+ int isfix ; 
  char *sampname  ;
  char *bamname ; 
  char  *histname ; 
  int bighistlen ; 
- int rgcat ; 
  double baserate[6] ;  
  double basedeamin[6] ;  
  char deaminbases[5] ; //  pos 1 -1 strand 0; 1 -1 strand 1  example: C, G, C, G  
+ int rgcat ; 
+ HISTS ***bighistlist ;
 } HISTINFO ;
 
 

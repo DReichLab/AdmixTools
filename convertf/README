@@ -1,5 +1,5 @@
 This file contains documentation of the programs convertf and mergeit.
-convertf converts between the 5 different file formats we support.  
+convertf converts between the 6 different file formats we support.  
 mergeit merges two data sets into a third, which has the union of
   the individuals and the intersection of the SNPs in the first two.
 
@@ -8,12 +8,13 @@ Here "file format" simultaneously refers to the formats of three distinct files:
   snp file:      contains information about each SNP        
   indiv file:    contains information about each individual 
 
-Below, we document all 5 formats:
+Below, we document all 6 formats:
 ANCESTRYMAP
 EIGENSTRAT 
 PED 
 PACKEDPED 
 PACKEDANCESTRYMAP 
+TGENO  
 and we explain how to use convertf to get from one format to another.
 
 Maximum file size on 32-bit machines:
@@ -139,6 +140,25 @@ PACKEDANCESTRYMAP format
 Note that 
 example.packedancestrymapgeno is a packed binary file (2 bits per genotype).
 
+TGENO format
+  genotype file: see example.tgeno
+  snp file:      see example.snp (same as above)
+  indiv file:    see example.ind (same as above)
+Note that 
+example.tgeno is a packed binary file (2 bits per genotype).
+
+PACKEDANCESTRYMAP has one record per SNP and a minimum record length of 48 bytes 
+which is inefficient for datasets with very few samples.  
+
+TGENO is a transposed format with 1 record / sample.  
+  
+For both of these last 2 formats hash codes are stored in a header record 
+allowing checks that the correct corresponding snp and ind files are being 
+used.  If SNP or Indiv names are changed the geno file will need to be 
+remade (see hashcheck below).
+
+
+
 ----------------------------------------------------------------------------
 
 DOCUMENTATION of convertf program:
@@ -208,7 +228,7 @@ maxmissfracind: Remove any indifidual with a fraction of missing data greater
   than this.  Default is 1.0. 
 numchrom:  The number of autosomes in the data set.  The X-chromosome is
   assumed to be numchrom+1 and the Y-chromosome is numchrom+2
-hashcheck:    If set to YES and the input genotype file is in PACKEDANCESTRYMAP
+hashcheck:    If set to YES and the input genotype file is in PACKEDANCESTRYMAP or TGENO 
   format, check the hash stored inside the file to make sure that individual 
   and SNP files have not changed since the file was made.  If they have, then 
   exit in error.  The default value for this parameter is YES.  Note: Caution
@@ -326,7 +346,7 @@ attempt is made to combine genotypes for the same sample_id in 2 daatasets.
 ------------------------------------------------------------------------------
 Questions?
 See http://www.hsph.harvard.edu/faculty/alkes-price/files/eigensoftfaq.htm
-or email Samuela Pollack, spollack@hsph.harvard.edu
+or email Nick Patterson, nickp@broadinstitute.org
 
 SOFTWARE COPYRIGHT NOTICE AGREEMENT
 This software and its documentation are copyright (2010) by Harvard University

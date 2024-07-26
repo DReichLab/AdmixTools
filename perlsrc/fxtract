@@ -1,0 +1,85 @@
+#!/usr/bin/perl -w
+
+use Getopt::Std ;
+
+getopts('p:V',\%opts) ;
+
+$parname = $opts{"p"} ;
+$verbose = $opts{"V"} ; 
+
+die ("Usage: fxtract -p <parname>") unless (defined $parname) ;
+
+$dir = `mktmp ddd 71` ; 
+$tname  = "tname.$$" ;
+$ttname  = "ttname.$$" ;
+$pwd = `pwd` ; 
+### $X = "/n/groups/reich/matt/pipeline/code/nick/pull_jan08/script"  ; 
+
+chomp ($pwd, $dir, $tname) ; 
+
+$instem = `grabpars -p $parname -x "instem:" ` ;
+$outstem = `grabpars -p $parname -x "outstem:" ` ; 
+$poplist = `grabpars -p $parname -x "poplistname:" ` ; 
+$tempdir = `grabpars -p $parname -x "tempdir:" ` ; 
+$indlist = `grabpars -p $parname -x "indivlistname:" ` ; 
+
+chomp $tempdir if (defined $tempdir) ; 
+undef ($tempdir) if ($tempdir =~ /NOTFOUND/) ; 
+$dir = $tempdir if (defined $tempdir) ;
+printf "mkdir -p $dir\n" ;
+mkdir $dir ; 
+##system "mkdir -p $dir"  ;
+
+chomp ($instem, $outstem, $poplist, $indlist) ;
+
+
+$ilist = "fxt:$$.ind" ;
+$INDLIST = "$dir/$ilist" ;
+
+if ($indlist =~ /NOTFOUND/) { 
+ die "no poplist or indlist\n" if ($poplist =~ /NOTFOUND/) ;
+ system "grepcolf 2 $poplist < $instem.ind | xtractcol 0 > $INDLIST" ;
+}
+else {
+ system "grepcolf 0 $indlist < $instem.ind | xtractcol 0 > $INDLIST" ;
+}
+
+$S = "single_sample.py" ;
+$SG = "single_sample_tgeno.py" ;
+$M = "merge_adaptive_pulldown.py" ; 
+
+open (I1, $INDLIST) || die ("bad $INDLIST\n") ;
+
+$SX = $S ; 
+$tgfile = "$instem.tgeno" ;
+$SX = $SG if (-e $tgfile) ;
+print "$tgfile\n$SX\n" ; 
+system "cp  $instem.snp $dir/$tname.snp" ;
+foreach $line (<I1>) {
+ ($id) = split " ", $line ;
+## system "python3 $S -i $instem -s $id -o $dir/$id >& /dev/null" ; 
+## system "grepcol 0 $id < $smallind > $dir.$id.ind" ;
+ system "python3 $SX -x -i $instem -s $id -o $dir/$id "  if (defined $verbose); 
+ system "python3 $SX -x -i $instem -s $id -o $dir/$id >& /dev/null" unless (defined $verbose); 
+ print "$id extracted\n" ; 
+}
+
+close I1 ;
+
+open (I1, $INDLIST) || die ("bad $INDLIST\n") ;
+
+chdir $dir ; 
+foreach $line (<I1>) {
+ ($id) = split " ", $line ;
+ system "ln -f $tname.snp $id.snp" ;
+}
+
+system "python3 $M -f $ilist -o $ttname" ;
+##print "got here\n" ;
+chdir $pwd ; 
+
+system " cp $dir/$ttname.snp  $outstem.snp" ;
+system " cp $dir/$ttname.ind  $outstem.ind" ;
+system " cp $dir/$ttname.geno  $outstem.geno" ;
+
+unlink $dir unless (defined $tempdir) ;  

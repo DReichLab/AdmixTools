@@ -27,7 +27,7 @@
 */
 
 
-#define WVERSION   "460" 
+#define WVERSION   "465" 
 
 // overlap NO added
 // allsnps: YES and instem: added
@@ -607,6 +607,7 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
    int bnum, totnum  ;
    int ret, ret1, ret2, cntblocks=0 ;
    int num1, num2, num12 ;
+   static int ncall = 0 ;
    
    if (nrows==0) fatalx("badbug\n") ;
 
@@ -620,8 +621,9 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
    ZALLOC(wbot, nblocks, double) ;
 
    
-   printf("overlap NO mode (same as allsnps: YES)\n") ;
-   num1 = num2 = num12 ; 
+   ++ncall ;
+   if (ncall == 1) printf("overlap NO mode (same as allsnps: YES)\n") ;
+   num1 = num2 = num12 = 0 ; 
 
    totnum = 0 ;
    for (col=0; col<ncols;  ++col)  {
@@ -691,7 +693,8 @@ doq4diffx(double *q4diff, double *q4diffsig, int ***counts, int *bcols,
     free(btop2) ;
     free(bbot2) ;
 
-    return num1 + num2 - num12 ;  // simple inclusion exclus10n 
+//  printf("zznum %d %d %d\n", num1, num2, num12) ;
+    return num1 + num2 - num12 ;  // simple inclusion exclusion 
 }
 
 int

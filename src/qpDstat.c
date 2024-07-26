@@ -26,7 +26,7 @@
 */
 
 
-#define WVERSION   "980"
+#define WVERSION   "1152"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -48,6 +48,7 @@
 // instem added 
 // cputime etc printed
 // error message if nzdata no large enough
+// Cokie Parker speedup 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -61,6 +62,7 @@ int qtmode = NO;
 int hires = NO;
 int printsd = NO;
 int fourier = NO ; 
+int sizeweight = NO ;
 
 Indiv **indivmarkers;
 SNP **snpmarkers;
@@ -93,6 +95,7 @@ int xmode = NO;
 int printssize = YES;
 int locount = -1, hicount = 9999999;
 // if bankermode  bankers MUST be in quartet ;  at least one type 1 in quartet
+int fewblocksok = NO ;
 
 int jackweight = YES;
 double jackquart = -1.0;
@@ -134,13 +137,13 @@ double getrs (double *f4, double *f4sig, double *f2, double *f2sig,
               int a, int b, int c, int d, int numeg, double *rho);
 int islegal (int *xind, int *types, int mode, int n);
 int isclade (int *rr, int *zz);
-void setabx (double **abx, double **bax, int ***countcols, int ncols,
+void setabx (double **abx, double **bax, double **sweight, int ***countcols, int ncols,
              int numeg);
 void setf2 (double **f2, int ***countcols, int ncols, int numeg);
 void getabc (double *dzscx, double *dzsc, double **abx, double **bax,
              int ncols, int a, int b, int c, int numeg, int *bcols,
              int nblocks);
-void getdsc (double *dzscx, double *dzsc, double **abx, double **bax,
+void getdsc (double *dzscx, double *dzsc, double **abx, double **bax, double **swx, 
              int ncols, int a, int b, int c, int d, int numeg, int *bcols,
              int nblocks, int *sz);
 void gettreelen (double *tlenz, double *tlen, double **f2, double **abx,
@@ -156,7 +159,6 @@ int usage (char *prog, int exval);
 int
 main (int argc, char **argv)
 {
-
   char sss[MAXSTR];
   int **snppos;
   int *snpindx;
@@ -221,10 +223,11 @@ main (int argc, char **argv)
   int bbest[3];
   double absscore[3];
   double ascore[4], astat[4];
+  int gkset = NO ;
 
 
   double **dsctop, **dscbot;
-  double **abx, **bax, **f2;
+  double **abx, **bax, **f2, **sweight;
   int popx[4];
   double tn[4 * 5], td[4 * 4];
   double zzsig[5], zzest[5], zsc[5];
@@ -280,6 +283,11 @@ main (int argc, char **argv)
   }
   setindm (indivmarkers);
 
+  if (poplistname != NULL) setgk(indivmarkers, numindivs, poplistname, NULL, NULL) ; 
+  if (popfilename != NULL) setgk(indivmarkers, numindivs, popfilename, NULL, NULL) ; 
+
+  gkignore(indivmarkers, numindivs) ;
+
   k = getgenos (genotypename, snpmarkers, indivmarkers,
                 numsnps, numindivs, nignore);
 
@@ -309,7 +317,7 @@ main (int argc, char **argv)
     nqlist =
       getnamesstripcolon (&qlist, nqlist, 4, popfilename, locount, hicount);
     numeg = 0;
-    printf ("number of quadruples %d\n", nqlist);
+    printf ("number of quadruples %d locount: %d hicount: %d\n", nqlist, locount, hicount);
 
     if (nqlist==0) { 
      printf("no quads!\n") ; 
@@ -336,6 +344,7 @@ main (int argc, char **argv)
 
   for (i = 0; i < numindivs; i++) {
     indx = indivmarkers[i];
+    indx -> idnum = i ; 
     if (indx->ignore)
       continue;
     k = indxindex (eglist, numeg, indx->egroup);
@@ -410,9 +419,11 @@ main (int argc, char **argv)
     setplimit (indivmarkers, numindivs, eglist, numeg, popsizelimit);
   }
 
-  ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
+//  ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
+    ncols = loadsnpxx (xsnplist, snpmarkers, numsnps, xindlist, nrows); 
+// loadsnpxx is faster version
 
-  printf ("snps: %d  indivs: %d\n", ncols, nrows);
+  printf ("snps: %d  indivs: %d\n", ncols, nrows); fflush(stdout) ;
   nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
 
 // loads tagnumber
@@ -467,6 +478,7 @@ main (int argc, char **argv)
 
   abx = initarray_2Ddouble (nh2, ncols, 0.0);
   bax = initarray_2Ddouble (nh2, ncols, 0.0);
+  sweight = initarray_2Ddouble (nh2, ncols, 1.0);
   if (dotree)
     f2 = initarray_2Ddouble (nh2, ncols, 0.0);
 
@@ -485,7 +497,7 @@ main (int argc, char **argv)
 
 
 
-  setabx (abx, bax, counts, ncols, numeg);
+  setabx (abx, bax, sweight, counts, ncols, numeg);
   if (dotree)
     setf2 (f2, counts, ncols, numeg);
 
@@ -507,15 +519,14 @@ main (int argc, char **argv)
             continue;
 
 
-          getdsc (&rscore[0], &dstat[0], abx, bax, ncols,
+          getdsc (&rscore[0], &dstat[0], abx, bax, sweight, ncols,
                   a, b, c, d, numeg, bcols, nblocks, ssize[0]);
 
-          getdsc (&rscore[1], &dstat[1], abx, bax, ncols,
+          getdsc (&rscore[1], &dstat[1], abx, bax, sweight, ncols,
                   a, c, b, d, numeg, bcols, nblocks, ssize[1]);
 
-          getdsc (&rscore[2], &dstat[2], abx, bax, ncols,
+          getdsc (&rscore[2], &dstat[2], abx, bax, sweight, ncols,
                   a, d, b, c, numeg, bcols, nblocks, ssize[2]);
-
           for (k = 0; k < 3; ++k) {
             serr[k] = 1.0;
             if (rscore[k] != 0)
@@ -626,7 +637,7 @@ main (int argc, char **argv)
 
 
     vzero(rscore, 3) ; 
-    getdsc (&rscore[0], &dstat[0], abx, bax, ncols,
+    getdsc (&rscore[0], &dstat[0], abx, bax, sweight, ncols,
             a, b, c, d, numeg, bcols, nblocks, ssize[0]);
 
     serr[0] = 1.0;
@@ -782,6 +793,7 @@ readcommands (int argc, char **argv)
   getint (ph, "nochrom:", &zchrom);
   getint (ph, "locount:", &locount);
   getint (ph, "hicount:", &hicount);
+  getint (ph, "fewblocksok:", &fewblocksok);
 
   getint (ph, "numchrom:", &numchrom);
   getint (ph, "noxdata:", &noxdata);
@@ -789,6 +801,7 @@ readcommands (int argc, char **argv)
   getint (ph, "colcalc:", &colcalc);
   getint (ph, "inbreed:", &inbreed);
   getint (ph, "printssize:", &printssize);
+  getint (ph, "sizeweight:", &sizeweight);
 
   getint (ph, "nostatslim:", &nostatslim);
   getint (ph, "popsizelimit:", &popsizelimit);
@@ -897,12 +910,12 @@ isclade (int *rr, int *zz)
 }
 
 void
-setabx (double **abx, double **bax, int ***counts, int ncols, int numeg)
+setabx (double **abx, double **bax, double **sw, int ***counts, int ncols, int numeg)
 {
 
 
   int i, j, k, t1, t2, a, h;
-  double y1, y2;
+  double y1, y2, w1, w2, y;
   int **ccc;
 
   clear2D (&abx, nh2, ncols, -1.0);
@@ -915,8 +928,9 @@ setabx (double **abx, double **bax, int ***counts, int ncols, int numeg)
     for (i = 0; i < numeg; i++) {
       for (j = i + 1; j < numeg; j++) {
 
-        t1 = intsum (ccc[i], 2);
-        t2 = intsum (ccc[j], 2);
+        w1 = t1 = intsum (ccc[i], 2);
+        w2 = t2 = intsum (ccc[j], 2);
+
         if (t1 == 0)
           continue;
         if (t2 == 0)
@@ -931,6 +945,10 @@ setabx (double **abx, double **bax, int ***counts, int ncols, int numeg)
         abx[h][k] = y1 * (1 - y2);
         bax[h][k] = y2 * (1 - y1);
 
+        if (sizeweight) {  
+         y = (1.0/w1) + (1.0/w2) ; 
+         sw[h][k] = 1.0/y ; 
+        } 
       }
     }
   }
@@ -1057,20 +1075,21 @@ getabc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
 
 
 void
-getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
+getdsc (double *dzscx, double *dzsc, double **abx, double **bax, double **swx, int ncols,
         int a, int b, int c, int d, int numeg, int *bcols, int nblocks,
         int *sz)
 {
   double *ztop, *zbot, *znum, *jmean, *jwt;
   int k, s, h1, h2;
   double y, y1, y2, yabba, ybaba, yt, yb, ytop, ybot;
-  double ymean, est, sig;
+  double ymean, est, sig, swt;
   double sgn;
   int ntot, nbaba, nabba, nzdata = 0;
   int *nzd;
 // nzdata is # blocks with  nonzero abba or baba counts 
   double zbaba, zabba;
   double rho, mblocks ;
+  int fewblocks = NO ;
 
   *dzscx = *dzsc = 0.0;
   sgn = 1.0;
@@ -1100,6 +1119,9 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
     s = bcols[k];
     if (s < 0)
       continue;
+
+    swt = swx[h1][k] * swx[h2][k] ; // 1 if sizeweight:  NO 
+
     y1 = abx[h1][k];
     y2 = bax[h2][k];
 
@@ -1143,11 +1165,11 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
     zbaba += ybaba;
     zabba += yabba;
 
-    ztop[s] += (ybaba - yabba) * sgn;
+    ztop[s] += swt * (ybaba - yabba) * sgn;
     if (f4mode == NO)
-      zbot[s] += ybaba + yabba;
+      zbot[s] += swt * (ybaba + yabba);
     if (f4mode == YES)
-      zbot[s] += 1.0;
+      zbot[s] += swt ;
 
     znum[s] += 1.0;
     ++ntot;
@@ -1167,7 +1189,7 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
   free (nzd);
   if (verbose)
     printf ("nzdata:  %d\n", nzdata);
-  if (nzdata < 5) {
+  if ((nzdata < 5) && (fewblocksok == NO))  { 
     free (ztop);
     free (zbot);
     free (znum);
@@ -1178,6 +1200,11 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
     enuf("insufficient number of blocks -- you need 5 blocks with non zero ABBA/BABA program terminating\n") ;
     return;
   }
+  if ((nzdata < 5) && (fewblocksok == YES))  { 
+   printf("*** warning very few blocks; number of blocks %d\n", nzdata) ;
+   fewblocks = YES ;
+  }
+
   ytop = asum (ztop, nblocks);
   ybot = asum (zbot, nblocks);
   ybot += 1.0e-20;
@@ -1190,20 +1217,13 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
   }
 // printf("## zzmean: %d %12.6f\n", nblocks, ymean) ; 
 
-/**
-   for (s=0; s<nblocks; ++s) { 
-    y1 = ztop[s] ; 
-    y2 = zbot[s] ; 
-    printf("zzbug: %d %9.6f %9.6f %9.6f\n", s, y1, y2, y1/(y2+1.0e-20)) ; 
-   }
-*/
-// abort() ;
   mblocks = nblocks ; 
   for (k=nblocks-1; k>=0; --k) { 
    if (jwt[k] > 0) break ;  
    --mblocks ; 
   }
 
+ if (fewblocks == NO) { 
   if (fourier) {
    weightjackfourier (&est, &sig, ymean, jmean, jwt, mblocks, &rho);
    printf("fourier called.  rho: %9.3f\n", rho) ; 
@@ -1213,6 +1233,12 @@ getdsc (double *dzscx, double *dzsc, double **abx, double **bax, int ncols,
   else {
    weightjack (&est, &sig, ymean, jmean, jwt, mblocks);
   }
+
+ }
+
+ if (fewblocks) { 
+  est = ymean ; sig = 10000.0 ;  // no attempt to compute s. error 
+ }
 
   *dzscx = est / (sig + 1.0e-20);       // Z score
   *dzsc = est;

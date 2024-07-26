@@ -66,6 +66,7 @@ typedef struct
   int isdead;
   int eglistnum;
   int ancestornumber ;
+  int isbasep ; 
 } NODE;
 
 typedef struct
@@ -94,6 +95,8 @@ static int nforce = 0;
 
 static int numedge = -1, numvertex = -1, numadmix, numpops;
 static int numancestor = 0 ;
+
+static char *basep = NULL ;
 
 static int ibdmode = NO ;
 int ncall;
@@ -128,6 +131,7 @@ void pedge (FILE * fff, NODE * anode, NODE * bnode, double val, double theta, in
 int vertexnum (char *vertname);
 int edgenum (char *edgename);
 int isleaf (NODE *node) ; 
+void setbasep(char *bbb) ;
 
 void
 getvnames (char **vnames)
@@ -379,6 +383,11 @@ void setibdexp(int num, double ibdexp)
 
 }
 
+void setbasep(char *bbb) 
+{
+  basep = strdup(bbb) ;
+}
+
 void printedgedata(int num)  
 {
 
@@ -388,7 +397,7 @@ void printedgedata(int num)
  double t, yn, val, theta, y ; 
 
  if (num<0) {  
-  printf("%18s ") ; 
+  printf("%18s ", "") ; 
   printf(" %9s ", "UP") ; 
   printf(" %9s ", "DOWN") ; 
   printf(" %9s ", "time") ; 
@@ -1783,6 +1792,7 @@ initvlist (NODE * vlist, int n)
     node->eglistnum = -1;
     node->isdead = NO;
     node -> numadaughter = 0 ;
+    node -> isbasep = YES ;
 
     ivclear (node->windex, -1, MAXW);
     node->left = node->right = node->parent = NULL;
@@ -1832,10 +1842,23 @@ readit (char *cname)
       return qreadit (cname);
     }
 
+    if ((num==1) && (basep != NULL)) { 
+      node = &vlist[n];
+      node->name = strdup (basep);
+      ++n;
+    }
+
     okline = NO;
     kret = strcmp (sx, "vertex");
     if (kret == 0) {
       sx = spt[1] ; 
+      if (basep != NULL) { 
+       t = strcmp(sx, basep) ;  
+       if (t==0) { 
+         freeup(spt, nsplit) ; 
+         continue ; 
+       }
+      }
       t = vindex (sx, vlist, n);
       if (t>=0) fatalx("duplicate vertex: %s\n", sx) ;
       node = &vlist[n];
@@ -2041,6 +2064,12 @@ getadwts (char **spt, char **ssx, double *ww, int nsplit, int *n)
     setsimp (ww, nt);
     *n = nt;
     return nt;
+  }
+  if (ww[0] < 0) { 
+   vzero(ww, nt) ; 
+   isinit = YES;
+   *n = nt;
+   return nt;
   }
   if (nw != nt) {
     fatalx ("input wts for node %s not set correctly\n", spt[1]);
@@ -2368,7 +2397,7 @@ dumpgraphnew (char *graphname)
     if (node->distance == HUGEDIS)
       fprintf (fff, "##");
     y = node -> time ; 
-    if (ibdmode &&(y>=1.0e6)) y==0.0 ;
+    if (ibdmode &&(y>=1.0e6)) y = 0.0 ;
     if (y<0) y=-1 ;
     fprintf (fff, "vertex %12s %9.0f\n", node->name, y) ; 
   }
@@ -3120,6 +3149,9 @@ qreadit (char *cname)
 
   openit (cname, &fff, "r");
   line[MAXSTR] = '\0';
+
+  if (basep != 0) addvertex(basep) ;
+
   while (fgets (line, MAXSTR, fff) != NULL) {
     nsplit = splitup (line, spt, MAXFF);
     if (nsplit == 0)

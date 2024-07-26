@@ -3,6 +3,7 @@
 #include <math.h>
 #include <nicklib.h>
 #include "xsearch.h"
+#include "sortit.h"
 
 static ENTRY *xentry;
 static ENTRY **xxee;
@@ -16,6 +17,7 @@ static int fancyhash = NO;
 
 
 /* ********************************************************************* */
+
 
 void
 xhcreate (int n)
@@ -36,6 +38,17 @@ xhcreate (int n)
   }
   xloaded = 0;
 }
+
+void xhinit(int n) 
+{
+ int i ; 
+ xhcreate(2*n) ; 
+ ZALLOC(xxee, n, ENTRY *) ;
+ for (i=0; i<n; ++i) { 
+  ZALLOC (xxee[i], 1, ENTRY);
+ }
+ xxeenum = n ; 
+}  
 
 void
 xhdestroy ()
@@ -76,6 +89,21 @@ xhsearch (ENTRY item, ACTION act)
   return xtempt;
 }
 
+void xstore(char *key, int val) 
+{
+  ENTRY *pitem ;  
+  char xx[10] ; 
+  static int xxnum = 0 ; 
+  
+  pitem = xxee[xxnum] ;
+  ++xxnum ;
+  pitem->key = strdup(key) ;
+  sprintf (xx, "%d", val);
+  pitem -> data = strdup(xx) ;
+  xhsearch (*pitem, ENTER);
+  ++xloaded;
+}
+
 int
 xlookup (char *key, ACTION act)
 {
@@ -83,6 +111,7 @@ xlookup (char *key, ACTION act)
   int xbase, x, k;
 
   xbase = x = xhash (key);
+
   for (;;) {
     xpt = xentry + x;
     if (xpt->key == NULL) {
@@ -100,6 +129,19 @@ xlookup (char *key, ACTION act)
     if (x >= xnum)
       x = 0;
   }
+}
+
+void dumpxs()  
+{
+ int x ; 
+ ENTRY *xpt ; 
+
+ for (x=0; x<xnum; ++x) { 
+  xpt = xentry + x ; 
+  if (xpt -> key == NULL) continue ;
+  printf ("zzdumpxs: %8d %s\n", x, xpt -> key) ;
+ }
+
 }
 
 int
@@ -165,6 +207,11 @@ void setfancyhash(int val)
 
 {
  fancyhash = val ;
+}
+
+int getfancyhash()  
+{
+ return fancyhash ; 
 }
 
 int
@@ -240,7 +287,7 @@ xloadsearchx (char **ss, int n)
 {
 
   ENTRY item, *pitem;
-  char xx[8];
+  char xx[10];
   int i, t;
 
   xhcreate (2 * n);
@@ -265,7 +312,7 @@ xloadsearch (char **ss, int n)
 {
 
   ENTRY item, *pitem;
-  char xx[8];
+  char xx[10];
   int i;
 
   xhcreate (2 * n);
@@ -308,6 +355,43 @@ finddup (char **ss, int n)
   return t;
 
 }
+int
+finddupalt (char **sss, int n)
+{
+// no hash table 
+
+  int t, k, t1, t2, ttt ; 
+  char **ss, *s1, *s2  ; 
+  int *indx ; 
+  
+  ZALLOC(ss, n, char *) ;
+  ZALLOC(indx, n, int) ;
+
+  copystrings(sss, ss, n) ;
+  sortstrings(ss, indx, n) ;  
+  t = -1 ;
+ // printf("qqq\n") ; printstrings(sss, n) ; printimat(indx, 1, n) ; printnl() ;
+
+  for (k=1; k<n; ++k) { 
+   t1 = indx[k-1] ; 
+   t2 = indx[k] ; 
+   s1 = sss[t1] ;
+   s2 = sss[t2] ;
+   ttt = strcmp(s1, s2)  ;
+//  printf("zzz %d %d %d %s %s\n", t1, t2, ttt, s1, s2) ;
+    if (ttt == 0) { 
+    t = k ; 
+    break ;
+   }
+  }
+  free(indx) ; 
+  freeup(ss, n) ; 
+  free(ss) ;
+
+  return t;
+
+}
+
 
 int xshash(int x) 
 // slow but good 32 bit hash

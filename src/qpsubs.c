@@ -1,11 +1,12 @@
 #include "qpsubs.h"
+  double weight ; 
 #include "mcio.h" 
 
 extern int fancynorm, verbose, plotmode, outnum;
 extern int numchrom ;
 extern FILE *fstdetails;
 
-static Indiv **indm;
+static Indiv **indm = NULL;
 static double quartileval = -1.0;
 static int jackweight = YES;
 // .05 will trim jackknife stats
@@ -16,18 +17,22 @@ void printnorm (double *a, int n);
 static int pubjack = NO;
 static void calcndinbreed (int *c1, int *c2, double *pen, double *ped);
 static void calchetinbreed (int *c1, double *pen, double *ped);
+
 static int inbreed = NO;
 static int allsnpsmode = NO;
+static int sizeweight = NO;
 
-static double **aacnts =
-  NULL, **bbcnts, *aafreq, *ttnum, *hest, *htest, *aaxadd, *a2freq ; 
-static char **aalist;
+static double **aacnts = NULL, **bbcnts, *aafreq, *ttnum, *hest, *htest, *aaxadd, *a2freq, *sampnum ; 
+static char **aalist = NULL;
+static int *aainbreed = NULL , numinbreed = 0 ; 
 static int aanum = -1;
 void loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg);
 void destroyaa ();
 static int fancyf4 = YES  ; 
+static char **inbreedlist = NULL ; 
 
-static int *xblock, *xbsize ; 
+
+static int *xblock = NULL, *xbsize = NULL ; 
 static int xnblock ; 
 
 void
@@ -72,6 +77,13 @@ xcopy (int rp[4], int a, int b, int c, int d)
   rp[3] = d;
 }
 
+void setsizeweight(int mode)  { 
+
+  sizeweight = mode;
+  if (mode == YES)
+    printf ("sizeweight set\n");
+
+}
 void
 setallsnpsmode (int mode)
 {
@@ -269,6 +281,34 @@ loadsnpx (SNP ** xsnplist, SNP ** snpmarkers, int numsnps,
   return n;
 }
 
+int
+loadsnpxx (SNP ** xsnplist, SNP ** snpmarkers, int numsnps,
+	  Indiv ** indivmarkers, int numind)
+{
+  int i, k, n = 0, g, isok, j;
+  SNP *cupt;
+  Indiv *indx ; 
+
+  for (i = 0; i < numsnps; i++) {
+    cupt = snpmarkers[i];
+    cupt -> tagnumber = -1 ; 
+    if (cupt -> ignore) continue ; 
+    isok = NO ;
+    for (j=0; j<numind; ++j) { 
+     indx = indivmarkers[j] ; 
+     k = indx -> idnum ; 
+     g = getgtypes(cupt, k) ; 
+     if (g>=0) isok = YES ; 
+    }
+    if (isok == NO) continue ; 
+    xsnplist[n] = cupt;
+    cupt->tagnumber = n;
+    ++n;
+  }
+  return n ;
+}
+
+
 void
 getrawcol (int *rawcol, SNP * cupt, int *xindex, int nrows)
 {
@@ -313,7 +353,7 @@ getrawcolx (int **cc, SNP * cupt, int *xindex, int nrows, Indiv ** indm)
     gg[1] = 2 - g;
     if (cupt->chrom != (numchrom+1))
       continue;
-    if (indm[t]->gender != 'M')
+    if (indm[t]->hasxhets == YES) 
       continue;
     if (g == 1) {
       ivclear (gg, -1, 2);
@@ -554,23 +594,26 @@ countpopsx (int ***counts, SNP ** xsnplist, Indiv ** xindlist, int *xindex,
   int col, i, g1, g2, g, k1;
   SNP *cupt;
   int *rawcol;
-  int ismale;
+  int ishap;
+  Indiv *indx ;
 
   ZALLOC (rawcol, nrows, int);
   for (col = 0; col < ncols; ++col) {
     cupt = xsnplist[col];
     getrawcol (rawcol, cupt, xindex, nrows);
     for (i = 0; i < nrows; i++) {
-      ismale = NO;
-      if (xindlist[i]->gender == 'M')
-	ismale = YES;
+      ishap = NO;
+      indx = xindlist[i] ; 
+      if (indx->gender == 'M')  ishap = YES;
+      if (indx->gender == 'Z')  ishap = YES;
+      if (indx->hasxhets == NO)  ishap = YES;
       g = rawcol[i];
       k1 = xtypes[i];
       if (k1 < 0)
 	continue;
       if (g < 0)
 	continue;
-      if (ismale) {
+      if (ishap) {
 	if (g == 1)
 	  continue;
 	g1 = g / 2;
@@ -1023,8 +1066,8 @@ f3scz (double *estn, double *estd, SNP * cupt, Indiv ** indm,
 {
   int k, g, i, a, b;
   double y, ya, yb, yaa, ybb, p1, p2, p3, p4, en, ed, yadd, y1, y2;
-  double z, zz, h1, yt;
-  double ywt;
+  double z, zz, h1, h2, yt;
+  double ywt ;
   int maxeg, ispoly ;
   static int ncall = 0 ; 
   
@@ -1033,13 +1076,13 @@ f3scz (double *estn, double *estd, SNP * cupt, Indiv ** indm,
   *estd = -1;
 
   ++ncall ; 
-//  if (ncall==1) printf("new f3scz!\n") ; 
 
   p1 = aafreq[type1];
-  h1 = hest[type1];
-
   p2 = aafreq[type2];
   p3 = aafreq[type3];
+
+  h1 = hest[type1];
+  h2 = hest[type2];
 
   ispoly = 1  ; 
 
@@ -1048,8 +1091,14 @@ f3scz (double *estn, double *estd, SNP * cupt, Indiv ** indm,
   if (y<.0001) ispoly = 0 ; 
   if (y>.9999) ispoly = 0 ;
 
+  if (verbose) { 
+   printf("zzscz %9.3f\n", h1) ;
+   printmat(aafreq, 1, 3) ;
+   printmat(a2freq, 1, 3) ;
+   printmat(aaxadd, 1, 3) ;
+  }
 
-// if (h1 == 0.0) return ;
+
   if (p1 < -1.0)
     return -1;
   if (p2 < -1.0)
@@ -1057,21 +1106,35 @@ f3scz (double *estn, double *estd, SNP * cupt, Indiv ** indm,
   if (p3 < -1.0)
     return -1;
   if (h1 < -100.0)
+    return -2;
+  if ((type2 == type3) && (h2 < -100.0))
     return -1;
 
   en = (p1 - p2) * (p1 - p3);
 
-/**
-  y1 = aafreq[type1] ; 
-  y2 = a2freq[type1] ; 
-  yadd = y2 - y1*y1 ;                       
-  en += yadd ;  
-*/  
-
   en += aaxadd[type1] ; 
+  if (type2 == type3) {
+   yadd = aaxadd[type2] ; 
+   if (yadd < -100) return -3 ;
+   en += aaxadd[type2] ; 
+  }
+
+
+
+
+  if (verbose) { 
+   printf("f3scz: %d %d %d %9.3f %9.3f %9.3f\n", type1, type2, type3, p1, p2, p3) ; 
+   printf("%9.3f %9.3f\n", h1, h2) ;
+   printmat(aafreq, 1, 3) ;
+   printmat(a2freq, 1, 3) ;
+   printmat(aaxadd, 1, 3) ;
+   printf(" ans: %9.3f\n", en) ;
+  }
+
+  if (en < -100) return -2 ; 
 
   if (isnan (en))
-    fatalx ("f3 bug\n");
+    fatalx ("(f3scz) f3 bug\n");
 
   *estn = en;
   *estd = 2.0 * h1;
@@ -1673,11 +1736,6 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
       xsize = 0;
     }
 
-/**
-    if (i<10000) { 
-     printf("zzt %d %d %d \n", i, cupt -> tagnumber, n) ;
-    }
-*/
     cupt->tagnumber = n;
     ++xsize;
   }
@@ -2838,8 +2896,6 @@ regestit (double *ans, double *xn, double *xd)
  printnl() ;
 */
 
-  verbose = NO;
-
   k = 0;
   a = 0;
   b = 1;
@@ -2906,6 +2962,16 @@ setwt (SNP ** snpmarkers, int numsnps, Indiv ** indivmarkers, int nrows,
   int **ccx, **ccc, *cc;
   double wt, p;
   int a, g;
+
+  if (outpop == NULL) { 
+    for (i = 0; i < numsnps; ++i) {
+     cupt = snpmarkers[i];
+     cupt->weight = 0;
+     if (cupt->ignore) continue;
+     cupt -> weight = 1 ; 
+   }
+   return ; 
+  }
 
 
   t = strcmp (outpop, "NONE");
@@ -3171,6 +3237,9 @@ wjackvest (double *vest, double *var, int d, double *mean, double **jmean,
     ++n;
   }
 
+  if (n<=1) { 
+   fatalx("(wjackvest) not enough blocks. g: %d  wjack sum: %9.3f\n", g, asum(jwt, g)) ;
+  }
   wjackvestx (vest, var, d, mean, jjmean, jjwt, n);
 
   free2D (&jjmean, g);
@@ -3843,10 +3912,12 @@ doinbreed (double *inb, double *inbest, double *inbsig, SNP ** xsnplist,
   vsp (gbot, gbot, 1.0e-10, numeg);
   vvd (gtop, gtop, gbot, numeg);
 
+/**
   printf ("zzinb\n");
   printmat (inb, 1, numeg);
   printnl ();
   printmat (gtop, 1, numeg);
+*/
 
 
   for (i = 0; i < numeg; i++) {
@@ -3967,8 +4038,11 @@ destroyaa ()
   freeup (aalist, aanum);
   free (aalist);
   aalist = NULL;
+  free(aainbreed) ;  
+  aainbreed = NULL ;
 
   free2D (&aacnts, aanum);
+  aacnts = NULL ;
   free2D (&bbcnts, aanum);
   aacnts = bbcnts = NULL;
 
@@ -3978,25 +4052,66 @@ destroyaa ()
   free (htest);
   free (aafreq);
   free (a2freq);
+  free (sampnum);
   aanum = -1;
 }
 
+void setinbreedlist(char **eglist, int numeg, char **breedlist, int nbreed) 
+// don't seem to need eglist here 
+{
+ if (breedlist == NULL) { 
+   inbreedlist = NULL ; 
+   numinbreed = 0 ;
+   return ;
+ }
+
+ ZALLOC(inbreedlist, nbreed, char *) ; 
+ numinbreed = nbreed ;
+
+ copystrings(breedlist, inbreedlist, nbreed) ;  
+
+ return ;
+}
+void printaa(char **eglist, int numeg) 
+{
+ int k ; 
+ if (aainbreed == NULL) return ;
+ printf("inbreed details\n") ;
+ for (k=0; k< numeg; ++k) { 
+   printf("%20s %d\n",  eglist[k], aainbreed[k]) ;
+ }
+}
+
+double getsampnum(int a) 
+{
+  return sampnum[a] ; 
+
+}
 
 void
 loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
 {
   int k, j, t, a;
-  int g;
+  int g, inb;
   int **ccc, *gg, *rawcol;
   int nf, nm, nt, jhet ; 
   int wcc[5] ; 
   double *cc, *dd;
   double x0, x1, x2, w0, w1, h1, s, yt, yf, ym, yy;
+  char *sx ; 
+  static long ncall = 0 ; 
+  static int nbad  = 0 ; 
+
+  ++ncall ; 
 
   if (aanum != numeg)
     destroyaa ();
 
   aanum = numeg;
+  if (indm == NULL) { 
+   ++nbad ; 
+   if (nbad == 1) printf("*** (loadaa).  indm not set. bug??\n") ;
+  } 
 
   if (aalist == NULL) {
     ZALLOC (aalist, numeg, char *);
@@ -4014,8 +4129,26 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
       aalist[j] = strdup (indm[t]->egroup);
     }
   }
+  if (inbreedlist != NULL) inbreed = NO ;
+  if (aainbreed == NULL) { 
+    ZALLOC (aainbreed, numeg, int);
+//  printf("zz aainbreed allocated\n") ; 
+   
+    ivclear(aainbreed, inbreed, numeg) ; 
+
+    for (j=-0; j<numeg; ++j)  {  
+    if (inbreedlist == NULL) break  ;
+     sx = aalist[j] ; 
+     if (sx == NULL) continue ;
+     t = indxstring(inbreedlist, numinbreed, sx) ; 
+     if (t>=0) aainbreed[j] = YES ;
+    }
+    if (verbose) printf("aainbreed: ") ;
+    if (verbose) printimat(aainbreed, 1, numeg) ; 
+  }
+
   if (aacnts == NULL) {
-    aacnts = initarray_2Ddouble (numeg, 5, 0.0);
+    aacnts = initarray_2Ddouble (numeg, 6, 0.0);
     bbcnts = initarray_2Ddouble (numeg, 2, 0.0);
     ZALLOC (ttnum, numeg, double);
     ZALLOC (hest, numeg, double);
@@ -4023,14 +4156,15 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
     ZALLOC (aafreq, numeg, double);
     ZALLOC (a2freq, numeg, double);
     ZALLOC (aaxadd, numeg, double);
+    ZALLOC (sampnum, numeg, double);
   }
 
-  clear2D (&aacnts, numeg, 5, 0.0);
+  clear2D (&aacnts, numeg, 6, 0.0);
   clear2D (&bbcnts, numeg, 2, 0.0);
   vzero (ttnum, numeg);
+  vzero (sampnum, numeg);
   vclear(aaxadd, -999, numeg) ; 
   vclear(a2freq, -999, numeg) ; 
-
   ccc = initarray_2Dint (nrows, 2, 0);
 
   if (indm == NULL) {
@@ -4051,6 +4185,7 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
 
   for (k = 0; k < nrows; ++k) {
     a = xtypes[k];
+    inb = aainbreed[a] ; 
     if (a < 0)
       continue;
     if (a >= aanum)
@@ -4058,15 +4193,19 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
     cc = aacnts[a];
     gg = ccc[k];
     g = gg[0];
-    if (g < 0)
-      continue;
+    if (g < 0) continue;
+  
     t = intsum (gg, 2) ;  
+
+    ++sampnum[a] ; 
+    if ((inb == NO) && (t==2)) ++sampnum[a] ;  
+
 
     if (t == 2) { 
      ++cc[g] ; 
     }
 
-    if (t == 1) { // X and male 
+    if (t == 1) { // X and hasnoxhets 
      ++cc[g+3] ; 
     }
   }
@@ -4075,17 +4214,31 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
 
     cc = aacnts[a];
     dd = bbcnts[a];
+    inb = aainbreed[a] ; 
+    if (inb>1) fatalx("bad inb\n") ;
+    if (verbose) printf("zzinb: %d %d\n", a, inb) ;
+    fixit(wcc, cc, 5) ;
  
     dd[0] = 2 * cc[0] + cc[1] + cc[3];
     dd[1] = 2 * cc[2] + cc[1] + cc[4]; 
+    if (verbose) { 
+     printf("zz %d ", a) ;  printimat(wcc, 1, 5) ; 
+    }
 
     s = ttnum[a] = asum (dd, 2);
 
     hest[a] = aafreq[a] = -999.0;
+
+     if (verbose) { 
+      printf("zzaa %d %9.3f ", a , s) ; 
+      printmat(cc, 1, 5) ; 
+     }           
+
+
+
     if (s < 0.5)
       continue;
 
-      fixit(wcc, cc, 5) ;
 
       x0 = wcc[0];
       x1 = wcc[1];
@@ -4093,12 +4246,13 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
       w0 = wcc[3];
       w1 = wcc[4];
 
-    if (inbreed) {
+    if (inb) {
+
+      aafreq[a] = dd[1] / s ; 
 
       if (s < 1.5)
 	continue;
 
-      aafreq[a] = dd[1] / s ; 
 
       yf = asum(cc, 3) ; 
       ym = asum(cc + 3, 2) ; 
@@ -4123,11 +4277,15 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
 
       hest[a] = h1;
       htest[a] = h1 / s; // correction for f-stats  
+      if (verbose) { 
+       printf("zzh %6d %9.3f %9.3f\n", jhet, yt, h1) ;
+      }
     }
     else {
       x0 = dd[0];
       x1 = dd[1];
       yt = x0 + x1;
+      if (yt < 1.5) continue ; 
       aafreq[a] = x1 / yt;
       h1 = x0 * x1 / (yt * (yt - 1.0));
       hest[a] = h1;
@@ -4138,7 +4296,6 @@ loadaa (SNP * cupt, int *xindex, int *xtypes, int nrows, int numeg)
     yy = aaxadd[a] = a2freq[a] - aafreq[a] * aafreq[a] ;  // calculate z using p1*p1 now correct
     if (isnan(yy)) fatalx("loadaa bug\n") ; 
   }
-      
 
   free2Dint (&ccc, nrows);
 
@@ -4390,6 +4547,7 @@ double fstatx(int *fsindex)
    int a, b, c, d ; 
    double p1, p2, p3, p4, yy ; 
    double small = -1.0e-6  ;
+   double h1, h2, h3, h4 ;
 
      a = fsindex[0] ; 
      b = fsindex[1] ; 
@@ -4417,7 +4575,16 @@ double fstatx(int *fsindex)
     if (b==c)  yy -= aaxadd[b] ; 
 
     if (verbose) { 
-     printf("zzfq:  %d %d %d %d ", a, b, c, d) ; 
+     h1 = hest[a];
+     h2 = hest[b];
+     h3 = hest[c];
+     h4 = hest[d];
+     printf("het est:") ;
+     printf(" %9.3f ", h1) ; 
+     printf(" %9.3f ", h2) ; 
+     printf(" %9.3f ", h3) ; 
+     printf(" %9.3f ", h4) ; 
+     printnl() ; 
      printf(" %9.3f ", p1) ; 
      printf(" %9.3f ", p2) ; 
      printf(" %9.3f ", p3) ; 
@@ -4493,7 +4660,8 @@ calchet ( double *hets, double *valids,
 
 }
 
-int
+
+int 
 dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis, 
        double *fsmean, double *fssig, int **fsindex, int nfstats, 
        SNP ** xsnplist, int *xindex, int *xtypes, int *hashets, 
@@ -4513,7 +4681,8 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   SNP *cupt ; 
   int *bas2fs ; 
   int *dd ; 
-  int numadj = 0 ; 
+  int numadj = 0, inb ; 
+  double weight ; 
 
   fflush(stdout) ; 
 
@@ -4572,9 +4741,13 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
     cupt = xsnplist[col];
     if (cupt->ignore)
       continue;
+
+/**
     wt = cupt->weight;
     if (wt <= 0.0)
       continue;
+*/
+    wt = 1.0 ;
 
     bnum = cupt->tagnumber;
     if (bnum < 0) continue;
@@ -4593,8 +4766,12 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
      if (isnan(yy)) fatalx("fstatx bug\n") ; 
      if (yy < -99) continue ; 
      yy *= scale ; 
-     top[j] += wt*yy ; 
-     bot[j] += 1  ; 
+     if (sizeweight) {  
+      weight = swx(fsindex[j]) ; 
+     }
+     else weight = 1.0 ; 
+     top[j] += wt*yy*weight ; 
+     bot[j] += weight  ; 
     }
   }
 
@@ -4615,7 +4792,8 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
 
   vlmaxmin(gbot, nfstats, &tmax, &tmin) ; 
   ymin = gbot[tmin] ; 
-  if (ymin<=0.001) { 
+  ymin = 99999 ; // comment out check
+  if (ymin <= 0.001) { 
     bad = tmin - 1000*1000 ; 
     verbose = YES ; 
 
@@ -4690,14 +4868,18 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
     ++dd[t]  ;
    }
 
-   if (inbreed == NO) {
    for (t=0; t<numeg; ++t) { 
+    inb = aainbreed[t] ; 
+    if (inb==YES) continue ;  
     if ((dd[t] > 1) && (hashets[t] == 0)) { 
      jsig[j] = sqrt(jsig[j]*jsig[j] + 100.0) ;  
+/** 
+     printf("zzadj :: ") ; 
+     printimat(fsindex[j], 1, 4) ;
+*/  
      ++numadj ; 
     }
    }
-  }
 
 
 /**
@@ -4786,23 +4968,6 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
 // Pass 2 
 
   vvd(w2, gtop, jsig, nfstats) ;
-
-/**
-  printf("gtop\n") ;
-  printmat(gtop, 1, nfstats) ; 
-  printnl() ; 
-  printnl() ; 
-  printf("w2\n") ;
-  printmat(w2, 1, nfstats) ; 
-  printnl() ; 
-  printnl() ; 
-
-  printf("wfb\n") ;
-  printmat(wfb, nfstats, nbasis) ; 
-  printnl() ; 
-  printnl() ; 
-
-*/  
   
   mulmat(w1, w2, wfb, 1, nfstats, nbasis) ; 
   mulmat(w3, wcoinv, w1, nbasis, nbasis, 1) ;
@@ -4866,13 +5031,14 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
 
 }
 
+
 void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) 
 // hi res 
 {
    FILE *fff ;
    int a, b, nh2, k, x, u, v, c, d ; 
    double y1, y2, y ; 
-   double *vvar, *vinv ; 
+// double *vvar, *vinv ; 
    char sx[128] ;
 
    if (fstatsname == NULL) return ; 
@@ -4882,8 +5048,10 @@ void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist
    
    nh2 = numeg * (numeg - 1);
    nh2 /= 2;
-   ZALLOC(vvar, nh2*nh2, double) ;
-   ZALLOC(vinv, nh2*nh2, double) ;
+
+// ZALLOC(vvar, nh2*nh2, double) ;
+// ZALLOC(vinv, nh2*nh2, double) ;
+
    for (u=0; u<nh2; ++u) { 
      x = indx[u];
      if (x<0) fatalx("(dumpfstats) bad indx: %d %d\n", u, x) ;
@@ -4908,7 +5076,7 @@ void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist
 
      sprintf(sx, "%12.6f", y2) ; 
      y = atof(sx) ;
-     vvar[u*nh2+v] = vvar[v*nh2+u] = y ; 
+//   vvar[u*nh2+v] = vvar[v*nh2+u] = y ; 
 
  }} 
 
@@ -4921,11 +5089,11 @@ void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist
    }}
    fflush(stdout) ;
    printf("(dumpfstats) calling pdinv\n") ; 
-*/
    pdinv(vinv, vvar, nh2) ;
-
    free(vvar) ; 
    free(vinv)  ;
+*/
+
 
 }
 
@@ -5431,6 +5599,34 @@ char * getbasepop(char **spt, int nsplit)
   return NULL ;
 
 }
+
+double sw2(int a, int b) 
+{
+  double ya, yb, var ; 
+
+  ya = getsampnum(a) ;
+  yb = getsampnum(b) ;
+
+  var = (1.0/ya) + (1.0/yb) ;
+
+  return 1.0/var ;
+
+
+}
+
+double sw(int a, int b, int c, int d) 
+{
+  return sw2(a,b) * sw2(c, d) ;
+}
+
+double swx(int *vv)
+{
+
+ return sw(vv[0], vv[1], vv[2], vv[3]) ; 
+
+
+}
+
 int fstats2popl(char *fstatsname, char **poplist) 
 {
   char line[MAXSTR + 1] ;

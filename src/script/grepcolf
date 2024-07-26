@@ -1,0 +1,30 @@
+#!/usr/bin/perl  -w 
+
+($col, $file) = @ARGV ; 
+die "usage grepcolf col file"  unless defined($file) ;
+
+%X = () ;
+open (FF, $file) || die "can't open $file\n" ;
+@L = (<FF>)  ; 
+chomp @L ; 
+foreach $line (@L) {
+($a) = split " ", $line ;
+next unless (defined $a) ;
+next if ($a =~ /\#/) ;
+$X{$a} = 1 ;
+}
+$num = 0 ; 
+foreach $line (<STDIN>)  {  
+chomp $line ;
+@Z = split " ", $line ;
+$a = $Z[0] ;            
+next unless (defined $a) ;
+next if ($a =~ /\#/) ;
+$b = $Z[$col] ;
+next unless (defined $b) ;
+next unless (defined $X{$b}) ;
+print "$line" ; 
+print "\n" ;
+++$num ; 
+}
+print STDERR "$num lines written\n" ;

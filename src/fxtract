@@ -1,0 +1,108 @@
+#!/usr/bin/perl -w
+
+use Getopt::Std ;
+use Cwd 'abs_path';
+use File::Basename;
+
+getopts('p:V',\%opts) ;
+
+$parname = $opts{"p"} ;
+$verbose = $opts{"V"} ; 
+
+$MB = dirname(abs_path(__FILE__)) ;
+$X  = $MM = $MB . "/script"  ;
+
+die ("Usage: fxtract -p <parname>") unless (defined $parname) ;
+
+$dir = `$MM/mktmp ddd 71` ; 
+$tname  = "tname.$$" ;
+$ttname  = "ttname.$$" ;
+$pwd = `pwd` ; 
+
+chomp ($pwd, $dir, $tname) ; 
+
+$instem = `$MB/grabpars -p $parname -x "instem:" ` ;
+$outstem = `$MB/grabpars -p $parname -x "outstem:" ` ; 
+$poplist = `$MB/grabpars -p $parname -x "poplistname:" ` ; 
+$tempdir = `$MB/grabpars -p $parname -x "tempdir:" ` ; 
+$indlist = `$MB/grabpars -p $parname -x "indivlistname:" ` ; 
+
+chomp $tempdir if (defined $tempdir) ; 
+undef ($tempdir) if ($tempdir =~ /NOTFOUND/) ; 
+$dir = $tempdir if (defined $tempdir) ;
+printf "mkdir -p $dir\n" ;
+mkdir $dir ; 
+##system "mkdir -p $dir"  ;
+
+chomp ($instem, $outstem, $poplist, $indlist) ;
+
+
+$ilist = "fxt:$$.ind" ;
+$INDLIST = "$dir/$ilist" ;
+
+if ($indlist =~ /NOTFOUND/) { 
+ die "no poplist or indlist\n" if ($poplist =~ /NOTFOUND/) ;
+ system "$MM/grepcolf 2 $poplist < $instem.ind | $MM/xtractcol 0 > $INDLIST" ;
+}
+else {
+ system "$MM/grepcolf 0 $indlist < $instem.ind | $MM/xtractcol 0 > $INDLIST" ;
+}
+
+$S = "$X/extract_individuals.py" ;
+$SG = "$X/extract_individuals.py -t" ;
+$M = "$X/merge_transpose.py" ;
+
+open (I1, $INDLIST) || die ("bad $INDLIST\n") ;
+
+$SX = $S ; 
+$tgfile = "$instem.tgeno" ;
+$SX = $SG if (-e $tgfile) ;
+print "$tgfile\n$SX\n" ; 
+
+if (-e $tgfile) { 
+ $gfile = $tgfile ; 
+}
+else {
+ $gfile = "$instem.geno" ;
+}
+
+open (BB, $gfile) || die "can't find $SX\n" ;
+read(BB, $chk, 4) ;
+close BB ;
+
+##print "check: $SX $chk\n" ; 
+if (($chk ne "GENO") && ($chk ne "TGEN")) {
+ die "only tgeno and geno formats supported\n"  ; 
+}
+
+
+
+system "cp  $instem.snp $dir/$tname.snp" ;
+foreach $line (<I1>) {
+ ($id) = split " ", $line ;
+## system "python3 $S -i $instem -s $id -o $dir/$id >& /dev/null" ; 
+## system "$MM/grepcol 0 $id < $smallind > $dir.$id.ind" ;
+ system "python3 $SX -x -i $instem -o $dir/$id $id"  if (defined $verbose);
+ system "python3 $SX -x -i $instem -o $dir/$id $id >& /dev/null" unless (defined $verbose);
+ print "$id extracted\n" ; 
+}
+
+close I1 ;
+
+open (I1, $INDLIST) || die ("bad $INDLIST\n") ;
+
+chdir $dir ; 
+foreach $line (<I1>) {
+ ($id) = split " ", $line ;
+ system "ln -f $tname.snp $id.snp" ;
+}
+
+system "python3 $M -f $ilist -o $ttname" ;
+##print "got here\n" ;
+chdir $pwd ; 
+
+system " cp $dir/$ttname.snp  $outstem.snp" ;
+system " cp $dir/$ttname.ind  $outstem.ind" ;
+system " cp $dir/$ttname.geno  $outstem.geno" ;
+
+unlink $dir unless (defined $tempdir) ;  

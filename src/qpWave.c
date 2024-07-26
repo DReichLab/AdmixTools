@@ -28,16 +28,18 @@
  // instem:   
  // cleaned up boundary case (m=n in ranktest) 
  // fstats properly supported
+// Cokie Parker speedup + loadsnpx speedup
+// diagvarplus added 
 */
 
 
-#define WVERSION   "1520" 
+#define WVERSION   "1570" 
 
 #define MAXFL  50
 #define MAXSTR  512
 #define MAXPOPS 100
 
-double yscale = 0.0001 ; 
+double yscale = .0001, diagvarplus = -1 ; 
 
 char *parname = NULL;
 char *trashdir = "/var/tmp";
@@ -65,6 +67,8 @@ int deletefstats = NO ;
 char *fstatslog = NULL ; 
 char *tmpdir = NULL ;
 int keeptmp = NO ;
+
+char *basepop = NULL ; 
 
 int fancyf4 = YES;
 
@@ -112,6 +116,7 @@ int usage (char *prog, int exval);
 void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
 int  mkfstats(char *parname)   ; 
 
+
 int
 main (int argc, char **argv)
 {
@@ -148,6 +153,7 @@ main (int argc, char **argv)
   int a, b, x, t, col;
   double T2, dof;
   int *xind;
+  int *popsize ;
   int numchromp ; 
   int retkode ;
 
@@ -166,15 +172,26 @@ main (int argc, char **argv)
   cputime(0) ;
   calcmem(0) ;
 
+  printcmdline(argc, argv) ;
   printf ("## qpWave version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
 
   if (tmpdir != NULL) setenv("STMP", tmpdir, 1) ;
 
+  if (basepop != NULL) printf("basepop set: %s\n", basepop) ;
+
   numchromp = numchrom + 1 ; 
 
-  setinbreed (inbreed);
+  if (inbreed == -99) { 
+   inbreed = allsnps ; 
+   if (fstatsname == NULL) {
+    printf(" *** recommended that inbreed be explicitly set ***\n") ;
+   }
+  }
+
+  setinbreed(inbreed) ;
+
 
   nleft = numlines (popleft);
   ZALLOC (popllist, nleft, char *);
@@ -229,6 +246,22 @@ main (int argc, char **argv)
   setindm (indivmarkers);
   setfancyf4(fancyf4) ; 
 
+
+  numeg = npops = nleft + nright;
+  ZALLOC (eglist, npops, char *);
+  ZALLOC(popsize, npops, int) ;  
+  copystrings (popllist, eglist, nleft);
+  copystrings (poprlist, eglist + nleft, nright);
+
+  ckdup (eglist, numeg);
+  for (k=0 ; k<numindivs; ++k) {
+   indx = indivmarkers[k] ;
+   t = indxstring(eglist, numeg, indx -> egroup) ;
+   indx -> gkode = t ; // correct when t < 0
+  }
+
+  gkignore(indivmarkers, numindivs) ;
+
   k = getgenos (genotypename, snpmarkers, indivmarkers,
 		numsnps, numindivs, nignore);
 
@@ -246,36 +279,53 @@ main (int argc, char **argv)
   }
  }
 
-  if (popleft == NULL) fatalx("no popleft\n") ;
-  if (popright == NULL) fatalx("no popright\n") ;
+ if (popleft == NULL) fatalx("no popleft\n") ;
+ if (popright == NULL) fatalx("no popright\n") ;
+
+ if (npops == 0) {
+  numeg = npops = nleft + nright;
+  ZALLOC (eglist, npops, char *);
+  ZALLOC(popsize, npops, int) ;  
+  copystrings (popllist, eglist, nleft);
+  copystrings (poprlist, eglist + nleft, nright);
+ }
 
 
   printnl ();
+
+  setpopsize(popsize, eglist, numeg, indivmarkers, numindivs) ;
   printf ("left pops:\n");
   for (k = 0; k < nleft; ++k) {
-    printf ("%s\n", popllist[k]);
+    printf ("%20s", popllist[k]);
+    t = popsize[k] ;
+    if (t>=0) printf (" %6d", t) ; 
+    printnl() ;
   }
 
   printnl ();
   printf ("right pops:\n");
   for (k = 0; k < nright; ++k) {
-    printf ("%s\n", poprlist[k]);
+    printf ("%20s", poprlist[k]);
+    t = popsize[nleft+k] ;
+    if (t>=0) printf (" %6d", t) ; 
+    printnl() ;
   }
 
   printnl ();
+
+  ivlmaxmin(popsize, numeg, NULL, &t) ; 
+  if (popsize[t] == 0) fatalx("pop %s has zero samples!\n", eglist[t]) ;
+
+
+  if (nleft > nright)
+    fatalx ("nleft not less than or equal to nright\n");
+
 
   for (k = 0; k < nright; ++k) {
     j = indxindex (popllist, nleft, poprlist[k]);
     if (j >= 0)
       fatalx ("population in both left and right: %s\n", poprlist[k]);
   }
-
-  numeg = npops = nleft + nright;
-  ZALLOC (eglist, npops, char *);
-  copystrings (popllist, eglist, nleft);
-  copystrings (poprlist, eglist + nleft, nright);
-
-  ckdup (eglist, numeg);
 
   ZALLOC (nsamppops, numeg, int);
 
@@ -337,7 +387,7 @@ main (int argc, char **argv)
     setplimit (indivmarkers, numindivs, eglist, numeg, popsizelimit);
   }
 
-  ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
+  ncols = loadsnpxx (xsnplist, snpmarkers, numsnps, xindlist, nrows);
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
   nblocks = setblocksz (&blstart, &blsize, xsnplist, ncols, blgsize, blockname) ;
@@ -413,6 +463,9 @@ main (int argc, char **argv)
   loadymv(ymean, yvar,  fstatsname, popllist, poprlist, nleft,  nright) ; 
 //  printf("loadymv exited\n") ;
  }
+
+ if (diagvarplus < 0) diagvarplus = yscale ;
+ addscaldiag(yvar, diagvarplus, nl*nr) ;    
 
  retkode = checkmv(ymean, yvar, nl, nr) ; 
  if (retkode == -1) printf("f4 stats all zero.  Rank 0!.  Aborting run\n") ;
@@ -519,10 +572,12 @@ readcommands (int argc, char **argv)
   getint (ph, "fancyf4:", &fancyf4);
   getint (ph, "keeptmp:", &keeptmp);
   getdbl (ph, "diagplus:", &yscale);
+  getdbl (ph, "diagvarplus:", &diagvarplus);
   getstring (ph, "blockname:", &blockname);
   getstring (ph, "fstatsname:", &fstatsname);
   getstring (ph, "fstatsoutname:", &fstatsoutname);
   getstring (ph, "fstatslog:", &fstatslog);
+  getstring (ph, "basepop:", &basepop);
   getstring (ph, "tmpdir:", &tmpdir);
 
   getint (ph, "numboot:", &numboot) ; 
@@ -774,7 +829,7 @@ int mkfstats(char *parname)
  char pops[256] ;  
  char tpar[256] ; 
  char fslog[256] ; 
- char **poplist ; 
+ char **poplist, **popx ; 
  int numeg ; 
 
  int pid ; 
@@ -785,10 +840,19 @@ int mkfstats(char *parname)
  FILE *fff ; 
 
  numeg = nleft + nright ; 
- ZALLOC(poplist, numeg, char *) ; 
+ ZALLOC(poplist, numeg+1, char *) ; 
+
+ popx = poplist ; 
+
+ if (basepop != NULL) {  
+   poplist[0] = strdup(basepop) ;
+   ++popx ; 
+   ++numeg ;
+ }
  
- copystrings(poprlist, poplist, nright) ;
- copystrings(popllist, poplist+nright, nleft) ;
+ copystrings(poprlist, popx, nright) ;
+ popx += nright ; 
+ copystrings(popllist, popx, nleft) ;
 
  pid = getpid() ; 
  strcpy(fsx, mytemp("fsx")) ; 
@@ -808,8 +872,12 @@ int mkfstats(char *parname)
  deletefstats = YES ;  
 
  openitntry(ppp, &fff, "w", 10) ; 
+ sprintf(sss, "cat %s", ppp) ;
+// system(sss) ;
  sprintf(sss, "fgrep -v fstatsoutname: %s | fgrep -v poplistname: > %s", parname, tpar) ; 
  system(sss) ; 
+// printf("zz2 %s\n", sss) ; 
+ fflush(stdout) ; 
  copyfs(tpar, fff) ; 
  fprintf(fff, "fstatsoutname: %s\n", fsx) ; 
  writestrings(pops, poplist, numeg) ;
@@ -818,24 +886,24 @@ int mkfstats(char *parname)
 // printf("cmd1: %s\n", sss) ; 
  fprintf(fff, "poplistname: %s\n", pops) ; 
  fclose(fff) ; 
-/**
- sprintf(sss, "cat %s\n", ppp) ; 
- system(sss) ; 
-*/
+
  sprintf(sss, "qpfstats -p %s > %s", ppp, fslog) ; 
  retkode =  system(sss) ; 
  trap = openit_trap(fsx, &fff, "r") ;
  fclose(fff) ; 
  if (trap == NO) retkode = -88 ;
+//  printf("zz: %d\n", trap) ; 
+
  
- // printf("exiting mkfstats\n") ; 
+//  printf("exiting mkfstats\n") ; 
+ fflush(stdout) ;
  if ((fstatsoutname != NULL) && (retkode >= 0)) { 
   sprintf(sss, "cp %s %s", fsx, fstatsoutname) ; 
   system(sss) ;
   printf("fstats file: %s made\n", fstatsoutname) ;
  } 
  if (retkode < 0) return -1 ;
- freeup(poplist, numeg) ;
+ freeup(poplist, nleft + nright + 1) ;
 
  if (keeptmp == YES) return 1  ; 
 
@@ -845,5 +913,90 @@ int mkfstats(char *parname)
 
  if (fstatslog == NULL) remove(fslog) ;
  return 1 ; 
+
+}
+double f4mean(int a, int b, int nl, int nr, double *mean, double *var, int *ktable)  
+
+{
+
+  int k ; 
+  
+   k = a*nr + b ;
+   if (ktable != NULL) k = ktable[a*nr+b] ; 
+
+   return mean[k] ;
+
+
+}
+
+double f4var(int a1, int a2, int b1, int b2, int nl, int nr, double *mean, double *var, int *ktable) 
+{
+
+ int k1, k2, dim = nl*nr ;
+
+ k1 = a1*nr + b1 ;
+ if (ktable != NULL) k1 = ktable[a1*nr+b1] ; 
+ k2 = a2*nr + b2 ;
+ if (ktable != NULL) k2 = ktable[a2*nr+b2] ; 
+ return var[k1*dim + k2] ;
+
+}
+
+double worstb(double *bb, double *aa, int nl, int nr, double *mean, double *var, int *ktable)  
+{
+
+  int a1, a2, b1, b2 ; 
+  double zl, zq, y, zans, ztop, zbot ;
+  double *ll, *qq, *w1 ;
+  int ret ; 
+
+  ZALLOC(ll, nr, double) ;
+  ZALLOC(qq, nr*nr, double) ;
+  ZALLOC(w1, nr, double) ;
+
+  for (b1=0; b1<nr; ++b1) { 
+   zl = 0; 
+   for (a1=0; a1<nl; ++a1) { 
+     zl += aa[a1]*f4mean(a1, b1, nl, nr, mean, var, ktable) ; 
+   }
+   ll[b1] = zl ;  
+   for (b2=0; b2<nr; ++b2) { 
+    zq  = 0 ;
+    for (a1=0; a1<nl; ++a1) { 
+     for (a2=0; a2<nl; ++a2) { 
+      zq += aa[a1]*aa[a2]*f4var(a1, a2, b1, b2, nl, nr, mean, var, ktable) ; 
+    }}
+    qq[b1*nr+b2] = zq ; 
+  }} 
+// defensive programming  
+  y = trace(qq, nr) ; 
+  vclear(w1, y*1.0e-20, nr) ; 
+  adddiag(qq, w1, nr) ; 
+
+// now solve equation 
+  ret = solvit(qq, ll, nr, bb) ; 
+  y = asum(bb, nr) ; 
+  y = unclip(y, -1.0e-6, 1.0e-6) ; 
+  vst(bb, bb, 1.0/y, nr) ; 
+  ztop = vdot(bb, ll, nr) ; 
+  zbot = scx(qq, NULL, bb, nr) ; 
+  zans = ztop/sqrt(zbot) ;
+
+/** 
+  printf("zzworst\n") ;
+  vst(qq, qq,  1000*1000, nr*nr) ; 
+  vst(ll, ll,  1000*1000, nr) ; 
+  printmatw(qq, nr, nr, nr) ; 
+  printnl() ; 
+  printmatw(ll, 1, nr, nr) ; 
+  printnl() ; 
+
+*/
+
+  free(ll) ; 
+  free(qq) ; 
+  free(w1) ;
+
+  return zans ; 
 
 }

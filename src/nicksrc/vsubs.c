@@ -242,6 +242,23 @@ lvzero (long *a, long n)
   lvclear (a, 0, n);
 }
 
+double 
+unclip(double x, double lo, double hi) 
+{
+// if (x in [lo. hi] return nearest boundary point  
+ double xl, xh ; 
+
+ xl = x - lo ; 
+ if (xl <= 0) return x ;
+
+ xh = hi - x ; 
+ if (xh <= 0) return x ;
+
+ if (xl <= xh) return lo ; 
+ return hi ;
+
+}
+
 double
 clip (double x, double lo, double hi)
 
@@ -369,6 +386,37 @@ maxivec (int *a, int n)
 }
 
 void
+lvlmaxmin (long *a, int n, int *pmax, int *pmin)
+
+/** 
+ return location 
+*/
+{
+
+  int i;
+  long tmax, tmin;
+  int lmax, lmin;
+
+  tmax = tmin = a[0];
+  lmax = lmin = 0;
+  for (i = 1; i < n; i++) {
+    if (a[i] > tmax) {
+      tmax = a[i];
+      lmax = i;
+    }
+    if (a[i] < tmin) {
+      tmin = a[i];
+      lmin = i;
+    }
+  }
+  if (pmax != NULL)
+    *pmax = lmax;
+  if (pmin != NULL)
+    *pmin = lmin;
+}
+
+
+void
 ivlmaxmin (int *a, int n, int *pmax, int *pmin)
 
 /** 
@@ -479,7 +527,7 @@ variance (double *a, int n)
   y1 = asum (a, n) / (double) n;
   vsp (aa, a, -y1, n);
 
-  y2 = asum (aa, n) / (double) n;
+  y2 = asum2 (aa, n) / (double) n;
 
   free (aa);
   return y2;
@@ -1134,6 +1182,11 @@ printmatwlxfile (double *a, int m, int n, int w, FILE *fff)
   }
 }
 
+void
+printmatlxfile (double *a, int m, int n,  FILE *fff)
+{
+ printmatwlxfile (a,  m,  n, 5, fff) ;
+}
 
 void
 printmatwlfile (double *a, int m, int n, int w, FILE *fff)
@@ -1363,6 +1416,18 @@ printimat2D (int **a, int m, int n)
     printimat (a[k], 1, n);
   }
 }
+
+void
+printimatl2D (int **a, int m, int n)
+{
+
+  int k;
+
+  for (k = 0; k < m; ++k) {
+    printimatl (a[k], 1, n);
+  }
+}
+
 
 
 void
@@ -2888,6 +2953,27 @@ long lmod (long x, long base)
 }
 
 
+
+void
+printlmatx (long *a, int m, int n)
+
+/**
+ print a matrix n wide m rows no final nl 
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      printf ("%10ld ", a[i * n + j]);
+      jmod = (j + 1) % 5;
+      if ((jmod == 0) && (j < (n - 1))) {
+        printf ("  ...\n");
+      }
+    }
+  }
+}
+
+
 void
 printlmat (long *a, int m, int n)
 
@@ -2907,6 +2993,27 @@ printlmat (long *a, int m, int n)
     printf ("\n");
   }
 }
+
+void
+printlmatwfile (long *a, int m, int n, int w, FILE * fff)
+
+/** 
+ print a matrix n wide m rows  w to a row
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      fprintf (fff, "%10ld ", a[i * n + j]);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        fprintf (fff, "  ...\n");
+      }
+    }
+    fprintf (fff, "\n");
+  }
+}
+
 
 
 
@@ -3082,7 +3189,7 @@ void vin(double *a, double *b, int n)
 {
   double y ; 
   y = asum2(b, n) ; 
-  if (y==0.0) fatalx("(inv) zero vectro\n") ;
+  if (y==0.0) fatalx("(vin) zero vector\n") ;
   vst(a, b, 1.0/y, n) ;
 }
 
@@ -3146,3 +3253,176 @@ findflastgt(double *a, int n, double val)
  return last ;
 }
 
+  
+int nips2bytes(int nips)   
+{
+/** 
+ byte   8 
+ nibble 4
+ nip    2
+ bit    1 
+*/
+     
+
+ double y ; 
+ y = (double) (nips * 2) / (8 * (double) sizeof (char));
+
+ return nnint (ceil (y));
+
+}
+
+void splitlong(unsigned long x, int *pa, int *pb) 
+// split into high and low 32 bits
+{
+
+  long mask = 0XFFFFFFFF ; 
+  unsigned long la, lb, lx ; 
+  unsigned int u, v ; 
+
+  *pa = u = x >> 32 ; 
+  *pb = v = x & mask ;  
+
+  return ; 
+
+  la = u  ; 
+  lb = v  ;
+
+  lx = (la << 32) | lb ; 
+  if (lx != x) { 
+   printf("%016lX  %016lX %08lX %08lX\n", x, lx, la, lb) ;
+   fatalx("bad split\n") ;
+  }
+
+
+}
+
+
+int visfinite(double *a, int n)  
+// NO if any of a not finite
+{ 
+ int k, ret ; 
+
+ for (k=0; k<n; ++k) { 
+  if (!isfinite(a[k])) return NO ;
+ }
+
+ return YES ;
+
+}
+
+void squish(double *xmat, double *mat, int nrow, int oldc, int newc)
+// in place legal !
+// from regsubs.c  
+{
+  int i ;
+  double *ww ;
+
+  ZALLOC(ww, nrow*newc, double) ;
+
+  for (i=0; i<nrow; i++) {
+   copyarr(mat+i*oldc, ww+i*newc, newc) ;
+  }
+
+  copyarr(ww, xmat, nrow*newc) ;
+  free(ww) ;
+
+}
+
+
+int lcshift (int x, int shft)
+{
+  int a, b;
+
+  if (shft == 0)
+    return x;
+  a = x << shft;
+  b = x >> (32 - shft);
+
+  return a ^ b;
+
+}
+
+int rcshift (int x, int shft)
+{
+
+  return lcshift (x, 32 - shft) ; 
+
+}
+
+
+int putbit(int *pw, int bitnum, int v) 
+{
+
+    int w, x, msk ;
+
+    w = *pw ;
+    x = rcshift(w, 31 - bitnum) ; 
+    msk = 0XFFFF ^ 1  ; 
+    x = x & msk ; 
+    x |= v ; 
+    *pw = w = lcshift(x, 31 - bitnum) ;
+    return w ;
+
+}
+int getbit(int w, int bitnum) 
+{
+    int x ; 
+
+    x = rcshift(w, 31 - bitnum) ; 
+    x = x & 1 ; 
+    return x ; 
+
+}
+
+
+void
+printmatws (double *a, int m, int n, int w, double scale)
+
+/** 
+ print a matrix n wide m rows  w to a row and scale
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      printf ("%9.3f ", a[i*n+j] * scale);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        printf ("  ...\n");
+      }
+    }
+    printf ("\n");
+  }
+}
+
+void
+printmats (double *a, int m, int n,  double scale)
+{
+ printmatws(a, m, n, 5, scale) ;
+
+}
+  
+void addsdiag(double *mat, double scal, int n) 
+{
+ int i,k ;
+
+  for (i=0; i<n; ++i) { 
+   k = i*n + i ; 
+   mat[k] += scal ; 
+  }
+
+}
+
+int addscaldiag(double *mat, double scal, int n) 
+{
+ double y, ytr ;  
+ int i, k ; 
+
+  ytr = trace(mat, n) ; 
+  if (ytr<=0.0) return -1 ;
+  y = scal * ytr ;
+  addsdiag(mat, y, n) ;
+
+  return 1 ;
+}
+ 

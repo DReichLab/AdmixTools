@@ -21,11 +21,13 @@ char *trashdir = "/var/tmp" ;
 int ztrans1mode = YES ;
 int qtmode = NO ;
 
-#define WVERSION 1216
+#define WVERSION 1500
 #define MAXPOP 100
 // #define MAXSTR 256 
 //  haploid implemented  
 //  actual counts written (last column) 
+   
+
 
 static int debug = 0 ;
 int ranswitch = YES ;  // NO use full hypergeom, not random sample
@@ -84,6 +86,8 @@ char *poplistname = NULL ;
 char *haploidstring = NULL ; 
 char **haploidpops ; 
 int  numhaploidpops = 0 ; 
+
+int haploidall = NO ;
 
 int **dekodetable ;      
 
@@ -179,6 +183,8 @@ int main  (int argc , char **argv)
    printf("haploid pops:\n") ; 
    printstrings(haploidpops, numhaploidpops) ; 
   }
+ 
+
 
   numsnps = 
     getsnps(snpname, &snpmarkers, 0,  badsnpname, &nignore, numrisks) ;
@@ -231,6 +237,14 @@ int main  (int argc , char **argv)
 
   ZALLOC(popsize, npops, int) ;
 
+  if (haploidall) { 
+   haploidpops = popnames ; 
+   numhaploidpops = npops ;
+  }
+  
+
+  
+
   for (k=0; k<npops; ++k) { 
     popsize[k] = t = setstatus(indivmarkers, numindivs, popnames[k]) ; 
     printf("popsize: %20s %4d\n", popnames[k], t) ; 
@@ -256,10 +270,12 @@ int main  (int argc , char **argv)
   printf("jackknife block size: %9.3f\n", blgsize) ;
   nblocks = numblocks(snpmarkers, numsnps, blgsize) ;
   printf("numsnps: %d\n", numsnps) ;
-  nblocks = MIN(nblocks, 10000) ;
+//  nblocks = MIN(nblocks, 10000) ;
   ZALLOC(blstart, nblocks, int) ;
   ZALLOC(blsize, nblocks, int) ;
-//  printf("number of blocks for block jackknife: %d\n", nblocks) ;
+  printf("number of blocks for block jackknife: %d\n", nblocks) ;
+
+  fflush(stdout) ;  
 
   ZALLOC(xindex, numindivs, int) ;
   ZALLOC(xindlist, numindivs, Indiv *) ;
@@ -269,6 +285,7 @@ int main  (int argc , char **argv)
   ncols = loadsnpx(xsnplist, snpmarkers, numsnps, indivmarkers) ;
 
   printf("nrows: %d ncols: %d  blocks: %d\n", nrows, ncols, nblocks) ;
+  fflush(stdout) ; 
 
   setblocks(blstart, blsize, &xnblocks, xsnplist, ncols, blgsize)  ;
 
@@ -625,8 +642,8 @@ void countp(int ***counts, char **popnames, int numeg, SNP **xsnplist, Indiv **x
    if (ishaploid[a] == 0) continue ; 
    printf("setting counts for %s haploid\n", popnames[a]) ;  
    for (j=0; j<ncols; ++j) { 
-    counts[j][a][0] /=2 ;
-    counts[j][a][1] /=2 ;
+    counts[j][a][0] /= 2 ;
+    counts[j][a][1] /= 2 ;
    }
   }
 
@@ -712,6 +729,7 @@ void readcommands(int argc, char **argv)
    getint(ph, "abxmode:", &abxmode) ;  // may take more than 2 values 
    getdbl(ph, "blgsize:", &blgsize) ;
    getlongstring(ph, "haploidpops:", &haploidstring) ;
+   getint(ph, "haploidall:", &haploidall) ;
    getint(ph, "ranswitch:", &ranswitch) ;
    getint(ph, "flipmode:", &flipmode) ;
    getint(ph, "usedictnames:", &usedictnames) ; // on output Dictionary shorthand used 

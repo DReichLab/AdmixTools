@@ -108,7 +108,7 @@ typedef struct {
 
 
 
-#define WVERSION   "930"
+#define WVERSION   "950"
 
 // timescore, timegmul added  but not tested
 // minsig addes
@@ -1642,7 +1642,7 @@ void alloc_cl()
   LOGENTRY *logpt ; 
   
   ++largeliter ; 
-  if (verbose) printf("largeliter: %d  xcload xchit: %d %d %x score: %12.6f\n", largeliter, xcload, xchit, topheap(), lastkimscore) ;
+  if (verbose) printf("largeliter: %d  xcload xchit: %d %d %pscore: %12.6f\n", largeliter, xcload, xchit, topheap(), lastkimscore) ;
   fflush(stdout) ;
 
   xcload = xchit = 0 ;

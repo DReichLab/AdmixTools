@@ -26,13 +26,17 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "540"
+#define WVERSION   "1002"
+
 
 // useweight added  
 // allsnps added
 // doscale NO added
 // small bug (error check in dofstats fixed 
-// big bug (allsnps YES inbreed NO fixed.  allsnps YWS gives default inbreed YES
+// big bug (allsnps YES inbreed NO fixed.  allsnps YES gives default inbreed YES
+// nochrom: addes
+// inbreedlist added
+// bug.  inbreedlist length limited 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -48,6 +52,9 @@ int inbreed = -99;
 int allsnpsmode = -99 ;
 char *f3name = NULL;
 char *fstatsoutname = NULL;
+char **inbreedlist = NULL ;
+char *inbreedlistname = NULL ;
+int numinbreed = 0 ;
 
 Indiv **indivmarkers;
 SNP **snpmarkers;
@@ -60,12 +67,14 @@ int nostatslim = 10;
 int znval = -1;
 int popsizelimit = -1;
 int gfromp = NO;		// genetic distance from physical 
+int sizeweight = NO ;
 
 int forcezmode = NO;
 double blgsize = 0.05;		// block size in Morgans */ double *chitot ;
 double diag = 0.0;
 int fstdmode = NO;		// YES denominators done as in qp3test
 int xchrom = -1;
+int zchrom = -1;
 int *xpopsize;
 
 int isinit = NO;
@@ -112,6 +121,7 @@ char *weightname = NULL;
 FILE *ofile;
 char **eglist ;
 int *hashets ; 
+int *inbarr ; 
 char **egshort;
 char **enames;
 double zthresh = 3.0;
@@ -165,6 +175,8 @@ void dumpf3 (char *dumpf3name, double **btop, double **bbot, int nblock);
 int usage (char *prog, int exval);
 void load4(int *x, int a, int b, int c, int d)  ;
 void loadco(double *co, int *fs, int *fsb, int np) ;
+void  setinbreedlist(char **eglist, int numeg, char **inbreedlist, int numinbreed) ;
+void setinb(int *inbarr) ;  
 
 int
 main (int argc, char **argv)
@@ -229,7 +241,7 @@ main (int argc, char **argv)
   printf ("## qpfstats version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
-  if (xchrom == 23)
+  if (xchrom == (numchrom+1))
     noxdata = NO;
 
 /**
@@ -244,10 +256,19 @@ rintf ("seed: %d\n", seed);
     printf("allsnps set NO.  It is recommended that allsnps be set explicitly\n") ;
   }
 
+  if (inbreedlistname != NULL) {
+    if (inbreed == YES) printf("*** warning *** inbreedlistname => default is inbreed NO\n") ;
+    if (inbreed == -99) printf("*** warning *** inbreedlistname => default is inbreed NO\n") ;
+    inbreed = NO ; 
+  } 
+
+  setsizeweight(sizeweight) ; 
+
   if (inbreed == -99) { 
    inbreed = allsnpsmode ; 
    printf(" *** recommended that inbreed be explicitly set ***\n") ;
   }
+
 
   setinbreed(inbreed) ;  // prints setting 
   setallsnpsmode (allsnpsmode);
@@ -256,6 +277,11 @@ rintf ("seed: %d\n", seed);
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
 
   numindivs = getindivs (indivname, &indivmarkers);
+
+   setgk(indivmarkers, numindivs, poplistname, NULL, NULL) ; 
+
+   gkignore(indivmarkers, numindivs) ;
+
   k = getgenos (genotypename, snpmarkers, indivmarkers,
 		numsnps, numindivs, nignore);
 
@@ -270,6 +296,23 @@ rintf ("seed: %d\n", seed);
     ZALLOC (eglist, MAXPOPS, char *);
     numeg = makeeglist (eglist, MAXPOPS, indivmarkers, numindivs);
   }
+
+  ZALLOC(inbarr, numeg, int) ;
+
+
+  if (inbreedlistname == NULL) { 
+    setinbreed(inbreed) ;  
+    setinbreedlist(eglist, numeg, NULL, numinbreed) ;
+  } 
+    
+  else {                  
+   t = numlines(inbreedlistname) ;
+   ZALLOC(inbreedlist, t, char *) ; 
+   numinbreed = loadlist(inbreedlist, inbreedlistname) ;
+   setinbreedlist(eglist, numeg, inbreedlist, numinbreed) ;
+   printf("inbreedlist set!\n") ; 
+  }
+  setinb(inbarr) ; 
 
   ZALLOC(hashets, numeg, int) ;  
   ivclear(hashets, NO, numeg) ;  
@@ -359,7 +402,6 @@ rintf ("seed: %d\n", seed);
   ZALLOC (egshort, numeg, char *);
   for (i = 0; i < numeg; i++) {
     egshort[i] = strdup (getshort (eglist[i], 5));
-    printf ("%3d %s\n", i, eglist[i]);
   }
 
   outnum = 0;
@@ -374,18 +416,25 @@ rintf ("seed: %d\n", seed);
   printf ("outpop: %s \n", outpop) ; 
 
 
+// copied from qp3Pop.c
+  n1 = 0 ; 
   for (i = 0; i < numsnps; i++) {
     cupt = snpmarkers[i];
     chrom = cupt->chrom;
     if ((xchrom > 0) && (chrom != xchrom))
       cupt->ignore = YES;
-    if ((noxdata) && (chrom == 23))
+    if ((noxdata) && (chrom == (numchrom + 1)))
       cupt->ignore = YES;
     if (chrom == 0)
       cupt->ignore = YES;
-    if (chrom > 23)
+    if (chrom > (numchrom + 1))
       cupt->ignore = YES;
+    if (chrom == zchrom)
+      cupt->ignore = YES;
+      if (cupt -> ignore == NO) ++n1 ;
   }
+  printf("valid snps: %d\n", n1) ; 
+  if (n1==0) fatalx("no valid snps!\n") ;
 
   ZALLOC (xindex, numindivs, int);
   ZALLOC (xindlist, numindivs, Indiv *);
@@ -406,12 +455,23 @@ rintf ("seed: %d\n", seed);
     k = xtypes[i];
     ++xpopsize[k];
   }
-
   for (i = 0; i < numeg; i++) {
     if (xpopsize[i] == 0)
-      fatalx ("(stats) zero popsize\n");
+      fatalx ("(stats) zero popsize :: %s\n", eglist[i]);
   }
 
+  printf ("%3s %20s : %4s ", "", "pop", "size") ;
+  printf(" %8s", "INBREED") ;
+  printnl() ;
+  for (i = 0; i < numeg; i++) {
+    printf ("%3d %20s : %4d ", i, eglist[i], xpopsize[i]);
+    if (inbarr[i]) printf(" %8s", "YES") ;
+    else printf(" %4s", "NO") ;
+    printnl() ;
+  }
+
+  ivlmaxmin(xpopsize, numeg, NULL, &t) ; 
+  if (xpopsize[t] == 0) fatalx("pop %s has zero samples!\n", eglist[t]) ;
 
   printf ("before setwt numsnps: %d\n", numsnps);
   setwt (snpmarkers, numsnps, indivmarkers, nrows, xindex, xtypes, outpop,
@@ -455,10 +515,10 @@ rintf ("seed: %d\n", seed);
   for (k=0; k<numeg; ++k) { 
    t = popsizes[k] ; 
    if (t==0) fatalx("pop: %s has sample size 0\n", eglist[k]) ; 
-   if (inbreed && (t==1)) fatalx("pop: %s has sample size 1 and inbreed set\n", eglist[k]) ; 
+   if (inbarr[k] && (t==1)) fatalx("pop: %s has sample size 1 and inbreed set\n", eglist[k]) ; 
   }
 
-  ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
+  ncols = loadsnpxx (xsnplist, snpmarkers, numsnps, xindlist, nrows);
 
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
@@ -477,8 +537,20 @@ rintf ("seed: %d\n", seed);
   ZALLOC(hrate, numeg, double) ; 
   ZALLOC(hvalid, numeg, double) ; 
  
-   calchet (hrate, hvalid, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
    counthets (hashets, NULL, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
+
+  for (i=0; i<nrows; ++i) {  
+   if (xchrom < numchrom+1) break;  
+    k = xtypes[i];
+    if (hashets[k]) continue ;
+    indx = xindlist[i];
+    if (indx -> gender == 'M') { 
+     printf("%10s %20s  gender set to 'Z' as inbreed fake on X chromosome\n", indx -> ID, indx -> egroup) ; 
+     indx -> gender = 'Z' ;
+    } 
+  }
+
+   calchet (hrate, hvalid, xsnplist, xindex, xtypes, nrows, ncols, numeg) ; 
 //   printf("zzhashets: ") ; printimat(hashets, 1, numeg) ; 
 
    for (k=0; k<numeg; ++k) { 
@@ -486,14 +558,17 @@ rintf ("seed: %d\n", seed);
     printf(" hetrate: %9.3f", hrate[k]) ; 
     printf(" valid snps: %9.0f", hvalid[k]) ; 
     printf(" samples: %4d", popsizes[k]) ; 
+    t = inbarr[k] ; 
+    if (t) printf(" inbreed ") ; 
     if (hashets[k] > 0) hashets[k] = YES ; 
     else hashets[k] = NO ;
-    if ((inbreed == NO) && (hashets[k] == NO))  printf("  variance will be adjusted") ;
+    if ((t == NO) && (hashets[k] == NO))  printf("  variance will be adjusted") ;
     if (hvalid[k] < .01) printf(" not many SNPS *** ") ;
     printnl() ; 
    }
 
- if ((inbreed == 0) && (hashets[0] == NO)) fatalx("inbreed:NO means base population must have hets!\n") ;
+
+ if ((inbarr[0] == 0) && (hashets[0] == NO)) fatalx("inbreed:NO means base population must have hets!\n") ;
 
 
   scale =
@@ -558,7 +633,7 @@ rintf ("seed: %d\n", seed);
      for (i=0; i<nbasis; ++i) { 
       a = basis[i][0] ; 
       b = basis[i][1] ; 
-      if ((a==b) && (inbreed == NO) && (hashets[a] == NO)) {
+      if ((a==b) && (inbarr[a] == NO) && (hashets[a] == NO)) {
        fbmean[i] =  0.0 ;
        fbcovar[i*nbasis+i] += 100.0  ;
       } 
@@ -645,6 +720,25 @@ estff3 (double *fv, double *v, int numv, int *elist, int n)
   }
 }
 
+
+void setinb(int *inbarr) 
+{
+ int t, j ;
+ char *sx ; 
+
+ if (inbreedlist == NULL) { 
+   ivclear(inbarr, inbreed, numeg) ; 
+   return ;
+ }
+   ivclear(inbarr, NO, numeg) ; 
+    for (j=-0; j<numeg; ++j)  {  
+     sx = eglist[j] ; 
+     if (sx == NULL) continue ;
+     t = indxstring(inbreedlist, numinbreed, sx) ; 
+     if (t>=0) inbarr[j] = YES ;
+    }
+  return ; 
+}
 
 void
 balw (double **ww, int **vv, int n, int *nw)
@@ -913,7 +1007,9 @@ readcommands (int argc, char **argv)
   getstring (ph, "output:", &outputname);
   getstring (ph, "badsnpname:", &badsnpname);
   getstring (ph, "poplistname:", &poplistname);
+  getstring (ph, "poplist:", &poplistname);
   getstring (ph, "fstatsoutname:", &fstatsoutname);
+  getstring (ph, "inbreedlistname:", &inbreedlistname);
 
   getstring (ph, "f3log:", &f3name);
   getstring (ph, "root:", &rootname);
@@ -932,7 +1028,9 @@ readcommands (int argc, char **argv)
   getint (ph, "xdata:", &t);
   if (t >= 0)
     noxdata = 1 - t;
+   getint (ph, "numchrom:", &numchrom);
   getint (ph, "chrom:", &xchrom);
+  getint (ph, "nochrom:", &zchrom);
   getint (ph, "doanalysis:", &doanalysis);
   getint (ph, "quartet:", &quartet);
 
@@ -944,6 +1042,7 @@ readcommands (int argc, char **argv)
   getint (ph, "useweights:", &useweights);
   getint (ph, "scale:", &doscale);
   getint (ph, "doscale:", &doscale);
+  getint (ph, "sizeweight:", &sizeweight);
   
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -1053,13 +1152,6 @@ doff3 (double *ff3, double *ff3var, SNP ** xsnplist, int *xindex, int *xtypes,
       ytop = dump3 (estmat, a, b, c, numeg);
       if (fstdmode == NO) {
 
-
-/**
-        y1 = wt*ytop ; 
-        if ((u==0) & (y1>1.01)) {  
-         printf("zzu: %6d %9.3f %9.3f %9.3f\n", col, y1, wt, ytop) ;
-        }
-*/
 
 	top[u] += wt * ytop;
 	bot[u] += 1.0;

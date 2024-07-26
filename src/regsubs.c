@@ -51,7 +51,12 @@ regressit (double *ans, double *eq, double *rhs, int m, int n)
   ret = solvit (co, rr, n, ans);
   if (ret < 0) {
     printf("*** warning bad regress\n") ;
-    return -1000.0;
+    printmatwl(eq, m, n, n) ;
+    printnl() ; 
+    printmatwl(co, n, n, n) ;
+    printnl() ;
+    printmatwl(rr, n, n, n) ;
+    return -1.0e20 ;
   }
   for (i = 0; i < m; i++) {
     ww[i] = rhs[i] - vdot (ans, eq + i * n, n);
@@ -426,9 +431,11 @@ rcsquish (double *xmat, double *mat, int *cols, int oldn, int newn)
 
 }
 
+/**
+// Now in vsubs
 void
 squish (double *xmat, double *mat, int nrow, int oldc, int newc)
-// in place legal !
+// in place legal !!
 {
   int i;
   double *ww;
@@ -443,6 +450,7 @@ squish (double *xmat, double *mat, int nrow, int oldc, int newc)
   free (ww);
 
 }
+*/
 
 void
 squishx (double *xmat, double *mat, int nrow, int oldc, int *cols, int newc)
@@ -652,5 +660,37 @@ void hgrad(double ff(double *xx, int nn), double *x, int n, double step, double 
    free(rhs) ; 
    free(cc) ; 
    free(xx) ; 
+
+}
+
+void xline(double *line, double *coeff, int m, int n) 
+{
+// coeff is ideally rank n-1;  line is linear relation among columns
+ double *bigco, *rhs, y, z, *aa ;
+ double ww[100] ; 
+ 
+ if (m<(n-1)) fatalx("(xline) m is too small: %d %d\n", m, n) ;
+
+ ZALLOC(bigco, (m+1)*n, double) ; 
+ ZALLOC(rhs, m+1, double) ; 
+ vmaxmin(coeff, m*n, &y, NULL) ;
+ copyarr(coeff, bigco, m*n) ; 
+ aa = bigco + n*n ; 
+ vclear(bigco+m*n, 1, n) ; 
+ rhs[m] = 1 ;  
+ z = regressit(line, bigco, rhs, m+1, n) ;
+ if (z < -1000*1000) vclear(line, 1, n) ;
+ y = asum(line, n) ; 
+ if (y==0.0) y = 1.0e20 ;
+ vst(line, line, 1.0/y, n) ;
+
+ printmat(bigco, m+1, n) ;
+ printmat(line, 1, n) ;
+ mulmat(ww, bigco, line, m+1, n, 1) ; 
+ printf("wwdebug: ") ; printmat(ww, 1, m+1) ;  // ideally 0 0 0 1
+ printf("wwsum: %12.5f\n", asum(line, n)) ;
+
+ free(bigco) ; 
+ free(rhs) ;
 
 }

@@ -22,6 +22,7 @@ extern "C" {
 
 int loadindx(Indiv **xindlist, int *xindex, Indiv **indivmarkers, int numindivs) ;
 int loadsnpx(SNP **xsnplist, SNP **snpmarkers, int numsnps, Indiv **indivmarkers) ;
+int loadsnpxx(SNP **xsnplist, SNP **snpmarkers, int numsnps, Indiv **indivmarkers, int numind) ;
 void loadxdataind(double *xrow, SNP **snplist, int ind,  int ncols) ;           
 void fixxrow(double *xrow, double *xmean, double *xfancy, int len)  ;
 void dofancy(double *cc, int n, double *fancy) ;
@@ -41,6 +42,7 @@ void setoutformat(int outformat) ;
 void putewts(double *ewts)  ;
 void getewts(double *ewts)  ;
 void getezero(int *zpat)  ;
+void setbasep(char *bbb) ;  
 void addnode (char *nodename, char *edgename, double breakval) ; 
 int calcscript(char **string) ;
 void readadmix(char *gname) ;
@@ -54,6 +56,9 @@ void setgtime(double *time) ;
 void setallsnpsmode(int mode)  ;
 void loadaa(SNP *cupt, int *xindex, int *xtypes, int nrows, int numeg) ;
 void destroyaa() ;
+void printaa(char **eglist, int numeg) ;
+void  setinbreedlist(char **eglist, int numeg, char **inbreedlist, int numinbreedlist) ;
+void setaainbreed(int *inbarri, int numeg)  ;
 
 void setmiss(SNP **snpm, int numsnps)  ;
 
@@ -280,6 +285,7 @@ void setadmfix(char *fixname) ;
 
 void setfancyf4 (int mode) ; 
 void setibdmode (int mode) ; 
+void setsizeweight (int mode) ; 
 void setdate(double basedate, double gentime) ;
 void getpud(double *psize, double *upd, double *downd, char *pop) ;
 
@@ -300,6 +306,10 @@ double gethtest(int popnum) ;
 double gethest(int popnum) ;
 double getfreq(int popnum) ;
 double getaax(int popnum) ;
+double getsampnum(int popnum) ;
+double sw2(int a, int b) ;  
+double sw(int a, int b, int c, int d) ;  
+double swx(int *vv) ; 
 
 int dofstats (double *fbmean, double *fbcovar, double **fcoeffs, int nbasis, 
        double *fsmean, double *fssig, int **fsindex, int nfstats, 
@@ -319,6 +329,7 @@ int fstats2popl(char *fstatsname, char **poplist)  ;
 void  loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg) ; 
 int mkcoeffs (double *yco, int **dd, int numpops, int numd)  ;
 void vv2ww (double *ww, double *wwvar, double *vest, double *vvar, int numpops, int **dd, int numd) ;
+double fstatx(int *fsx) ;
 
 void dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;
 void dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;

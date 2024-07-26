@@ -34,3 +34,4 @@ calcres(double *res, double *ans, double *eq, double *rhs,
 #endif
 double qwmax (double *co, double *ans, int n) ;
 void hgrad(double ff(double *xx, int nn), double *x, int n, double step, double *fval, double *grad, double *hess)  ;
+void xline(double *line, double *coeff, int m, int n) ;

@@ -68,6 +68,7 @@ void genbin(double *a, int n, double p) ;
 void genlogbin(double *a, int n, double p) ;
 int ifirstgt(int val, int *tab, int n)  ;
 int firstgt(double val, double *tab, int n)  ;
+int lastgt(double val, double *tab, int n)  ; // tab in descending order 
 
 void cinterp(double val, double x0, double x1, 
   double f0, double f0p, double f1, double f1p, double *fv, double *fvp)  ;
@@ -138,4 +139,8 @@ double truncexpmean(double m, double thresh, int isupper) ;
 void jitter(double *xout, double *xin, int n)   ; 
 void mannwhit(double *a, int na, double *b, int nb, double *pu, double *pv, double *ppv) ;
 void calcms(double *a, int n, double *pmean, double *psdev)  ;
+double poissmeanx (double mean) ; 
+void balancemat(double *gam, double *pp, int n)  ;
+double foldfun(double lo, double hi, double val) ;
+double ess(double *wt, int n)  ;
 

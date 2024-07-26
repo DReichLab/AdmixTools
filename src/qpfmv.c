@@ -17,10 +17,11 @@
 #include "eigsubs.h"
 #include "globals.h"
 
-#define WVERSION   "160"
+#define WVERSION   "180"
 
 // printsd added 
 // clinetest added (as in qpdslow) Makes most sense for 2 f4 stats
+// globaltest added  
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -31,6 +32,8 @@ char *trashdir = "/var/tmp";
 int details = NO;
 int hires = NO;			/* %10.4f */
 int qtmode = NO;
+int globaltest = YES ;  
+int globalforce = NO ;  
 
 int printsd = NO ; 
 int clinetest = NO ; 
@@ -117,7 +120,7 @@ main (int argc, char **argv)
 
   char sss[MAXSTR];
   int i, j, k, k1, k2, k3, k4, kk ;
-  double y1, y2, y, sig, tail, yy1, yy2, ychi;
+  double y1, y2, y, sig, tail, yy1, yy2, ychi, ychi0;
   double *lambda, *evecs ; 
 
   int t, num, n, n1, n2, n3, n4;
@@ -154,6 +157,8 @@ main (int argc, char **argv)
   char ***plists;
   int nplist ; 
   double *ww ; 
+  double zmax = 0.0 ;
+  double ymem ; 
 
 
   readcommands (argc, argv);
@@ -161,10 +166,17 @@ main (int argc, char **argv)
   if (parname == NULL)
     return 0;
 
+
+  cputime(0) ;
+  calcmem(0) ;
+  
+
   ZALLOC(eglist, MAXPOPS, char *) ; 
   numeg = np = fstats2popl(fstatsname, eglist) ; 
-  if (numeg < 0) fatalx("no poplist!\n") ;
+  if (numeg < 0) fatalx("no fstats file!\n") ;
   t = np*np ; 
+ 
+  if (globalforce) printf("globalforce set\n") ;
 
   ZALLOC(ff3, np*np, double) ; 
   ZALLOC(ff3var, np*np*np*np, double) ; 
@@ -173,7 +185,7 @@ main (int argc, char **argv)
   printf("numeg: %d\n", numeg) ; 
   if (popfilename != NULL) nqlist = numlines (popfilename);
   if (nqlist==0) { 
-   printf("no fstats tp compute!\n") ; 
+   printf("no fstats to compute!\n") ; 
    return 0 ; 
   }
     ZALLOC (qlist, 4, char **);
@@ -283,10 +295,18 @@ main (int argc, char **argv)
    if (printsd) fprintf(fff, "%12.6f ", sqrt(y2)) ;
    fprintf(fff, "%9.3f ", y) ;
    fprintf(fff, "\n") ; 
+   zmax = MAX(zmax, fabs(y)) ; 
+   t = k % 100 ; if (t==0) fflush(fff) ;  
   }
    fprintf(fff, "\n") ; 
    fflush(fff) ; 
 
+ if ((zmax > 10.0) && (globalforce == NO))  {  
+  printf("## There are large Z-scores:: no globaltest\n") ;
+  globaltest = NO ;
+ }
+
+ if (globaltest) { 
   eigvecs(fsv, lambda, evecs, numfs) ; 
   copyarr(lambda, w1, numfs) ; 
   bal1(lambda, numfs) ;
@@ -304,6 +324,7 @@ main (int argc, char **argv)
   }
   y1 = rtlchsq(dof, ychi) ; 
   fprintf(fff, "##Hotelling T2: %9.3f dof: %d  tail: %12.6f\n", ychi , dof, y1) ; 
+ }
 
  nplist = numfs ; 
  ZALLOC(ww, nplist, double) ; 
@@ -342,8 +363,9 @@ main (int argc, char **argv)
 
 
 
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of qpfmv: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
 
-  printf("## end of qpfmv\n") ; 
   return 0 ; 
   np = numeg ; 
 
@@ -494,6 +516,8 @@ readcommands (int argc, char **argv)
   getint (ph, "seed:", &seed);
   getint (ph, "printsd:", &printsd);
   getint (ph, "clinetest:", &clinetest) ; 
+  getint (ph, "globaltest:", &globaltest) ; 
+  getint (ph, "globalforce:", &globalforce) ; 
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");

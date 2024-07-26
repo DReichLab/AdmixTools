@@ -1,4 +1,4 @@
-#include <stdio.h>
+#include <stdio.h> // mean s.deeed
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -22,7 +22,7 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "1520" 
+#define WVERSION   "2050" 
 // best analysis added
 // hires added;  including on summ line
 // chrom: 23 added
@@ -47,12 +47,23 @@
 // fixed up boundary case (m=n) in ranktest
 // mkfstats fstatsname added; made more robust
 // keeptmp added (default NO) 
+// Cokie Parker speedup + loadsnpx speedup
+// doratio added 
+// finddworstb added 
+// basepop added
+// print popsizes 
+// mbname added
+// numiter -> 50 (ranktest) 
+// one call to addscaldiag eliminated (Robert Maier) 
+// Monte Carlo importance sampling (phiint) etc
+// diagvarplus added inedependent of yscale 
+// oldmode/newmode  added ; defaults for yscale changed.  Old default works though
 
 #define MAXFL  50
 #define MAXSTR  512
 #define MAXPOPS 100
 
-double yscale = .0001 ;
+double yscale = -1, diagvarplus = -1 ; 
 
 char *parname = NULL;
 char *trashdir = "/var/tmp";
@@ -63,8 +74,12 @@ int nsnpused = 0;
 int deletefstats = NO ;
 char *fstatslog = NULL ; 
 int keeptmp = NO ;
+int oldmode = YES ;
+int newmode = -99 ;
+int positive_coeffs = NO ;
 
-Indiv **indivmarkers;
+
+Indiv **indivmarkers = NULL;
 SNP **snpmarkers;
 int numsnps, numindivs;
 int seed = 0;
@@ -84,11 +99,16 @@ int oldallsnpsmode = NO ;
 
 int hiprec_covar = NO ;
 
+int ratcoords[2] ;  // ratio 0/1 in bootstrap 
+int doratio = NO ;
+
 double blgsize = 0.05;		// block size in Morgans */
 double *chitot;
 char *popleft, *popright;
 char **popllist, **poprlist;
 int nleft, nright;
+
+char *basepop = NULL ; 
 
 char *instem = NULL ; 
 char *indivname = NULL;
@@ -98,12 +118,15 @@ char *snpoutfilename = NULL;
 char *badsnpname = NULL;
 char *popfilename = NULL;
 char *outliername = NULL;
+char *mvname = NULL ;  
 int inbreed = -99;
 double lambdascale;
 double *jmean;
 long *wkprint;
 int *zprint ; 
 int numboot = 1000 ; 
+int mctrials = -1 ; 
+double *coeffs, *cvar ; 
 
 
 char *fstatsname = NULL ; 
@@ -146,12 +169,20 @@ void calcadm (double *ans, double *A, int n);
 void printss (double *mean, double *wt, int nl, int nr);
 double scorel(double *d, double *V, double *lam, int n)  ;
 double gendstat(double *ca, int b1, int b2, int nr, int nl, double *mean, double *var, int *ktable) ;
-void addscaldiag(double *mat, double scal, int n) ; 
 int isnested(int a, int b) ; 
 int usage (char *prog, int exval); 
 void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
 void  setktable(int *ktable, int nl,  int nr) ; 
 int  mkfstats(char *parname)   ; 
+double f4mean(int a, int b, int nl, int nr, double *mean, double *var, int *ktable)   ;
+double f4var(int a1, int a2, int b1, int b2, int nl, int nr, double *mean, double *var, int *ktable)  ;
+double worstb(double *bb, double *aa, int nl, int nr, double *mean, double *var, int *ktable)   ;
+void setpopsize(int *popsize, char **poplist, int numeg, Indiv **indivmarkers, int numindivs)  ;
+void writemv(char *mvname, long *kmean, long *kvar, int n) ;
+double phiint(double **x1mat, double *rhs, double *cmean, double *cvar, int fsize, int numconstraint)  ;
+double tttphi(double *zmean, double *var, int aleft, int aright)  ;
+void mcest(double *qcoeffs, double *qvar,  double *coeffs, double *cvar, double *zmean, double *zvar,  int nl, int nr, int mctrials) ;
+void printcv(double *coeffs, double *var, int n) ;  
 
 int
 main (int argc, char **argv)
@@ -163,6 +194,7 @@ main (int argc, char **argv)
   char **eglist;
   int *nsamppops;
   int numeg;
+  int *popsize ; 
   int i, j, k, k1, k2, k3, k4, kk;
   SNP *cupt, *cupt1, *cupt2, *cupt3;
   Indiv *indx;
@@ -197,7 +229,7 @@ main (int argc, char **argv)
   double *yscbest, *ychi, *yinfeasbest;
   int *sbest, *infeassbest, *nfeas, isfeas;
   double *var;
-  long *jvar;
+  long *jvar, *jmp ;
   double *w0, *w1, *w2;
   double *wbest;
   int dim, b1, b2;
@@ -209,31 +241,53 @@ main (int argc, char **argv)
   int retkode ; 
   int np ; 
   double *ff3, *ff3var ; 
+  double *bworst ;
+  double *qcoeffs, *qvar ;
+  double bigserr ;
 
 
   F4INFO **f4info, *f4pt, *f4pt2, **g4info, *ggpt;
 
 
   lopos = -1 ; hipos = BIGINT - 1 ;  
+  ivclear(ratcoords, -1, 2) ;
 
   readcommands (argc, argv);
 
   cputime(0) ;
   calcmem(0) ;
 
+  printcmdline(argc, argv) ;
   printf ("## qpAdm version: %s\n", WVERSION);
   if (seed==0) seed = seednum() ; 
   printf("seed: %d\n", seed) ;
+  SRAND(seed) ;
+
+  if ((yscale < 0) && (diagvarplus < 0)) yscale = 0.0001 ;  // old default
+  if (yscale < 0)  yscale = 0.0 ;  // diagvarplus set 
+  if (diagvarplus < 0)  diagvarplus = 0.0 ;  
+
+  if (doratio) { 
+   ratcoords[0] = 0 ;
+   ratcoords[1] = 1 ;
+  }
+  
+  if (newmode == NO) oldmode = YES ;
+  if (newmode == YES) oldmode = NO ;
   
   if (tmpdir != NULL) setenv("STMP", tmpdir, 1) ;
+  if (keeptmp) deletefstats = NO ;
 
   if (parname == NULL)
     return 0;
 
+  if (mvname != NULL) printf("mvname: %s\n", mvname) ;
+
   numchromp = numchrom+ 1 ;
 
-  setinbreed (inbreed);
   setfancyf4(fancyf4) ; 
+
+  if (basepop != NULL) printf("basepop set: %s\n", basepop) ;
 
   if (allsnps == -99) { 
    allsnps = NO ; 
@@ -244,7 +298,9 @@ main (int argc, char **argv)
 
   if (inbreed == -99) { 
    inbreed = allsnps ; 
-   printf(" *** recommended that inbreed be explicitly set ***\n") ;
+   if (fstatsname == NULL) {
+    printf(" *** recommended that inbreed be explicitly set ***\n") ;
+   }
   }
 
   setinbreed(inbreed) ;
@@ -284,6 +340,22 @@ main (int argc, char **argv)
   numindivs = getindivs (indivname, &indivmarkers);
   setindm (indivmarkers);
 
+  numeg = npops = nleft + nright;
+  ZALLOC (eglist, npops, char *);
+  ZALLOC(popsize, npops, int) ;  
+  copystrings (popllist, eglist, nleft);
+  copystrings (poprlist, eglist + nleft, nright);
+
+  ckdup (eglist, numeg);
+
+  for (k=0 ; k<numindivs; ++k) {
+   indx = indivmarkers[k] ;
+   t = indxstring(eglist, numeg, indx -> egroup) ;
+   indx -> gkode = t ; // correct when t < 0
+  }
+
+  gkignore(indivmarkers, numindivs) ;
+
   k = getgenos (genotypename, snpmarkers, indivmarkers,
 		numsnps, numindivs, nignore);
 
@@ -310,20 +382,44 @@ main (int argc, char **argv)
 
  } 
 
+ if (npops == 0) {
+  numeg = npops = nleft + nright;
+  ZALLOC (eglist, npops, char *);
+  ZALLOC(popsize, npops, int) ;  
+  copystrings (popllist, eglist, nleft);
+  copystrings (poprlist, eglist + nleft, nright);
+ }
+
+
 
   printnl ();
+
+
+  if ((indivmarkers == NULL) && (indivname != NULL))  numindivs = getindivs (indivname, &indivmarkers);
+// needed for popsize 
+
+  setpopsize(popsize, eglist, numeg, indivmarkers, numindivs) ;
   printf ("left pops:\n");
   for (k = 0; k < nleft; ++k) {
-    printf ("%s\n", popllist[k]);
+    printf ("%20s", popllist[k]);
+    t = popsize[k] ;
+    if (t>=0) printf (" %6d", t) ; 
+    printnl() ;
   }
 
   printnl ();
   printf ("right pops:\n");
   for (k = 0; k < nright; ++k) {
-    printf ("%s\n", poprlist[k]);
+    printf ("%20s", poprlist[k]);
+    t = popsize[nleft+k] ;
+    if (t>=0) printf (" %6d", t) ; 
+    printnl() ;
   }
 
   printnl ();
+
+  ivlmaxmin(popsize, numeg, NULL, &t) ; 
+  if (popsize[t] == 0) fatalx("pop %s has zero samples!\n", eglist[t]) ;
 
 
   if (nleft > nright)
@@ -335,12 +431,7 @@ main (int argc, char **argv)
       fatalx ("population in both left and right: %s\n", poprlist[k]);
   }
 
-  numeg = npops = nleft + nright;
-  ZALLOC (eglist, npops, char *);
-  copystrings (popllist, eglist, nleft);
-  copystrings (poprlist, eglist + nleft, nright);
 
-  ckdup (eglist, numeg);
 
   ZALLOC (nsamppops, numeg, int);
 
@@ -352,8 +443,9 @@ main (int argc, char **argv)
 
   d = nl * nr;
   dd = d * d;
+  t = dd + d + 10 ; 
   ZALLOC (ymean, d + 10, double);
-  ZALLOC (ww, d + 10 + nl * nl, double);
+  ZALLOC (ww, t, double);
   ZALLOC (lambda,  nl, double);
   ZALLOC (yvar, dd, double);
 
@@ -376,7 +468,7 @@ main (int argc, char **argv)
     t = nsamppops[i];
     if (t == 0)
       fatalx ("No samples: %s\n", eglist[i]);
-    printf ("%3d %20s %4d\n", i, eglist[i], t);
+//    printf ("%3d %20s %4d\n", i, eglist[i], t);
   }
 
   printf ("jackknife block size: %9.3f\n", blgsize);
@@ -416,7 +508,7 @@ main (int argc, char **argv)
     setplimit (indivmarkers, numindivs, eglist, numeg, popsizelimit);
   }
 
-  ncols = loadsnpx (xsnplist, snpmarkers, numsnps, indivmarkers);
+  ncols = loadsnpxx (xsnplist, snpmarkers, numsnps, xindlist, nrows);
 
   printf ("snps: %d  indivs: %d\n", ncols, nrows);
 
@@ -502,7 +594,8 @@ main (int argc, char **argv)
  if (retkode == -2) printf("f4 variance absurdly small.  Aborting run\n") ;
 
  if (retkode < 0) return -1 ;
-
+ if (diagvarplus < 0) diagvarplus = yscale ;
+ addscaldiag(yvar, diagvarplus, nl*nr) ;    
 
   ZALLOC (vfix, nl, int);
 
@@ -521,6 +614,8 @@ main (int argc, char **argv)
   ZALLOC (jmean, nl, double);
   ZALLOC (wkprint, nl * nl, long);
   ZALLOC (zprint, nl * nl, int);
+  ZALLOC (coeffs, nl, double);
+  ZALLOC (cvar, nl*nl, double);
 
   for (x = rank; x <= maxrank; ++x) {
     if (x == rank)
@@ -554,6 +649,7 @@ main (int argc, char **argv)
   copyarr (ww, wbest, nl);
   ZALLOC (var, nl * nl, double);
   ZALLOC (jvar, nl * nl, long);
+  ZALLOC (jmp, nl, long);
 
 //  printss (ymean, ww, nl, nr);
 
@@ -563,11 +659,17 @@ main (int argc, char **argv)
    calcevar (jmean, var, yvar, nl, nr, btop, bbot, gtop, gbot, bnblocks, bdim);
   }
   else { 
+ //printf("zzrandom %d\n", ranmod(1000*1000*1000)) ;
    calcevarboot(jmean, var, ymean, yvar, nl, nr, nl*nr, numboot) ; 
+   printf("bootstrap saimpling of F-coeffs: %d\n", numboot) ;
+   printf("zzjmean ") ;  printmatw(jmean, 1, nl, nl) ;
   }
+  copyarr(jmean, coeffs, nl) ;
+  copyarr(var, cvar, nl*nl) ;
   getdiag (ww, var, nl);
   vsp (ww, ww, 1.0e-20, nl);
   vsqrt (ww, ww, nl);
+  vmaxmin(ww, nl, &bigserr, NULL) ;
   printf ("      std. errors: ");
   
   if (hires)
@@ -576,8 +678,13 @@ main (int argc, char **argv)
     printmatw (ww, 1, nl, nl);
 
 
-
   printnl ();
+
+  vst(w0, wbest, 1000, nl) ; 
+  fixitl(jmp, w0, nl) ; 
+  vst(w0, var, 1.0e6, nl*nl) ;  
+  fixitl(jvar, w0, nl*nl) ;  
+  writemv(mvname, jmp, jvar, nl) ;
 
   if (hiprec_covar == NO) {
 
@@ -627,7 +734,15 @@ main (int argc, char **argv)
   printnl ();
   printnl ();
 
-  printf("summ: %s ", popllist[0]) ; 
+  if ((oldmode == NO) && (bigserr > 1.0)) { 
+   printf("large std. error on coeffs.  Reverting to oldmode\n") ;
+   oldmode = YES ;
+  }
+         
+
+  if (oldmode == NO) printf("summ (old):") ;  // we will write summ: later 
+  if (oldmode == YES) printf("summ:") ;
+  printf(" %s ", popllist[0]) ; 
   printf(" %3d ", nl) ; 
   printf(" %12.6f ", pval) ; 
   if (hires) {
@@ -678,7 +793,7 @@ main (int argc, char **argv)
 	f4pt = g4info[0] = f4info[nl - 1];
       }
       else {
-	doranktestfix (ymean, yvar, nl, nr, nl - 1, f4pt, vfix);
+        doranktestfix (ymean, yvar, nl, nr, nl - 1, f4pt, vfix);
       }
       if (wt==0) calcadm (ww, f4pt->A, nl);
       else calcadmfix(ww, f4pt -> A, nl, vfix) ;  
@@ -807,13 +922,102 @@ main (int argc, char **argv)
      }
     }
     printnl() ;
+    
+   ZALLOC(bworst, nr, double) ;
+   y = worstb(bworst, wbest,  nl,  nr, ymean, yvar, ktable)   ;
+   printf("worst Z-score with right hand mix\n") ;
+   printf("f4(Target, Fit, Base, mix of Right pops;  Z: %9.3f sum: %9.3f\n", y, asum(bworst, nr))  ; 
+   for (k=0; k<nr; ++k) {  
+    printf("%30s ", poprlist[k+1]) ; 
+    printf("%9.3f", bworst[k]) ;
+    printnl() ;
+   }
+   printnl() ;
   }
+
+
+/**
+  for (a=0; a<nl; ++a) { 
+   for (b=0; b<nr; ++b) { 
+   y1 = f4mean(a, b, nl, nr, ymean, yvar, ktable) ;
+   y2 = f4var(a, a, b, b, nl, nr, ymean, yvar, ktable) ;
+   printf("zzcheck %s %s ", popllist[a+1], poprlist[b+1]) ;
+   ysig = y1 / sqrt (y2+1.0e-20);
+   printf ("f4: %12.6f Z: %12.6f", y1, ysig);
+   printnl ();
+ }}
+*/
 
   if (deletefstats) { 
 // fstatsname has been created  
    printf("removing %s\n", fstatsname) ;
    remove(fstatsname) ; 
   }
+
+  if (oldmode == YES) {
+   printf("oldmode set: terminating\n") ;
+   ymem = calcmem(1)/1.0e6 ;
+   printf("##end of qpAdm: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
+   return 0;
+  }
+  
+ 
+
+
+  ZALLOC(qcoeffs, nl, double) ;
+  ZALLOC(qvar, nl*nl, double) ;
+  
+  copyarr(jmean, qcoeffs, nl) ;
+  copyarr(var, qvar, nl*nl) ;
+
+ printf("oldmode: \n") ;
+   printcv(qcoeffs, qvar, nl) ;
+
+  printnl() ;  
+  if (mctrials < 0) { 
+   mctrials = MIN(pow(2, nl), 10000) ; 
+   mctrials = MAX(mctrials, 1000) ;
+  }
+
+  
+  mcest(qcoeffs, qvar,  coeffs, cvar, ymean, yvar, nl, nr, mctrials) ;
+  printf("mctrials: %d\n", mctrials) ;  
+
+
+  printf("mcest (Bayesian):\n") ;
+    printcv(qcoeffs, qvar, nl) ;
+
+   getdiag(ww, qvar, nl); 
+   vsqrt(ww, ww, nl) ;
+
+
+  printf("Target: %s\n", eglist[0]) ;
+  for (i=1; i<nleft; ++i) { 
+   printf("%25s ", eglist[i]) ;
+   j = i-1; 
+   printf("%9.3f  ", qcoeffs[j]) ;
+   printf("%12.6f", ww[j]) ; 
+   printnl() ;
+  }
+
+  printf("summ:") ;
+  printf(" %s ", popllist[0]) ; 
+  printf(" %3d ", nl) ; 
+  printf(" %12.6f ", pval) ; 
+  if (hires) {
+   printmatwlx(qcoeffs, 1, nl, nl) ; 
+  }
+  else {
+   printmatwx(qcoeffs, 1, nl, nl) ; 
+  }
+  t = mktriang (ww, qvar, nl);
+  vst (ww, ww, 1.0e6, t);
+  fixitl (wkprint, ww, t);
+  printlmat (wkprint, 1, t);
+  printnl ();
+  
+  fflush(stdout) ;
+//tttphi(ymean, yvar, nl, nr)  ;
 
   ymem = calcmem(1)/1.0e6 ;
   printf("##end of qpAdm: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
@@ -997,6 +1201,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "indivname:", &indivname);
   getstring (ph, "popleft:", &popleft);
   getstring (ph, "popright:", &popright);
+  getstring (ph, "basepop:", &basepop);
 
   getstring (ph, "output:", &outputname);
   getstring (ph, "outputname:", &outputname);
@@ -1006,6 +1211,7 @@ readcommands (int argc, char **argv)
   getstring (ph, "fstatsoutname:", &fstatsoutname);
   getstring (ph, "fstatslog:", &fstatslog);
   getstring (ph, "tmpdir:", &tmpdir);
+  getstring (ph, "mvname:", &mvname);
 
   getdbl (ph, "blgsize:", &blgsize);
 
@@ -1027,7 +1233,13 @@ readcommands (int argc, char **argv)
   getint (ph, "seed:", &seed) ; 
   getint (ph, "hiprec_covar:", &hiprec_covar) ; 
   getint (ph, "numboot:", &numboot) ; 
+  getint (ph, "doratio:", &doratio) ; 
+  getint (ph, "mctrials:", &mctrials) ; 
+  getint (ph, "oldmode:", &oldmode) ; 
+  getint (ph, "newmode:", &newmode) ; 
+  getint (ph, "positive_coeffs:", &positive_coeffs) ; 
   getdbl (ph, "diagplus:", &yscale);
+  getdbl (ph, "diagvarplus:", &diagvarplus);
 
 
 
@@ -1188,7 +1400,7 @@ if (verbose)  {
  }
 }
 
- addscaldiag(yvar, yscale, dim) ;
+// addscaldiag(yvar, yscale, dim) ;    
 
 bnblocks = nblocks;
 bdim = dim;
@@ -1308,13 +1520,16 @@ calcevarboot(double *bootmean, double *bootvar, double *ymean, double *yvar, int
 {
 
  double *rvec, *rp, *svec,  *ww, *mean, **tmean, *totmean  ; 
- int k ; 
+ int k, ka, kb ; 
  F4INFO *f4wk, f4tt;
  double yn ; 
  double *wwcovar ;
+ double *rathist ; 
+ double ya, yb, rat, yratmean, yratsig ;
 
  ZALLOC(rvec, 2*dim*numboot, double) ; 
  ZALLOC(ww, dim, double) ; 
+ ZALLOC(rathist, 2*numboot, double) ; 
  ZALLOC(wwcovar, dim*dim, double) ; 
  ZALLOC(totmean, nl, double) ; 
  tmean = initarray_2Ddouble(2*numboot, nl, 0) ; 
@@ -1333,40 +1548,131 @@ calcevarboot(double *bootmean, double *bootvar, double *ymean, double *yvar, int
 
  doranktest (ymean, yvar, nl, nr, nl - 1, f4wk);
  calcadm(totmean, f4wk -> A, nl) ;
- printf("totmean:  ") ; printmat(totmean, 1, nl) ; 
+ printf("totmean:  ") ; 
+
+ if (hires == NO) printmat(totmean, 1, nl) ; 
+ else printmatl(totmean, 1, nl) ; 
 
  for (k=0; k<numboot; ++k) { 
   mean = rvec + k*dim ; 
   doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
   calcadm (tmean[2*k], f4wk->A, nl);
+  if (k==0) { 
+   printf("zzevarboot\n") ; 
+   printmatl(tmean[2*k], 1, nl) ;
+   printmatl(f4wk->A, nl, nl-1) ;
+  }
   mean = svec + k*dim ; 
   doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
   calcadm (tmean[2*k+1], f4wk->A, nl);
+  if (k==0) { 
+   printf("zzevarboot2\n") ; 
+   printmatl(tmean[2*k+1], 1, nl) ;
+   printmatl(f4wk->A, nl, nl-1) ;
+  }
+ }
+
+ ka = ratcoords[0] ;
+ kb = ratcoords[1] ;
+ if (kb>=0)  {        
+  for (k=0; k< 2*numboot; ++k) { 
+   ya = tmean[k][0] ;
+   yb = tmean[k][1] ;
+   yb = MAX(yb, 1.0e-10) ; 
+   rathist[k] = ya/yb ;
+   printf("zz %d ", k) ; 
+   printf("%9.3f ", ya) ;
+   printf("%9.3f ", yb) ;
+   printf("%9.3f ", rathist[k]) ;
+   printnl() ; 
+  }
+  calcms(rathist, 2*numboot, &yratmean, &yratsig) ; // mean s.dev
+  printf("coeff ratio: %d %d ", ka, kb) ; 
+  printf(" %9.3f %9.3f\n", yratmean, yratsig) ;
  }
 
  yn = (double) (2*numboot) ; 
  mv2D(ww, wwcovar, tmean, 2*numboot, nl) ; 
- printf("boot mean: ") ; printmat(ww, 1, nl) ; 
+ printf("boot mean: ") ; 
+
+ if (hires == NO) printmat(ww, 1, nl) ; 
+ else printmatl(ww, 1, nl) ; 
+
  copyarr(ww, bootmean, nl) ;
  copyarr(wwcovar, bootvar, nl*nl) ; 
 
 
  free(ww) ; 
+ free(rathist) ; 
  free(wwcovar) ; 
  free(rvec) ; 
  free(totmean) ; 
  free2D(&tmean, 2*numboot) ; 
+}
+
+void 
+estrat(double *mean, double *var, int dim, double *prat,  double *psig, int numboot) 
+{
+ 
+ double *rvec, *rp, *svec,  *ww ; 
+ int k, ka, kb ; 
+ double *rathist ; 
+ double ya, yb, rat, yratmean, yratsig ;
+
+ ZALLOC(rvec, 2*dim*numboot, double) ; 
+ ZALLOC(ww, dim, double) ; 
+ ZALLOC(rathist, 2*numboot, double) ; 
+
+ genmultgauss(rvec, numboot, dim, var) ; 
+ svec = rvec + numboot*dim  ; 
+
+
+ svec = rvec + numboot*dim ; 
+ for (k=0; k<numboot; ++k) { 
+  rp = rvec + k*dim ; 
+  copyarr(rp, ww, dim) ; 
+  vvp(rp, rp, mean, dim) ; 
+  vvm(ww, mean , ww, dim) ; 
+  copyarr(ww, svec + k*dim, dim) ; 
+ }
+
+ ka = ratcoords[0] ;
+ kb = ratcoords[1] ;
+ if (kb>=0)  {        
+  for (k=0; k< numboot; ++k) { 
+   rp = rvec + k*dim ; 
+   ya = rp[0] ;
+   yb = rp[1] ;
+   yb = MAX(yb, 1.0e-10) ; 
+   rathist[2*k] = ya/yb ;
+   rp = svec + k*dim ; 
+   ya = rp[0] ;
+   yb = rp[1] ;
+   yb = MAX(yb, 1.0e-10) ; 
+   rathist[2*k+1] = ya/yb ;
+  }
+  calcms(rathist, 2*numboot, prat, psig) ; // mean s.dev
+  printf("coeff ratio: %d %d ", ka, kb) ; 
+  printf(" %9.3f %9.3f\n", *prat, *psig) ;
+ }
+
+ free(rvec) ; 
+ free(ww) ; 
+ free(rathist) ; 
+
 
 }
+
 
 void
 calcevar (double  *jmean, double *jvar, double *yvar, int nl, int nr, double **btop,
   double **bbot, double *gtop, double *gbot, int nblocks, int dim)
 {
+
 double *ymean, *mean, *wtop, *wbot, *totmean, **tmean, *wjack;
 F4INFO *f4wk, f4tt;
 int k;
-double y ; 
+double y, yratmean, yratsig ; 
 
 if (dim <= 0)
 fatalx ("(calcevar) dimension unset\n");
@@ -1379,7 +1685,7 @@ ZALLOC (wbot, dim, double);
 ZALLOC (totmean, nl, double);
 tmean = initarray_2Ddouble (nblocks, nl, 0);
 
-addscaldiag(yvar, yscale, dim) ;
+// addscaldiag(yvar, yscale, dim) ;
 
 f4wk = &f4tt;
 f4info_init (f4wk, nl, nr, popllist, poprlist, nl - 1);
@@ -1414,6 +1720,10 @@ printf ("Jackknife mean:  ");
 if (nl==1) jmean[0] = 1 ; 
 printmatwl (jmean, 1, nl, nl);
 
+
+if (doratio) {   
+ estrat(jmean, jvar, nl, &yratmean, &yratsig, numboot) ;
+}
 
 free (wjack);
 free (mean);
@@ -1760,7 +2070,7 @@ int mkfstats(char *parname)
  char pops[256] ;  
  char tpar[256] ; 
  char fslog[256] ; 
- char **poplist ; 
+ char **poplist, **popx ; 
  int numeg ; 
 
  int pid ; 
@@ -1771,10 +2081,19 @@ int mkfstats(char *parname)
  FILE *fff ; 
 
  numeg = nleft + nright ; 
- ZALLOC(poplist, numeg, char *) ; 
+ ZALLOC(poplist, numeg+1, char *) ; 
+
+ popx = poplist ; 
+
+ if (basepop != NULL) {  
+   poplist[0] = strdup(basepop) ;
+   ++popx ; 
+   ++numeg ;
+ }
  
- copystrings(poprlist, poplist, nright) ;
- copystrings(popllist, poplist+nright, nleft) ;
+ copystrings(poprlist, popx, nright) ;
+ popx += nright ; 
+ copystrings(popllist, popx, nleft) ;
 
  pid = getpid() ; 
  strcpy(fsx, mytemp("fsx")) ; 
@@ -1794,8 +2113,12 @@ int mkfstats(char *parname)
  deletefstats = YES ;  
 
  openitntry(ppp, &fff, "w", 10) ; 
+ sprintf(sss, "cat %s", ppp) ;
+// system(sss) ;
  sprintf(sss, "fgrep -v fstatsoutname: %s | fgrep -v poplistname: > %s", parname, tpar) ; 
  system(sss) ; 
+// printf("zz2 %s\n", sss) ; 
+ fflush(stdout) ; 
  copyfs(tpar, fff) ; 
  fprintf(fff, "fstatsoutname: %s\n", fsx) ; 
  writestrings(pops, poplist, numeg) ;
@@ -1804,24 +2127,24 @@ int mkfstats(char *parname)
 // printf("cmd1: %s\n", sss) ; 
  fprintf(fff, "poplistname: %s\n", pops) ; 
  fclose(fff) ; 
-/**
- sprintf(sss, "cat %s\n", ppp) ; 
- system(sss) ; 
-*/
+
  sprintf(sss, "qpfstats -p %s > %s", ppp, fslog) ; 
  retkode =  system(sss) ; 
  trap = openit_trap(fsx, &fff, "r") ;
  fclose(fff) ; 
  if (trap == NO) retkode = -88 ;
+//  printf("zz: %d\n", trap) ; 
+
  
- // printf("exiting mkfstats\n") ; 
+//  printf("exiting mkfstats\n") ; 
+ fflush(stdout) ;
  if ((fstatsoutname != NULL) && (retkode >= 0)) { 
   sprintf(sss, "cp %s %s", fsx, fstatsoutname) ; 
   system(sss) ;
   printf("fstats file: %s made\n", fstatsoutname) ;
  } 
  if (retkode < 0) return -1 ;
- freeup(poplist, numeg) ;
+ freeup(poplist, nleft + nright + 1) ;
 
  if (keeptmp == YES) return 1  ; 
 
@@ -1833,3 +2156,398 @@ int mkfstats(char *parname)
  return 1 ; 
 
 }
+
+double f4mean(int a, int b, int nl, int nr, double *mean, double *var, int *ktable)  
+
+{
+
+  int k ; 
+  
+   k = a*nr + b ;
+   if (ktable != NULL) k = ktable[a*nr+b] ; 
+
+   return mean[k] ;
+
+
+}
+
+double f4var(int a1, int a2, int b1, int b2, int nl, int nr, double *mean, double *var, int *ktable) 
+{
+
+ int k1, k2, dim = nl*nr ;
+
+ k1 = a1*nr + b1 ;
+ if (ktable != NULL) k1 = ktable[a1*nr+b1] ; 
+ k2 = a2*nr + b2 ;
+ if (ktable != NULL) k2 = ktable[a2*nr+b2] ; 
+ return var[k1*dim + k2] ;
+
+}
+
+double worstb(double *bb, double *aa, int nl, int nr, double *mean, double *var, int *ktable)  
+{
+
+  int a1, a2, b1, b2 ; 
+  double zl, zq, y, zans, ztop, zbot ;
+  double *ll, *qq, *w1 ;
+  int ret ; 
+
+  ZALLOC(ll, nr, double) ;
+  ZALLOC(qq, nr*nr, double) ;
+  ZALLOC(w1, nr, double) ;
+
+  for (b1=0; b1<nr; ++b1) { 
+   zl = 0; 
+   for (a1=0; a1<nl; ++a1) { 
+     zl += aa[a1]*f4mean(a1, b1, nl, nr, mean, var, ktable) ; 
+   }
+   ll[b1] = zl ;  
+   for (b2=0; b2<nr; ++b2) { 
+    zq  = 0 ;
+    for (a1=0; a1<nl; ++a1) { 
+     for (a2=0; a2<nl; ++a2) { 
+      zq += aa[a1]*aa[a2]*f4var(a1, a2, b1, b2, nl, nr, mean, var, ktable) ; 
+    }}
+    qq[b1*nr+b2] = zq ; 
+  }} 
+// defensive programming  
+  y = trace(qq, nr) ; 
+  vclear(w1, y*1.0e-20, nr) ; 
+  adddiag(qq, w1, nr) ; 
+
+// now solve equation 
+  ret = solvit(qq, ll, nr, bb) ; 
+  y = asum(bb, nr) ; 
+  y = unclip(y, -1.0e-6, 1.0e-6) ; 
+  vst(bb, bb, 1.0/y, nr) ; 
+  ztop = vdot(bb, ll, nr) ; 
+  zbot = scx(qq, NULL, bb, nr) ; 
+  zans = ztop/sqrt(zbot) ;
+
+/** 
+  printf("zzworst\n") ;
+  vst(qq, qq,  1000*1000, nr*nr) ; 
+  vst(ll, ll,  1000*1000, nr) ; 
+  printmatw(qq, nr, nr, nr) ; 
+  printnl() ; 
+  printmatw(ll, 1, nr, nr) ; 
+  printnl() ; 
+
+*/
+
+  free(ll) ; 
+  free(qq) ; 
+  free(w1) ;
+
+  return zans ; 
+
+}
+
+void
+writemv(char *mvname, long *kmean, long *kvar, int n)
+{
+ FILE *fff ;
+
+ if (mvname == NULL) return ; 
+ openit(mvname, &fff, "w") ;
+
+ printlmatwfile(kmean, 1, n, n, fff) ;
+ printlmatwfile(kvar, n, n, n, fff) ;
+ fclose(fff) ;
+}
+
+void setr1mat(int **r1mat, int al, int ar) 
+{
+  int a, b, x = 0, z ;
+  int **xtab ;
+  
+
+  x = 0 ; 
+  for (a = 0 ; a < ar; ++a) { 
+   for (b = 0 ; b < al; ++b) { 
+   x = b*ar + a ; 
+   r1mat[a][x] = 1 ; 
+   if (b==0) ++r1mat[a][x] ; 
+  }} 
+
+
+}
+
+int 
+setconstraint(double **x1mat, int **r1mat, double *wvec,  int al, int ar) 
+{
+
+  int fsize, t ; 
+  int a, b, x = 0 ;
+  int *piv ;
+  static int ncall = 0 ; 
+  
+  ++ncall ;
+  fsize = al*ar ;
+  for (a = 0 ; a < ar; ++a) { 
+   vzero(x1mat[a], fsize) ;
+   b  = 0 ; 
+   for (x = 0 ; x<fsize; ++x) { 
+    t = r1mat[a][x] ; 
+    if (t<=0) continue ; 
+    x1mat[a][x] = wvec[b] ; 
+    ++b ; 
+   }
+  }
+
+  if (ncall == -1) { 
+   printf("setc first call\n") ;
+   printimat2D(r1mat, ar, fsize) ; 
+   printmat(wvec, 1, al) ;
+   printnl() ;
+   printmat2D(x1mat, al, fsize) ; 
+  }
+
+  return 1 ; 
+
+
+
+
+}
+
+double tttphi(double *zmean, double *zvar, int aleft, int aright) 
+{
+
+ int d = aleft, fsize = aleft*aright ;
+ int **r1mat ;
+ double **x1mat ; 
+ double *yy, *rhs, y, wz[2] ; 
+ int k, numconstraint ; 
+
+
+// now we sample coeffs using posterior 
+  r1mat = initarray_2Dint(aright, fsize, -1) ;
+  x1mat = initarray_2Ddouble(aright, fsize, -1) ;
+
+  setr1mat(r1mat, aleft, aright) ;
+  ZALLOC(yy, 101, double) ; 
+  vclear(yy, -1.0e10, 101) ;
+
+  ZALLOC(rhs, fsize, double) ; 
+  for (k=1; k <= 100; ++k) { 
+   if (d>2) break ;
+   y = (double) k / 100.0 ; 
+   wz[0] = y ; wz[1] = 1.0 - y ; 
+   numconstraint = setconstraint(x1mat, r1mat, wz,  aleft, aright) ;
+/**
+   printimat2D(r1mat, d, fsize) ;
+   printmat2D(x1mat, d, fsize) ;
+*/
+   vzero(rhs, fsize) ;
+   yy[k]  =  phiint(x1mat, rhs, zmean, zvar, fsize, numconstraint) ; 
+  }
+
+  vmaxmin(yy, 100, &y, NULL) ;  
+  vsp(yy, yy, -y, 100) ; 
+  for (k=1; k<100; ++k) { 
+   if (d>2) break ;
+   y = (double) k / 100.0 ; 
+   printf("zzphi: %9.3f %9.3f\n", y, yy[k]) ; 
+  }
+
+  return 0.0 ; 
+  
+}
+
+// move to statsubs.c 
+double phiint(double **x1mat, double *rhs, double *cmean, double *cvar, int fsize, int numconstraint)  
+{
+   double *ww, *qq, *ll, y, yldet ;  
+   int pivot, a, k, l, t ;
+   static int ncall = 0 ;  
+   double *cmat, *cmatt, *zvar, *zmean ;    ;  
+   int numc = numconstraint, n = fsize ;
+   ++ncall ; 
+   
+   t = numc + n ; 
+   ZALLOC(cmat, numc * fsize, double) ; 
+   ZALLOC(cmatt, numc * fsize, double) ; 
+   ZALLOC(zvar, numc * numc, double) ; 
+   ZALLOC(zmean, numc, double) ; 
+   ZALLOC(ww, t * t, double) ; 
+   ZALLOC(qq, t * t, double) ; 
+  
+   for (k=0; k<numc; ++k) { 
+    copyarr(x1mat[k], cmat + k*n, n) ;
+   }
+   transpose(cmatt, cmat, numc, n) ; 
+   mulmat(ww, cmat, cvar, numc, n, n) ; 
+   mulmat(zvar, ww, cmatt, numc, n, numc) ; 
+   mulmat(zmean, cmat, cmean, numc, n, 1) ; 
+
+   yldet = pdinv(qq, zvar, numc) ;
+   y = scx(qq, zmean, rhs, numc) ;
+   if (verbose || (ncall <= -1)) {
+    printf("phiint: %9.3f %9.3f\n", yldet, y)  ;
+    vst(zmean, zmean, 1000, numc) ;
+    vst(zvar, zvar, 1000*1000, numc*numc) ;
+    printmatw(cmean, 1, n, n) ; 
+    printmatw(cvar, n, n, n)  ;
+    printnl() ;
+    printmatw(cmat, numc, n, n) ;
+    printnl() ;
+    printmat(zmean, 1, numc) ;
+    printmat(zvar, numc, numc) ;
+    fflush(stdout) ;
+   }
+
+   free(qq) ; 
+   free(ww) ; 
+   free(cmat) ; 
+   free(cmatt) ; 
+   free(zmean) ; 
+   free(zvar) ; 
+
+   return -0.5*(y + yldet) ; 
+
+}
+
+void mcest(double *qcoeffs, double *qvar,  
+ double *coeffs, double *cvar, double *zmean, double *zvar, 
+ int nl, int nr, int mctrials) 
+{
+    double *mz, *mzvar ; 
+    double *mzrvec, *rhs, *ww ;
+    double y, ylike, yy ;
+    int **r1mat ; 
+    int *pivarr ; 
+    double **x1mat ;
+    int fsize, numc, t ; 
+    double *yaprob, *yphi, *yweight, *yyweight ;
+    int iter ;  
+    int numneg = 0, numtrial = 0 ; 
+
+
+    fsize = nl*nr ;        
+
+    r1mat = initarray_2Dint(nr, fsize, -1) ;
+    x1mat = initarray_2Ddouble(nr, fsize, -1) ;
+    setr1mat(r1mat, nl, nr) ;
+ 
+    ZALLOC(rhs, fsize, double) ; 
+    ZALLOC(mz, nl, double) ; 
+    ZALLOC(mzvar, nl*nl, double) ; 
+    ZALLOC(mzrvec, mctrials*nl, double) ; 
+
+    ZALLOC(yaprob, mctrials, double) ;
+    ZALLOC(yphi, mctrials, double) ;
+    ZALLOC(yweight, mctrials, double) ;
+    ZALLOC(yyweight, mctrials, double) ;
+
+
+
+//  printf("zzmz:\n") ;
+    copyarr(coeffs, mz, nl-1) ; 
+    squish(mzvar, cvar, nl-1, nl, nl-1) ;
+  
+    if (verbose) {
+     printf("zzmcest printcv:\n") ;
+     printcv(coeffs, cvar, nl) ;
+     printnl() ;  
+     printcv(mz, mzvar, nl-1) ;
+    }
+    
+
+   for (iter = 0; iter < mctrials; ++iter) { 
+    verbose = NO ;
+    ww = mzrvec + iter * nl ; 
+    for (;;) { 
+     ++numtrial ; 
+     genmultgauss(ww, 1, nl-1, mzvar) ; 
+     vvp(ww, ww, coeffs, nl-1) ;  // add mean 
+     yy = 1.0 - asum(ww, nl-1) ; 
+     ww[nl-1] = yy ; 
+     vmaxmin(ww, nl,  NULL, &y) ; 
+     if ((positive_coeffs == NO) || (y >= 0)) break ;
+     ++numneg ;
+    } 
+    yaprob[iter] = ylike = -0.5*scx(mzvar, NULL, ww, nl-1) ;
+    
+   numc = setconstraint(x1mat, r1mat, ww,  nl, nr) ;
+   vzero(rhs, fsize) ;
+   yphi[iter] = y  = phiint(x1mat, rhs, zmean, zvar, fsize, numc) ;
+  }
+   vvm(yweight, yphi, yaprob, mctrials) ; 
+   vmaxmin(yweight, mctrials, &y, NULL) ; 
+   vsp(yweight, yweight, -y, mctrials) ; 
+// printf("mcweights:\n") ;
+// printmatl(yweight, 1, mctrials) ;
+// now must exponentiate and balance;  
+   copyarr(yweight, yyweight, mctrials) ;
+   vexp(yweight, yweight, mctrials) ; 
+   bal1(yweight, mctrials) ; 
+   y = ess(yweight, mctrials) ;
+   y /= (double) mctrials ;
+   printf ("sampling efficiency:  %12.6f\n", y) ; 
+   if (y<.001) printf("efficiency very low.  Bad fit?\n") ;
+   vzero(qcoeffs, nl) ;
+   vzero(qvar, nl*nl) ;
+   for (iter = 0; iter < mctrials; ++iter) { 
+    ww = mzrvec + iter * nl ;
+    y = yweight[iter] ;
+    vst(mz, ww, y, nl) ; 
+    vvp(qcoeffs, qcoeffs, mz, nl) ;
+   }
+// qcoeffs is now mean
+   for (iter = 0; iter < mctrials; ++iter) { 
+    ww = mzrvec + iter * nl ;
+    y = yweight[iter] ;
+    vvm(mz, ww, qcoeffs, nl) ;
+    vzero(mzvar, nl*nl) ;
+    addouter(mzvar, mz, nl) ; 
+    vst(mzvar, mzvar, y, nl*nl) ; 
+    vvp(qvar, qvar, mzvar, nl*nl) ;
+    if (verbose) {
+     printf("zzw %d %9.3f ", iter, yyweight[iter]) ;
+     printmat(ww, 1, nl) ;
+    } 
+ 
+   }
+
+   if (positive_coeffs) { 
+    printf("(mcest): number of negative coeff trials: %d\n", numneg) ;
+   } 
+
+   free(mz) ; 
+   free(mzvar) ;
+   free(mzrvec) ;
+   free(rhs) ;
+   free2Dint(&r1mat, nr) ;
+   free2D(&x1mat, nr) ;
+   free(yaprob) ;
+   free(yphi) ;
+   free(yweight) ;
+   free(yyweight) ;
+
+}
+
+void printcv(double *coeffs, double *var, int n) 
+{
+   double *w1, *w2 ;
+
+   ZALLOC(w1,  n, double) ;
+   ZALLOC(w2,  n*n, double) ;
+
+   vst(w1, coeffs, 1000, n) ;
+   vst(w2, var, 1000*1000, n*n) ;
+   printf("mean *1000:\n") ;
+   printmatw(w1, 1, n, n) ;
+   printnl() ;
+   printf("covariance *1000*1000:\n") ; 
+   printmatw(w2, n, n, n) ;
+   printnl() ;
+   getdiag(w1, w2, n) ; 
+   vsqrt(w1, w1, n) ;
+   printf("std. errors *1000:\n") ;  
+   printmat(w1, 1, n) ;
+
+   free(w1) ;
+   free(w2) ;
+
+}
+

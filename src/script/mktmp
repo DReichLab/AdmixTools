@@ -1,0 +1,16 @@
+#!/usr/bin/perl  -w 
+
+($lo, $tag) = @ARGV  ; 
+
+$tag = "tt" unless (defined $tag) ;
+
+if (defined $ENV{'STMP'}) { 
+$E = $ENV{'STMP'} ;
+}
+
+else {
+$E="/tmp" ; 
+}
+
+printf "%s\n", "$E/$tag:$lo.$$" ;
+
