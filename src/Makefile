@@ -6,7 +6,7 @@ override LDLIBS += -lgsl -lopenblas -lm -lnick
 # Some Linux distributions require separate lapacke library
 # override LDLIBS += -llapacke
 override LDFLAGS += -g  -p -pg -L./nicksrc
-override CFLAGS += -c -g -p -pg -Wimplicit -I./ -I./nicksrc
+override CFLAGS += -c -g -p -pg -Wimplicit -I./ -I./nicksrc -fno-common
 # Mac additions using homebrew installations
 #override CFLAGS += -I/usr/local/opt/openblas/include -I/usr/local/opt/gsl/include
 #override LDFLAGS += -L/usr/local/opt/openblas/lib -L/usr/local/opt/gsl/lib
@@ -121,7 +121,6 @@ install:	all dirs tables
 	cp $(PROGS3) $(TOP)
 	cp $(PROGS3) $(TOP)
 	cp ../perlsrc/* $(TOP) 
-	cp ../pysrc/* $(TOP) 
 	cp fxtract $(BIN)
 	cp -r script $(BIN) 
 
