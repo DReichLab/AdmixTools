@@ -14,7 +14,7 @@
 #include "mcio.h"  
 #include "mcmcpars.h"  
 
-#define WVERSION   "2500" 
+#define WVERSION   "2501" 
 #define MAXFL  50   
 #define MAXSTR  512
 
@@ -64,7 +64,7 @@ int lopos = -999999999 ;
 int hipos = 999999999 ;
 int minchrom = 1 ; 
 int maxchrom = 97 ;
-long rlen, packlen ; 
+extern long rlen, packlen ; 
 
 /** 
  docheck  YES  allele flipping check

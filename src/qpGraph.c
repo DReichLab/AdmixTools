@@ -431,11 +431,6 @@ main (int argc, char **argv)
    printf ("graph: %s\n", graphname);
    
 
-/**
-   sprintf(sss, "cat %s", graphname) ;
-   system(sss) ;  
-   fflush(stdout) ;
-*/
     printnl ();
     printnl ();
 
@@ -1351,7 +1346,7 @@ printfit (double *ww)
   double y, worstz, y1, y2, x1, x2, diff, sig, z;
   double *ffaa ; 
   FILE *outff;
-  char ss[MAXSTR], ssworst[MAXSTR], *ssx ;
+  char ss[MAXSTR*2], ssworst[MAXSTR*2], *ssx ;
   int isworst ;
   char **ancnames ;
 
@@ -2932,7 +2927,7 @@ int usage (char *prog, int exval)
 
 void mkfstats(char *parname)  
 {
- char sss[128] ; 
+ char sss[512] ; 
  char fsx[128] ; 
  char ppp[128] ;  
  char pops[128] ;  

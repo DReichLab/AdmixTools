@@ -74,7 +74,7 @@ genFile* constructMap(char* filename, long numrows, long rowSize, long hdrSize) 
         geno -> hdrSize = hdrSize ;
 	geno->snps = (char*) mmfaddr;
 
-        printf("mmfaddr: %x  fileLength: %ld\n", geno -> snps, fileLength) ;;
+        printf("mmfaddr: %p  fileLength: %ld\n", geno -> snps, fileLength) ;;
         fflush(stdout) ;
 
 	return geno;
