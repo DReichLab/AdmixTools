@@ -90,7 +90,7 @@ int add_geno(const char filename[], FILE *merged, genotype_matrix *combined_geno
 	genotype_matrix_initialize(&to_add);
 	int result = genotype_matrix_read_file(&to_add, file_to_open, 0, NULL, NULL);
 	if(result < 0 || !to_add.transpose){
-		fprintf(stderr, "Failed to add %s", file_to_open);
+		fprintf(stderr, "Failed to add genotype file %s\n", file_to_open);
 		exit(-1);
 	}
 	if(combined_geno->num_columns <= 0){

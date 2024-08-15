@@ -94,7 +94,7 @@ def transpose_packed_merge(merge_transpose, input_stem_file, output_stem, ind_fi
 	if snp_file_hash_str is not None:
 		command_args.append('--snp_hash')
 		command_args.append(snp_file_hash_str)
-	subprocess.run(command_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+	subprocess.run(command_args, check=True)
 
 def copy_snp_file(input_stem, output_stem):
 	snp_filename = input_stem + '.snp'
