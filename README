@@ -1,4 +1,4 @@
-ADMIXTOOLS version 8.0.0  7/30/24 (for Linux and Mac)
+ADMIXTOOLS version 8.0.1  8/15/24 (for Linux and Mac)
 
 See README.INSTALL for installation info. 
 
@@ -65,7 +65,6 @@ Nick Patterson
 <nickp@broadinstitute.org>
 
 
-*** NEW ***
 1)
 version 7.0 has numerous upgrades.
 a) Two new executables --qpfstats qpfmv allow precomputation of f-statistic basis.
@@ -104,9 +103,11 @@ block number should be at least 1.  -1 -> snp ignored.  If this option is used
 snps not in list will be ignored. 
 
 *** New data format *** 
-This release supports a new data format transpose_geno (or tgeno) 
+Version 8.0.0 supports a new data format transpose_geno (or tgeno) 
 See ./transpose_info and ./convertf/README 
 The key code for this was written by Matthew Mah 
+
+Version 8.0.1 is a minor bugfix release.
 
 ----------------------------
 SOFTWARE COPYRIGHT NOTICE AGREEMENT
