@@ -126,8 +126,8 @@ snpsortit (int **spos, int *indx, int n)
   int i, base[3];
 
   base[0] = 1;
-  base[1] = 10 ^ 8;
-  base[2] = 10 ^ 9;
+  base[1] = pow(10.0, 8) ;
+  base[2] = pow(10.0, 9) ;
 
   ZALLOC (lkode, n, long);
   for (i = 0; i < n; i++) {
@@ -2954,7 +2954,7 @@ inpackt (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
   int fdes, ret;
   char *packit, *pbuff;
   int trlen ; // length of input record
-  int offset ;
+  long offset ;
   int *indmap, x, numoutind ; 
   int numread = 0 ;
   
@@ -3031,7 +3031,7 @@ inpackt (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
 // this is key main program must set Indiv array appropriately 
 // jnum = indmap[j] ;    
    jnum = j ; 
-   offset = j*trlen + GENO_HEADER_SIZE ; 
+   offset = ((long) j) * trlen + GENO_HEADER_SIZE ; 
    lseek(fdes, offset,  SEEK_SET);
    t = read (fdes, buff, trlen);
    if (t != trlen) {

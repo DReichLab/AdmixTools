@@ -1,4 +1,4 @@
-ADMIXTOOLS version 8.0.1  8/15/24 (for Linux and Mac)
+ADMIXTOOLS version 8.0.2  9/06/24 (for Linux and Mac)
 
 See README.INSTALL for installation info. 
 
@@ -108,6 +108,7 @@ See ./transpose_info and ./convertf/README
 The key code for this was written by Matthew Mah 
 
 Version 8.0.1 is a minor bugfix release.
+Version 8.0.2 is a minor bugfix release, affecting transpose packed files > 2GB.
 
 ----------------------------
 SOFTWARE COPYRIGHT NOTICE AGREEMENT
