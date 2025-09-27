@@ -125,7 +125,7 @@ void setdisq(NODE *node, int dis)  ;
 void setdisqq(NODE *node, int dis)  ;
 int setxx (NODE * node, NODE ** xx);
 void reroot (char *nodename);
-void setgtime ();
+void setgtime (double *time);
 void setvnum (int *vnum, int *list, int n);
 void pedge (FILE * fff, NODE * anode, NODE * bnode, double val, double theta, int mode);
 int vertexnum (char *vertname);
