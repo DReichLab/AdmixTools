@@ -16,7 +16,7 @@ extern int numchrom ;
 #define MAXSTR 1024
 #define MAXFF   128
 
-int hashit (char *str)  ;
+unsigned int hashit (char *str)  ;
 
 int countcol(char *fname) {
  FILE *fp ;
@@ -477,26 +477,31 @@ void getgall(SNP *cupt, int *x, int n)
   int k, t, a ;
   unsigned char b, w ;
 
+  ivclear(x, -1, n) ;
   if (cupt -> gtypes == NULL) {          
-   ivclear(x, -1, n) ;
    return ;
   }
 
   if (!packmode) {  
    copyiarr(cupt-> gtypes, x, n) ;
-   return ;
   }
 
-  k = 0 ;
-  for (a=0; 4*a<n; ++a) {  
-   w = cupt -> pbuff[a] ;
-   for (t = 0; t < 4 ; t++)  { 
-    b = w >> 2*(3-t) ;
-    x[k] = b & 3 ;
-    ++k ; 
-    if (k>=n) break ;
+  if (packmode) {
+   k = 0 ;
+   for (a=0; 4*a<n; ++a) {  
+    w = cupt -> pbuff[a] ;
+    for (t = 0; t < 4 ; t++)  { 
+     b = w >> 2*(3-t) ;
+     x[k] = b & 3 ;
+     ++k ; 
+     if (k>=n) break ;
+    }
    }
   }
+  for (k=0; k<n; ++k) {
+   if (x[k] == 3) x[k] = -1 ;
+  }
+  return ;
 }
 
 int getgtypes(SNP *cupt, int k) 
@@ -561,11 +566,13 @@ void putep(SNP *cupt, int k, int val)
 
 }
 
-int hasharr(char **xarr, int nxarr)  
+unsigned int hasharr(char **xarr, int nxarr)  
 // in application ordering  matters so we hash order dependent 
+// code modified at suggestion of Chris Chang
 {
   
-   int hash, thash, i, n ;  
+   int i, n ;  
+   unsigned int hash, thash ;
 
    hash = 0 ;  
 
@@ -576,19 +583,20 @@ int hasharr(char **xarr, int nxarr)
    }
    return hash ;
 }
-int hashit (char *str) 
+unsigned int hashit (char *str) 
 {
 /* simple and unimpressive hash function NJP */
-   int j, len, hash ; 
+   int j, len ; 
+   unsigned int hash ;
 
    hash = 0 ;
    len = strlen(str) ;
 
    for (j=0; j<len ; j++) {  
      hash *= 23 ;
-     hash += (int) str[j] ;
+     hash += (unsigned int) (unsigned char) str[j] ;
    }
-   return hash ;
+   return  hash ;
 }
 void
 wbuff(unsigned char *buff, int num, int g) 
@@ -1250,8 +1258,17 @@ int getfalist(char **poplist, int npops, char *dbfile, char **iublist)
  char *scolon ; 
  char **kword, **val ;
  int nn, nu ; 
+ int isempty = -1  ; 
   
-  if (dbfile == NULL) return 0 ;
+
+  for (k=0; k<npops; ++k) { 
+   if (iublist[k] == NULL) isempty = k ;
+  }
+  if (isempty<0) return 2 ;
+  if (dbfile == NULL) {
+   fatalx("no database and file %s not set\n", poplist[isempty]) ;
+  }
+
   openit(dbfile, &fff, "r") ;
 
   nn = numlines(dbfile) ;
@@ -1260,13 +1277,6 @@ int getfalist(char **poplist, int npops, char *dbfile, char **iublist)
   ZALLOC(val, nn, char *) ;
 
   nu =  mkmaplist(dbfile, kword, val)  ; 
-/**
-  printf("##zz nu: %d\n", nu) ;
-  printstrings(kword, nu) ;
-  printstrings(val, nu) ;
-  printnl() ;
-*/
-  
 
   while (fgets(line, MAXSTR, fff) != NULL)  {
    nsplit = splitup(line, spt, MAXFF) ; 
@@ -1281,6 +1291,7 @@ int getfalist(char **poplist, int npops, char *dbfile, char **iublist)
     freeup(spt, nsplit) ; 
     continue ;
    }
+   if (iublist[t] != NULL) continue ;
     sx = spt[2] ;
     tt = strcmp(sx, "NULL") ; 
     if (tt == 0) {  
@@ -1623,5 +1634,80 @@ void testsnplen(SNP  **snpm, int n)
  }
  if (maxlen > BIGL) printf("deprecated long ID: %s\n", cuptmax -> ID) ;
 }
+
+
+int getsnpvals(double *vals,  SNP **snpmarkers, int numsnps, char *vname)
+{
+  char **names, *sx;
+  double **xx ;
+  int n, t, k ;
+  SNP *cupt ;
+  int nvalid = 0 ; 
+  int *iwork ;
+
+  n = numlines(vname) ;
+  ZALLOC(names, n, char *) ;
+  xx = initarray_2Ddouble(1, n, 0) ;
+  n = getxxnames(&names, xx, n, 1, vname) ;
+
+  vzero(vals, numsnps) ;
+  ZALLOC(iwork, numsnps, int) ;
+  
+  for (t=0; t<n; ++t) {
+   sx = names[t]  ;
+   k = snpindex(snpmarkers, numsnps, sx) ;
+// if (t<10) printf("zzv %s %d %d %9.3f\n", sx, t, k, xx[0][t])  ;  
+
+   if (k<0) { 
+    continue ;
+   }
+   vals[k] = xx[0][t] ;
+   iwork[k] = 1 ;
+  }
+  for (k=0; k<numsnps; ++k) { 
+   cupt = snpmarkers[k] ;
+   if (iwork[k] == 0) cupt -> ignore = YES ;
+   if (cupt -> ignore == NO) ++nvalid ; 
+   if (cupt -> ignore) vals[k] = 0 ; 
+  }
+
+  freeup(names, n) ;
+  free(iwork) ;
+  free2D(&xx, 1) ;
+  return nvalid ;
+}
+
+void setref(char **preffasta, char *iubfile, char *tag) 
+{     
+
+ char *reffasta, **rrr  ;
+ int t ; 
+ reffasta = *preffasta ; 
+ if (reffasta != NULL) return ;
+ ZALLOC(rrr, 1, char *) ; 
+ if (iubfile == NO) fatalx("no database\n") ;
+ t = getfalist(&tag, 1, iubfile, rrr) ; 
+ if (t < 0) fatalx("no %s tag in database %s\n", tag, iubfile) ;
+ *preffasta = strdup(rrr[0]) ;
+ freeup(rrr, 1) ; 
+}
+
+int getrb(int pos, char *string, int len) 
+// dangerous bend string is 1-based
+{
+ char  cx ;
+ int pa = pos -1  ; 
+
+ if (string == NULL) return -4 ;
+ if (pa<0) return -3 ; 
+ if (pa>=len) return -3 ; 
+
+ cx = string[pa] ; 
+ if (isdigit(cx)) return 1000 + cx -'0' ;
+ 
+ return base2num(cx) ;
+}
+
+
 
 

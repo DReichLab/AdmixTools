@@ -84,6 +84,32 @@ mulmat (double *a, double *b, double *c, int a1, int a2, int a3)
   free (t);
 
 }
+void
+mulmatf  (double *a, double *b, double *c, int a1, int a2, int a3)
+
+/* b is a1 x a2 , c a2 x a3 so a is a1 x a3  */
+// more efficient for sparse matrices
+{
+  double *t;
+  double y ; 
+  int i, j, k;
+  ZALLOC (t, a1 * a3, double);
+
+  for (i = 0; i < a1; i++) { 
+   for (k = 0; k < a2; k++) { 
+    y = b[i * a2 + k] ; 
+    if (y==0.0) continue ;
+    for (j = 0; j < a3; j++) { 
+        t[i * a3 + j] += y * c[k * a3 + j];
+    } 
+   }} 
+
+  copyarr (t, a, a1 * a3);
+
+  free (t);
+
+}
+
 
 void
 imulmat (int *a, int *b, int *c, int a1, int a2, int a3)
@@ -119,7 +145,7 @@ pdinv (double *cinv, double *coeff, int n)
 {
   double *tt;
   double *p;
-  double t, sum, y;
+  double t, sum, y, pmin;
   int i, j, k;
 
 /**
@@ -156,9 +182,17 @@ pdinv (double *cinv, double *coeff, int n)
       }
       cinv[i * n + j] = cinv[j * n + i] = sum;
     }
-
-  vlog (p, p, n);
-  y = 2.0 * asum (p, n);
+  
+  vmaxmin(p, n, NULL, &pmin) ; 
+  if (pmin <= 0.0) { 
+   y = -1.0e12 ;
+   printf("logdet --matrix not pos. def.\n") ;
+  }
+  
+  else {
+   vlog (p, p, n);
+   y = 2.0 * asum (p, n);
+  }
 
 
   free (tt);

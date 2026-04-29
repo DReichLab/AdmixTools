@@ -16,6 +16,7 @@ int isnumword (char *str)  ;
 void ffprint (FILE *fff, char *fmt, ...) ; 
 void enuf( char *fmt, ...) ;
 void fatalx( char *fmt, ...) ;
+void setdump(int cdump) ; 
 int docommand( char *fmt, ...) ;
 long seednum() ;
 void printbl(int n) ;
@@ -69,6 +70,7 @@ void printstringsw(char **ss, int n, int slen, int width)  ;
 void printstrings(char **ss, int n)  ;
 void printstringsx(char **ss, int n)  ;
 void printstringsxfile(char **ss, int n, FILE *fff)  ;
+void printstringss(char *sout, char **ss, int n)  ;
 int ridfile(char *fname) ; 
 char compbase(char x) ;
 void mkupper(char *sx) ;
@@ -91,7 +93,9 @@ char *fgetstrap(char *buff, int maxlen, FILE *fff, int *ret)  ;
 char readtonl(FILE *fff) ; 
 int  filehash(char *name) ;
 char *mytemp (char *qqq) ; 
+void randomname(char **ans) ;
 int getchromlist(char **list, char *bamname) ;
+int getreglist (char ***preglist, char *bamname)  ;
 void printslurmenv ()  ; 
 int getfline(char *ss, char *fname, int maxstr) ;
 long copyfs(char *infile, FILE *fff)  ;
@@ -108,6 +112,7 @@ char *strstrr(char *stack, char *needle) ;
 int canwrite(char *fname)  ;
 long numlinesx(char *name)  ;
 int isdata(char *buff, long bufflen) ;
+void mkcmdline(char *ss, char *argv0, char *version) ; 
 
 
 #define ZALLOC(item,n,type)      if ((item = (type *)calloc((n),sizeof(type))) == NULL) \

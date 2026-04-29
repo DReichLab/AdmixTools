@@ -29,7 +29,7 @@
 */
 
 
-#define WVERSION   "400"
+#define WVERSION   "2010"
 // diffmode added
 // xdata supported
 // code cleeanup 10/2/19
@@ -199,6 +199,7 @@ main (int argc, char **argv)
   printf ("## qpF4ratio version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
 
   if (xdata) noxdata = NO ; 
   if (xchrom == (numchrom + 1)) noxdata = NO;
@@ -488,6 +489,7 @@ readcommands (int argc, char **argv)
   getint (ph, "xdata:", &xdata);
   getint (ph, "fancyf4:", &fancyf4);
   getint (ph, "numchrom:", &numchrom);
+  getint (ph, "coredump:", &coredump);
   getstring (ph, "blockname:", &blockname);
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -711,6 +713,15 @@ doq4rat (double *q4rat, double *q4ratsig, int ***counts, int *bcols,
 
   gtop = asum (btop, nblocks);
   gbot = asum (bbot, nblocks);
+
+  for (k = 0; k < nblocks; k++) {
+   printf("zzblock: %4d", k) ;
+   printf(" %6.0f", wjack[k]) ;
+   printf(" %9.3f", btop[k]) ;
+   printf(" %9.3f", bbot[k]) ;
+   printnl() ;
+  }
+  
 
   mean = gtop / gbot;
 

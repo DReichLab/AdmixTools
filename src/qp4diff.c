@@ -27,7 +27,7 @@
 */
 
 
-#define WVERSION   "465" 
+#define WVERSION   "470" 
 
 // overlap NO added
 // allsnps: YES and instem: added
@@ -204,6 +204,7 @@ int main(int argc, char **argv)
 
   numchromp = numchrom+1 ;
   if (parname == NULL) return 0 ;
+  setdump(coredump) ;
   xverbose = verbose ;
   if (xverbose) printf("verbose set\n") ;
   if (allsnps == YES) overlap = NO ; 
@@ -439,6 +440,7 @@ void readcommands(int argc, char **argv)
    getint(ph, "gfromp:", &gfromp) ;  // gen dis from phys
    getint(ph, "fancyf4:", &fancyf4) ;
    getint(ph, "numchrom:", &numchrom) ;
+  getint (ph, "coredump:", &coredump);
    getdbl(ph, "firstf4mult:", &firstf4mult) ;
 
    printf("### THE INPUT PARAMETERS\n");

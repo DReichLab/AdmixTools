@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "340"
+#define WVERSION   "350"
 
 // phylipname added  (f2 stats)
 // dumpname added  (binary file) 
@@ -117,7 +117,6 @@ FILE *ofile;
 char **eglist;
 char **egshort;
 char **enames;
-double zthresh = 3.0;
 double f2diag = 0.0;
 int useweights = YES;
 
@@ -255,6 +254,7 @@ main (int argc, char **argv)
   printf ("## qpff3base version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
   if (xchrom == 23)
     noxdata = NO;
 
@@ -941,6 +941,7 @@ readcommands (int argc, char **argv)
   getint (ph, "forcezmode:", &forcezmode);
   getint (ph, "lsqmode:", &lsqmode);
   getint (ph, "useweights:", &useweights);
+  getint (ph, "coredump:", &coredump);
   getdbl (ph, "baseval:", &baseval);
   getstring (ph, "loadname:", &loadname);
 

@@ -32,11 +32,12 @@
 #define A  4
 #define O  5
 
-#define WVERSION   "950"
+#define WVERSION   "960"
 // was qpadmlin
 // inbreed added
 // mvname, weightname added
 // Monte Carlo Integration to get std. errors on coeffs
+// check on popsize 1
 
 #define MAXFL  50   
 #define MAXSTR  512
@@ -245,6 +246,7 @@ int main(int argc, char **argv)
   calcmem(0) ;
 
   if (parname == NULL) return 0 ;
+  setdump(coredump) ;
 
   setinbreed(inbreed) ;
   setsizeweight(sizeweight) ;
@@ -294,11 +296,9 @@ int main(int argc, char **argv)
   setpopsize(popsize, eglist, numeg, indivmarkers, numindivs) ;
   for (i=0; i<numeg; ++i) { 
    printf("pop: %20s  %5d\n", eglist[i], popsize[i]) ;  
+   if ((popsize[i] == 1) && (inbreed == YES)) fatalx(" pop %s has 1 sample and inbreed set!\n", eglist[i]) ;
+   if (popsize[i] == 0) fatalx("pop %s has zero samples!\n", eglist[i]) ;
   }
-  ivlmaxmin(popsize, numeg, NULL, &t) ; 
-  if (popsize[t] == 0) fatalx("pop %s has zero samples!\n", eglist[t]) ;
-  if ((popsize[0] == 1) && (inbreed == YES)) fatalx("target pop %s has 1 sample and inbreed set!\n", eglist[0]) ;
-
 
   setgklist(indivmarkers, numindivs, eglist, numeg)   ;
   gkignore(indivmarkers, numindivs) ;
@@ -310,7 +310,6 @@ int main(int argc, char **argv)
     cupt = snpmarkers[i];
     chrom = cupt->chrom;
     if ((xchrom > 0) && (chrom != xchrom))
-      cupt->ignore = YES;
     if ((noxdata) && (chrom == (numchrom + 1)))
       cupt->ignore = YES;
     if (chrom == 0)
@@ -611,7 +610,8 @@ int calcmat(double *ccc, double **vccc, SNP **xsnplist, int *xindex, int *xtypes
        if (ytop < -99) ret = -9 ; 
        if (ytop > 100) verbose = YES ;  
  
-       if (verbose) printf("zzfstatx: %d %d  %12.6f\n", b, c, ytop) ;
+ //    if (verbose || (ret<0)) printf("zzfstatx: %d %d  %12.6f %d\n", b, c, ytop, ret) ;
+       if (verbose) printf("zzfstatx: %d %d  %12.6f %d\n", b, c, ytop, ret) ;
        if (ret<0) isok = NO ;
        k = (b-1)*dim + c - 1 ; ww[k] = ytop ;
        k = (c-1)*dim + b - 1 ; ww[k] = ytop ;
@@ -858,6 +858,7 @@ void readcommands(int argc, char **argv)
    getint(ph, "popsizelimit:", &popsizelimit) ; 
    getint(ph, "gfromp:", &gfromp) ;  // gen dis from phys
    getint(ph, "chrom:", &xchrom) ;  
+   getint (ph, "coredump:", &coredump);
    getstring(ph, "weightname:", &weightname) ;
    getstring(ph, "mvname:", &mvname) ;
    getstring(ph, "dumpname:", &dumpname) ;

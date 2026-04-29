@@ -110,6 +110,17 @@ The key code for this was written by Matthew Mah
 Version 8.0.1 is a minor bugfix release.
 Version 8.0.2 is a minor bugfix release, affecting transpose packed files > 2GB.
 
+*** NEW *** 
+1) Coredumps are disabled by default.  If you want a coredump
+code coredump: YES in your parameter file.  Behavior may be system dependent. 
+
+2) New flattening for covariance in qpAdm qpWave -- see README.qpWave
+
+3) Many programs now allow 
+instem: <yourstem>   
+which specifies yourstem.ind yourstem.snp youurstem.geno as input files. 
+outstem works similarly for output.
+
 ----------------------------
 SOFTWARE COPYRIGHT NOTICE AGREEMENT
 This software and its documentation are copyright (2010) by Harvard University 

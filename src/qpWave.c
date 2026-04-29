@@ -20,6 +20,7 @@
 #include "egsubs.h"
 #include "qpsubs.h"
 #include "f4rank.h"
+#include "eigsubs.h" 
 
 /** 
  // like qp4wave but all left pops analyzed together
@@ -33,7 +34,7 @@
 */
 
 
-#define WVERSION   "1570" 
+#define WVERSION   "2201" 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -89,6 +90,7 @@ char *outliername = NULL;
 char *blockname = NULL;
 int inbreed = -99;
 double lambdascale;
+int oasmode = YES ;
 
 int numboot = 1000 ; 
 
@@ -101,6 +103,9 @@ FILE *ofile;
 
 double **btop, **bbot, *gtop, *gbot;
 int bnblocks, bdim = 0;
+double effblocks = 0 ;
+
+int eigenanalysis = NO ;
 
 
 void readcommands (int argc, char **argv);
@@ -113,7 +118,7 @@ doq4vecb (double *ymean, double *yvar, int ***counts, int *bcols,
 int getf4 (int **xx, int *indx, double *ans);
 int usage (char *prog, int exval);
 
-void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright, char *fbline) ;
 int  mkfstats(char *parname)   ; 
 
 
@@ -149,7 +154,8 @@ main (int argc, char **argv)
   int weightmode = NO;
   int chrom;
   int maxtag = -1;
-  int *rawcol;;
+  int *rawcol;
+  double *tdiag ;
   int a, b, x, t, col;
   double T2, dof;
   int *xind;
@@ -165,6 +171,7 @@ main (int argc, char **argv)
   F4INFO **f4info, *f4pt, *f4pt2;
  
   double ymem ; 
+  double *fvecs, *fvals ;
 
 
   readcommands (argc, argv);
@@ -176,10 +183,12 @@ main (int argc, char **argv)
   printf ("## qpWave version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
 
   if (tmpdir != NULL) setenv("STMP", tmpdir, 1) ;
 
   if (basepop != NULL) printf("basepop set: %s\n", basepop) ;
+  printf("oracle mode %d\n", oasmode) ;
 
   numchromp = numchrom + 1 ; 
 
@@ -426,6 +435,8 @@ main (int argc, char **argv)
   ZALLOC (ymean, d + 10, double);
   ZALLOC (ww, d + 10, double);
   ZALLOC (yvar, dd, double);
+  ZALLOC (fvals, d, double) ;
+  ZALLOC (fvecs, dd, double) ;
 
   ZALLOC (xind, nl, int);
   for (jjj = 1; jjj < nleft; ++jjj) {
@@ -456,23 +467,68 @@ main (int argc, char **argv)
 // y is jackknife dof 
   printf ("Effective number of blocks: %9.3f\n", y);
   printf ("numsnps used: %d\n", nsnpused);
-
+  effblocks = y ; 
  }
 
  else {
-  loadymv(ymean, yvar,  fstatsname, popllist, poprlist, nleft,  nright) ; 
+  loadymv(ymean, yvar,  fstatsname, popllist, poprlist, nleft,  nright, sss) ; 
 //  printf("loadymv exited\n") ;
+  effblocks = geteffblocks(sss) ;
+  printf("fstats loaded; effblocks: %9.3f\n", effblocks) ;
+ }
+   
+ if (oasmode) { 
+  if (verbose) {
+   ZALLOC(tdiag, nl*nr, double) ; 
+   getdiag(tdiag, yvar, nl*nr) ;
+   printmatl(tdiag, 1, nl*nr) ; 
+   printnl() ; 
+   printmatl(ymean, 1, nl*nr) ; 
+   printnl() ; 
+   printmatl(yvar, nl*nr, nl*nr) ; 
+  }
+  oascovar(yvar, yvar, effblocks, nl*nr) ;
  }
 
- if (diagvarplus < 0) diagvarplus = yscale ;
- addscaldiag(yvar, diagvarplus, nl*nr) ;    
+
+  if (eigenanalysis) { 
+   
+   eigvecs(yvar, fvals, fvecs, nl*nr) ;
+   printf("eigenanalysis of f4 matrix\n") ;
+   y = asum(fvals, nl*nr) ; 
+   y = (double) (nl*nr) / y ;
+   vst(fvals, fvals, y, nl*nr) ; 
+   printf("scaling multiplier: %15.3g\n", y) ;
+   for (k = 0 ; k < nl*nr; ++k) { 
+    printf("eval: %3d value: %15.6f\n", k, fvals[k]) ; 
+    for (a=0; a<nl; ++a) { 
+     for (b=0; b<nr; ++b) { 
+      y = fvecs[k*nl*nr+a*nr+b]; 
+      printf ("%20s %20s ", popllist[a + 1], poprlist[b + 1]);
+      printf (" %9.3f", y) ;
+      printnl() ;
+    }} 
+   }
+  }
+
+ if (oasmode) diagvarplus = 0.0 ;
+
+ else {
+  if (diagvarplus<0) { 
+   addscaldiag(yvar, yscale, nl*nr) ;    
+  }
+  else {
+   printf("adding to variance diagonal: %15.9f\n", diagvarplus) ;
+   addsdiag(yvar, diagvarplus, nl*nr) ;    
+  }
+ }
+
 
  retkode = checkmv(ymean, yvar, nl, nr) ; 
  if (retkode == -1) printf("f4 stats all zero.  Rank 0!.  Aborting run\n") ;
  if (retkode == -2) printf("f4 variance absursly small.  Aborting run\n") ;
 
  if (retkode < 0) return -1 ;
-
 
   for (x = 0; x <= maxrank; ++x) {
     f4pt = f4info[x];
@@ -581,6 +637,10 @@ readcommands (int argc, char **argv)
   getstring (ph, "tmpdir:", &tmpdir);
 
   getint (ph, "numboot:", &numboot) ; 
+  getint (ph, "eigenanalysis:", &eigenanalysis);
+  getint (ph, "coredump:", &coredump);
+  getint (ph, "oasmode:", &oasmode);
+  getint (ph, "oracle:", &oasmode);
 
 
   printf ("### THE INPUT PARAMETERS\n");
@@ -743,7 +803,7 @@ void load4(int *x, int a, int b, int c, int d)
 }
 
 
-void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) 
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright, char *fbline) 
 {
 
   char **eglist ; 
@@ -758,7 +818,7 @@ void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, ch
   numeg = np = fstats2popl(fstatsname, eglist) ; 
   ZALLOC(ff3, np*np, double) ; 
   ZALLOC(ff3var, np*np*np*np, double) ; 
-  loadfstats(fstatsname, ff3, ff3var, eglist, numeg) ; 
+  loadfstatsx(fstatsname, ff3, ff3var, eglist, numeg, fbline) ; 
 
   nl = nleft -1 ; 
   nr = nright -1 ; 

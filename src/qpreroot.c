@@ -25,7 +25,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "860"
+#define WVERSION   "870"
 
 // gsimplify option added
 // calctime added  
@@ -122,6 +122,7 @@ main (int argc, char **argv)
 
   readcommands (argc, argv);
   printf ("## qpreroot version: %s\n", WVERSION);
+  setdump(coredump) ;
 
   numeg = loadgraph (graphname, &eglist);
 
@@ -339,6 +340,7 @@ readcommands (int argc, char **argv)
   getdbl (ph, "valbreak:", &valbreak);
   getint(ph, "calctime:", &calctime) ;
   getint(ph, "cleantree:", &cleantree) ;
+  getint (ph, "coredump:", &coredump);
   t = 1 ; 
   getint(ph, "outformat:", &t) ;
   setoutformat(t) ; 

@@ -26,7 +26,7 @@
 
 int debug = NO ; 
 
-#define WVERSION   "7950"   
+#define WVERSION   "7960"   
 // lsqmode 
 // ff3fit added
 // reroot added
@@ -38,7 +38,7 @@ int debug = NO ;
 // phylipname added  
 // graphdotname added
 // map4x bug fixed
-// zthresh param
+// zzthresh param
 // isfixed supported
 // outliername added
 // useallsnps added
@@ -181,7 +181,7 @@ char **eglist;
 char **fseglist;
 char **egshort;
 char **enames;
-double zthresh = 3.0;
+double zzthresh = 3.0;
 double f2diag = 0.0;
 
 int halfscore = NO ; 
@@ -361,7 +361,7 @@ main (int argc, char **argv)
   if (parname == NULL) {   
    return 0 ; 
   }
-
+  setdump(coredump) ;
 /**
   if (halfjackname != NULL) halfscore = YES ; 
   if (halfscore && (fstatsname != NULL)) fatalx("halfscore, fstatsname incompatible\n") ; 
@@ -869,7 +869,7 @@ outpop:    (not present)
  if (fstatsname != NULL)  {
 
    t = strcmp(eglist[0], fsbasep) ; 
-   if (t!=0) fatalx("mimatch pf basepops in graph and fstats: %s %s\n", eglist[0], fsbasep) ;
+   if (t!=0) fatalx("mismatch of basepops in graph and fstats: %s %s\n", eglist[0], fsbasep) ;
 
    printstrings(eglist, numeg) ; 
    printf("+++\n") ;
@@ -1510,7 +1510,7 @@ printfit (double *ww)
           if (x > 0)
             ssx += sprintf (ssx, " ---");
           if (isworst) strcpy(ssworst, ss) ;
-          if (fabs (z) < zthresh) continue;
+          if (fabs (z) < zzthresh) continue;
           printf("%s", ss) ;
           printnl ();
           if (outliername != NULL) {
@@ -2140,7 +2140,7 @@ readcommands (int argc, char **argv)
       break;
 
     case 'z':
-      zthresh = atof (optarg);
+      zzthresh = atof (optarg);
       break;
 
     case 's':
@@ -2192,7 +2192,7 @@ readcommands (int argc, char **argv)
   getdbl (ph, "blgsize:", &blgsize);
   getdbl (ph, "diag:", &diag);
   getdbl (ph, "f2diag:", &f2diag);
-  getdbl (ph, "zthresh:", &zthresh);
+  getdbl (ph, "zthresh:", &zzthresh);
   getdbl (ph, "minvar:", &minvar);
   getdbl (ph, "lambdascale:", &lambdascale);
   getint (ph, "inbreed:", &inbreed);
@@ -2209,6 +2209,7 @@ readcommands (int argc, char **argv)
   getint (ph, "optit:", &optit);
   getdbl (ph, "precision:", &gslprecision);
   getint (ph, "hires:", &hires);
+  getint (ph, "coredump:", &coredump);
   getstring (ph, "badpop2name:", &badpop2name);
   getstring (ph, "weightname:", &weightname);
   getstring (ph, "admixout:", &admixout);

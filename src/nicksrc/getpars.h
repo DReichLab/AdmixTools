@@ -24,5 +24,9 @@ int subst(char *outstr, char *instr, char *ins, char *outs)  ;
 void dostrsub(phandle *pp)  ; 
 int upstring (char *ss)  ;
 void subcolon(char *ss)  ;
+void stripcomment(char *ss)  ;
+int fixpars(phandle  *pp,  char *tag)  ; 
+void mkparamfile(char *logfile, char *outparams) ;
+void writeparsx (phandle * pp);
 
 #define MAXFIELD 1000

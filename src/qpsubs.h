@@ -118,7 +118,7 @@ void gethscore(double *hscore, double *scores,
 
 double qhdiff(double *scores,  int a, int b, int c, int d, int numeg)  ;
 void setblocksf(int *block, int *bsize, int *nblock, SNP **snpm, int numsnps, double blocklen, char *fname)  ;
-void setblocks(int *block, int *bsize, int *nblock, SNP **snpm, int numsnps, double blocklen)  ;
+double setblocks(int *block, int *bsize, int *nblock, SNP **snpm, int numsnps, double blocklen)  ;
 int setblocksz (int **pblock, int **pbsize, SNP ** snpm, int numsnps, double blocklen, char *fname) ; 
 int numblocks(SNP **snpm, int numsnps, double blocklen)  ;
 void setmgpos(SNP **snpm, int numsnps, double *maxgdis)  ;
@@ -290,6 +290,7 @@ void setdate(double basedate, double gentime) ;
 void getpud(double *psize, double *upd, double *downd, char *pop) ;
 
 double hfix(int *aa) ; 
+int getabbababa (int **xx, int *indx, double *baba, double *abba) ;
 int getf4 (int **xx, int *indx, double *ans) ;
 void setvv(double *vest, double *vvar, double *ff3, double *ff3var, int *ind2f, int numeg)   ; 
 
@@ -327,10 +328,12 @@ counthets ( int *xhets, int *xvalids,
 int getegnum(int *egnum, char **spt, char **eglist, int numeg, int num)  ; 
 int fstats2popl(char *fstatsname, char **poplist)  ; 
 void  loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg) ; 
+void  loadfstatsx(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, char *fbline) ; 
 int mkcoeffs (double *yco, int **dd, int numpops, int numd)  ;
 void vv2ww (double *ww, double *wwvar, double *vest, double *vvar, int numpops, int **dd, int numd) ;
 double fstatx(int *fsx) ;
 
+double geteffblocks(char *sss) ;
 void dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;
 void dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, int *indx, int basenum) ;
 void weightjackfourier(double *est,double *sig,double mean,double *jmean,double *jwt,int g,double* prho);  

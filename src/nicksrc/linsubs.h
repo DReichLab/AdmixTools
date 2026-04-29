@@ -7,6 +7,7 @@ void bal(double *a, double *b, int n) ;
 
 /* linear algebra */
 void mulmat(double *a, double *b, double *c, int a1, int a2, int a3) ;
+void mulmatf(double *a, double *b, double *c, int a1, int a2, int a3) ;
 void xmultx(double *a, double *b, int m, int n) ;
 void txmulx(double *a, double *b, int m, int n) ;
 

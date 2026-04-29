@@ -421,13 +421,11 @@ z2x2 (double *a)
   return z;
 }
 
-
-double
-conchi (double *a, int m, int n)
-/* a is m rows n columns.  contingency chisq */
+int testconchi(double *a, int m, int n) 
 {
+
   double *rsum, *csum, ee, tot = 0, chsq = 0, y;
-  int i, j, k;
+  int i, j, k, ok = YES;
 
   ZALLOC (rsum, m, double);
   ZALLOC (csum, n, double);
@@ -442,6 +440,41 @@ conchi (double *a, int m, int n)
 	  tot += a[k];
 	}
     }
+  for (i = 0; i < m; i++) {
+   if (rsum[i] < EPS1) ok = NO ;
+  }
+  for (j = 0; j < n; j++) {
+   if (csum[j] < EPS1) ok = NO ;
+  }
+  free(rsum) ; 
+  free(csum) ;
+
+  return ok ;
+
+}
+
+double
+conchi (double *a, int m, int n)
+/* a is m rows n columns.  contingency chisq */
+{
+  double *rsum, *csum, ee, tot = 0, chsq = 0, y;
+  int i, j, k;
+
+  if (testconchi(a, m, n) == NO) return -888 ;
+  ZALLOC (rsum, m, double);
+  ZALLOC (csum, n, double);
+
+  for (i = 0; i < m; i++)
+    {
+      for (j = 0; j < n; j++)
+	{
+	  k = i * n + j;
+	  rsum[i] += a[k];
+	  csum[j] += a[k];
+	  tot += a[k];
+	}
+    }
+
   if (tot < 0.001)
     fatalx ("(conchi) no data\n");
   for (i = 0; i < m; i++)
@@ -1566,7 +1599,7 @@ rtlg2 (double a, double x)
   int k;
   t0 = 0.0;
 
-// ZJ p 64 ff
+// ZJ p 61 ff
   for (k = 60; k >= 1; --k)
     {
       yk = (double) k;
@@ -1613,6 +1646,7 @@ twtail (double twstat)
 
 
   ++ncall;
+  if (!isfinite(twstat)) fatalx("(twtail) bad twstat\n") ; 
 
   gettw (twstat, &tail, &dens);
 /**
@@ -1732,6 +1766,7 @@ dotwcalc (double *lambda, int m, double *ptw, double *pzn, double *pzvar,
   vst (evals, lambda, y, m);
   top = (double) (m * (m + 2));
   bot = asum2 (evals, m) - (double) m;
+  if (bot <= 0) return -1 ; 
   zn = top / bot;		// see appendix to eigenpaper  NJP
   y = evals[0] * zn;
   tw = twnorm (y, tm, zn);
@@ -2356,6 +2391,34 @@ circconv (double *jp, double *c, double *jmean, int g)
     }
 
   free (ww);
+}
+double factorial(int x) 
+{
+ #define MAXX 100 
+ static double *factorx = NULL ; 
+ int k ; 
+ if (x>MAXX) fatalx("(factorial) %d too large\n", x) ;
+ if (factorx == NULL) { 
+  ZALLOC(factorx, MAXX+1, double) ; 
+  factorx[0] = 1 ;
+  for (k=1; k<= MAXX; ++k) { 
+   factorx[k] = factorx[k-1]*(double) k ;
+  }
+ }
+
+ return factorx[x] ;
+
+}
+int ibinomial(int a, int b) 
+{
+
+ return nnint(binomial(a, b)) ;
+
+}
+double binomial(int a, int b) 
+// simpler. no check for overflow
+{
+  return factorial(a)/(factorial(b)*factorial(a-b)) ;
 }
 
 double
@@ -3478,4 +3541,393 @@ double ess(double *wt, int n)
   return y ; 
 
 }
+
+int
+calccorr (CORR * corrpt, int mode, int ztrans)
+// mode = 1 => do NOT take off mean
+{
+
+  double y, yn, m1, m2, v11, v12, v22, r;
+
+  corrpt->corr = corrpt->Z = 0.0;
+  if (corrpt->S0 < 0.5)
+    return -1;
+
+  yn = corrpt->S0;
+  corrpt->m1 = m1 = corrpt->S1 / corrpt->S0;
+  corrpt->m2 = m2 = corrpt->S2 / corrpt->S0;
+
+  if (mode == 1) {
+    m1 = m2 = 0.0;
+  }
+
+  corrpt->v11 = v11 = (corrpt->S11 - yn * m1 * m1) / yn;
+  corrpt->v12 = v12 = (corrpt->S12 - yn * m1 * m2) / yn;
+  corrpt->v22 = v22 = (corrpt->S22 - yn * m2 * m2) / yn;
+
+
+  y = corrpt->corr = v12 / sqrt (v11 * v22 + 1.0e-20);
+  corrpt->Z = sqrt (yn) * y;
+
+  if (ztrans) {
+
+    if (yn < 4)
+      return -1;
+
+    y = MIN (y, 0.9);
+    y = MAX (y, -0.9);
+
+    r = 0.5 * log ((1 + y) / (1 - y));
+    corrpt->Z = sqrt (yn - 3) * r;
+  }
+  return 1;
+}
+
+void
+printcorrl (CORR * corrpt)
+{
+  printf ("S0:   %12.3f\n", corrpt->S0);
+  printf ("S1:   %12.3f\n", corrpt->S1);
+  printf ("S2:   %12.3f\n", corrpt->S2);
+  printf ("S11:  %12.3f\n", corrpt->S11);
+  printf ("S12:  %12.3f\n", corrpt->S12);
+  printf ("S22:  %12.3f\n", corrpt->S22);
+  printf ("m1:   %12.6f\n", corrpt->m1);
+  printf ("m2:   %12.6f\n", corrpt->m2);
+  printf ("v11:  %12.6f\n", corrpt->v11);
+  printf ("v12:  %12.6f\n", corrpt->v12);
+  printf ("v22:  %12.6f\n", corrpt->v22);
+  printf ("corr: %12.6f\n", corrpt->corr);
+  printf ("Z:    %12.3f\n", corrpt->Z);
+}
+
+
+void
+printcorr (CORR * corrpt)
+{
+  printf ("S0:   %12.3f\n", corrpt->S0);
+  printf ("S1:   %12.3f\n", corrpt->S1);
+  printf ("S2:   %12.3f\n", corrpt->S2);
+  printf ("S11:  %12.3f\n", corrpt->S11);
+  printf ("S12:  %12.3f\n", corrpt->S12);
+  printf ("S22:  %12.3f\n", corrpt->S22);
+  printf ("m1:   %12.3f\n", corrpt->m1);
+  printf ("m2:   %12.3f\n", corrpt->m2);
+  printf ("v11:  %12.3f\n", corrpt->v11);
+  printf ("v12:  %12.3f\n", corrpt->v12);
+  printf ("v22:  %12.3f\n", corrpt->v22);
+  printf ("corr: %12.3f\n", corrpt->corr);
+  printf ("Z:    %12.3f\n", corrpt->Z);
+}
+
+void
+clearcorr (CORR * corrpt)
+{
+  corrpt->S0 = 0;
+  corrpt->S1 = 0;
+  corrpt->S2 = 0;		// was buggy
+  corrpt->S11 = 0;
+  corrpt->S12 = 0;
+  corrpt->S22 = 0;
+  corrpt->m1 = 0;
+  corrpt->m2 = 0;
+  corrpt->v11 = 0;
+  corrpt->v12 = 0;
+  corrpt->v22 = 0;
+  corrpt->corr = 0;
+  corrpt->Z = 0;
+}
+
+
+void
+symcorr (CORR * corrpt)
+{
+  sym2(&corrpt->S1, &corrpt -> S2) ; 
+  sym2(&corrpt->S11, &corrpt -> S22) ; 
+  sym2(&corrpt->m1, &corrpt -> m2) ; 
+  sym2(&corrpt->v11, &corrpt -> v22) ; 
+}
+
+void
+addcorr (CORR * corrpt, double x1, double x2)
+{
+  if (isnan(x1)) fatalx(" bad addcorr\n") ;
+  corrpt->S0 += 1;
+  corrpt->S1 += x1;
+  corrpt->S2 += x2;
+  corrpt->S11 += x1 * x1;
+  corrpt->S12 += x1 * x2;
+  corrpt->S22 += x2 * x2;
+  if (isnan(corrpt->S1)) fatalx("bad 2\n");
+}
+
+void
+addcorr2 (CORR * corrpt, double x0, double x1, double x2, double x12, double x11,  double x22)
+
+{
+  if (isnan(x1)) fatalx(" bad addcorr2\n") ;
+  if (x0>1.0e20) fatalx("bad addcorr2\n") ; 
+  corrpt->S0 += x0;
+  corrpt->S1 += x1;
+  corrpt->S2 += x2;
+  corrpt->S12 += x12;
+  corrpt->S11 += x11;
+  corrpt->S22 += x22;
+}
+
+
+void
+addcorrn (CORR * corrpt, double x1, double x2, double yn)
+{
+
+  if (isnan(x1)) fatalx(" bad addcorrn\n") ;
+  if (isnan(yn)) fatalx(" bad addcorrn\n") ;
+  if (yn>1.0e20) fatalx("bad addcorrn\n") ; 
+
+  corrpt->S0 += yn;
+  corrpt->S1 += x1 * yn;
+  corrpt->S2 += x2 * yn;
+  corrpt->S11 += x1 * x1 * yn;
+  corrpt->S12 += x1 * x2 * yn;
+  corrpt->S22 += x2 * x2 * yn;
+}
+
+void
+pluscorr (CORR * out, CORR * c1, CORR * c2)
+// corr suff stats.  Used in jackknife
+{
+  out->S0 = c1->S0 + c2->S0;
+  out->S1 = c1->S1 + c2->S1;
+  out->S2 = c1->S2 + c2->S2;
+  out->S11 = c1->S11 + c2->S11;
+  out->S12 = c1->S12 + c2->S12;
+  out->S22 = c1->S22 + c2->S22;
+}
+
+void
+minuscorr (CORR * out, CORR * c1, CORR * c2)
+// subtract corr suff stats.  Used in jackknife
+{
+  out->S0 = c1->S0 - c2->S0;
+  if (out->S0 < -1.0e-6)
+    fatalx ("(minuscorr) S0: %15.9f\n", out->S0);
+  out->S1 = c1->S1 - c2->S1;
+  out->S2 = c1->S2 - c2->S2;
+  out->S11 = c1->S11 - c2->S11;
+  out->S12 = c1->S12 - c2->S12;
+  out->S22 = c1->S22 - c2->S22;
+}
+
+void msd(double *mean, double *sd, double *a, int n) 
+{
+ double *ww, ym, yv ; 
+
+ ZALLOC(ww, n, double) ;
+ ym = asum(a, n) / (double) n ; 
+ vsp(ww, a, -ym, n) ;
+ yv = asum2(ww, n) / (double) n ; 
+
+ yv += 1.0e-30 ; 
+ *mean = ym ; 
+ *sd = sqrt(yv) ;
+
+ free(ww) ;
+}
+
+
+double zthresh = 1.0e-6 ;
+double emlognewt(double *wt, double *mat, double *p, int neq, int nv, int niter) 
+{
+   double *z, *pp, *oldpp, *gg ; 
+   double *w1, *w2, *w3, *H, *ww ; 
+   double yscore, ylast, lambda, wtsum, y ;
+   int iter, k, ok = 0  ; 
+
+   ZALLOC(ww, 10*nv + nv*nv + neq, double) ;
+   z = ww ; 
+   pp = z + neq ; 
+   oldpp = pp + nv ;
+   gg = oldpp + nv ;
+   w1 = gg + nv ;
+   w2 = w1 + nv ; 
+   w3 = w2 + nv ; 
+   H = w3 + nv ;
    
+   copyarr(p, pp, nv) ; 
+   vclear(oldpp, -1.0e20, nv) ;
+
+   ylast = -1.0e20 ;
+   wtsum = asum(wt, neq) ;
+   for (iter = 1; iter <= niter; ++iter) { 
+    vclip(pp, pp, 0, 1, nv) ; 
+    bal1(pp, nv) ;  
+    vzero(gg, nv) ; 
+    vzero(H, nv*nv) ; 
+    mulmat(z, mat, pp, neq, nv, 1) ;
+    yscore = vldot(wt, z, neq)  + wtsum*log(nv) ; ; 
+     if (iter>5) printf("newtonscore: %12.6f ", yscore) ; printmat(pp, 1, nv) ;
+    if ((yscore - ylast) < -.0001)   {  
+     ok = -1 ; break ;
+    }
+    if (fabs(yscore-ylast) < .0001) ++ok ; 
+    if (ok>2) break ; 
+    for (k=0; k< neq; ++k) { 
+     vst(w1, mat+k*nv, 1.0/z[k], nv) ;
+     vst(w2, w1, wt[k], nv) ; 
+     vvp(gg, gg, w2, nv) ;  // gradient
+     addoutmul(H, w1, wt[k], nv) ;
+// this is in fact minus the Hessian.  H is pos. def.
+    }
+    vclear(w3, neq, nv) ;
+    int r1, r2 ; 
+    r1 = solvit(H, w3, nv, w2) ; 
+    r2 = solvit(H, gg, nv, w1) ; 
+// S1 + lambda S2 = 0
+   lambda = -asum(w1, nv) ; 
+   lambda  /= asum(w2, nv) ;
+   vst(w2, w2, lambda, nv) ; 
+   vvp(w1, w1, w2, nv) ; 
+   vvp(pp, pp, w1, nv) ;
+   ylast = yscore ;
+   vvm(w1, pp, oldpp, nv) ; 
+   y = asum2(w1, nv) / (double) nv  ; 
+   y = sqrt(y + 1.0e-20) ; 
+   if (y<zthresh) { 
+    ok = 99 ; 
+    break ;
+   }
+   copyarr(pp, oldpp, nv) ;
+  }
+
+  if (ok>0) { 
+   copyarr(pp, p, nv) ;
+   free(ww) ; 
+   return yscore ;
+  }
+
+  free(ww) ; 
+  return -1.0e30 ; 
+
+
+}
+
+double emlogmax(double *xwt, double *mat, double *p, int neq, int nv, int niter) 
+{
+  double *pp, *gam, *wk, *vv, ybase, ylike, ylast, z, y1, y2, ynewt ; 
+  double *wt  ;
+
+  int iter, k, t ; 
+
+  ZALLOC(pp, nv, double) ;
+  ZALLOC(gam, nv, double) ;
+  ZALLOC(wk, nv, double) ;
+  ZALLOC(wt, neq, double) ; 
+  if (xwt == NULL) { 
+   vclear(wt, 1, neq) ; 
+  }
+  else {
+   copyarr(xwt, wt, neq) ;
+  }
+
+  vclear(pp, 1, nv) ; bal1(pp, nv) ; 
+  ybase = 0.0 ; 
+  ylast = -1.0e20 ;
+
+  for (iter = 1; iter <= niter; ++iter) { // iter = 0 just to set base
+   vzero(gam, nv) ; 
+   ylike = 0 ; 
+   for (k=0; k<neq; ++k) { 
+    vv = mat + k*nv ;
+    vvt(wk, pp, vv, nv) ;
+    z = bal1(wk, nv) ; 
+    vst(wk, wk, wt[k], nv) ;
+    vvp(gam, gam, wk, nv) ;
+    y1 = wt[k] * log(z*(double) nv) ;
+    ylike += y1 ;
+//  if (iter==1) printf("zz2 %d %9.3f\n", k, y1) ;  
+   }
+
+    bal1(gam, nv) ; 
+    copyarr(gam, pp, nv) ; 
+    ylike -= ybase ;
+//  printf("iter: %4d ", iter) ;
+//  printf("emscore: %12.6f ", ylike) ; printmat(pp, 1, nv) ;
+    if (ylike < ylast + .0001) break ; 
+    ylast = ylike ; 
+    t = iter % 4 ; 
+    if (t == 0)  {
+     ynewt = emlognewt(wt, mat, pp, neq, nv, 10) ;
+     if (ynewt>-1.0e10) { 
+      ylike = ynewt ;
+      break ;
+     }
+    }
+  }
+  copyarr(pp, p, nv) ;
+  free(pp) ; 
+  free(wk) ; 
+  free(gam) ; 
+  free(wt) ; 
+ 
+  return ylike ; 
+}
+
+double oasrho(double *covar, double yn, int p) 
+{
+  double  yp = p ; 
+  double *cv2 ; 
+  double tr1, tr2, top, bot, rho ;
+  
+  ZALLOC(cv2, p*p, double) ;
+  mulmat(cv2, covar, covar, p, p, p) ; 
+
+  tr1 = trace(covar, p) ;
+  tr2 = trace(cv2, p) ;
+
+  top = (1.0 - (2.0/yp) ) * tr2 ; 
+  top += tr1*tr1 ; 
+  
+  bot = (yn + 1 - (2.0/yp))  * tr2 ;
+  bot += (yn+1-yp) * tr1 * tr1 / yp ;
+
+/**
+  printf("zz %12.6f ", tr1) ;
+  printf("%12.6f ", tr2) ;
+*/
+
+  rho = MIN(top/bot, 1.0) ;
+  return rho ;
+
+
+
+ free(cv2) ;
+
+}
+
+double oascovar(double *out, double *covar, double yn, int p) 
+// Oracle assisted shrinkage ; Wei and Zhao :: IEEE Trans. on Sig. Processing (2023) ; Chen Wiesel et al. 2009
+{
+  double rho, *w1, *w2, mu ; 
+
+  ZALLOC(w1, p*p, double) ;
+  ZALLOC(w2, p*p, double) ;
+
+  setidmat(w2, p) ; 
+  mu = trace(covar, p) / (double) p ; 
+  rho  = oasrho(covar, yn, p) ; 
+
+
+  printf("oascovar: rho %12.6f mu %12.3g\n", rho, mu) ;
+  if (mu<0.0) fatalx("negative trace\n") ;
+  if (rho<0.0) printf("(oascovar) warning -- negative rho\n") ;
+  vst(w1, covar, 1.0-rho, p*p) ;
+  vst(w2, w2, rho*mu, p*p) ;
+
+  vvp(out, w1, w2, p*p) ;
+
+  free(w1) ;
+  free(w2) ;
+
+  return rho ;
+
+}

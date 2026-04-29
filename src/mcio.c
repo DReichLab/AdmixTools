@@ -82,8 +82,6 @@ static void gtox (int g, char *cvals, int *p1, int *p2);
 
 int ancval (int x);
 static int setskipit (char *sx);	// ignore lines in snp, map files
-int calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind,
-		int *pihash, int *pshash);
 
 /* ---------------------------------------------------------------------------------------------------- */
 void sethiressnp() 
@@ -1219,7 +1217,7 @@ readindpeddata (Indiv ** indivmarkers, char *fname)
 
   if (nok == 0) {
     printf ("all individuals set ignore.  Likely input problem (col 6)\n");
-    printf ("resetting all individual...\n");
+    printf ("resetting all individuals...\n");
     for (i = 0; i < num; i++) {
       indx = indivmarkers[i];
       indx->ignore = NO;
@@ -1829,7 +1827,7 @@ rmsnps (SNP ** snpm, int numsnps, char *deletesnpoutname)
       freecupt (&cupt);
       continue;
     }
-    snpm[x] = snpm[i];
+    snpm[x] = snpm[i]; // cheap ; just pointer juggling
     ++x;
   }
 
@@ -2499,7 +2497,8 @@ outpack (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int numsnps,
 	 int numind)
 {
   char **arrx;
-  int n, num, ihash, shash, i, g, j, k;
+  int n, num,  g, j, k, i;
+  unsigned int ihash, shash ;
   int nind, nsnp, irec;
   Indiv *indx;
   SNP *cupt;
@@ -2823,11 +2822,12 @@ ineigenstrat (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps,
 
 /* ---------------------------------------------------------------------------------------------------- */
 int
-calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind, int *pihash,
-	    int *pshash)
+calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind, unsigned int *pihash,
+	    unsigned int *pshash)
 {
   char **arrx;
-  int ihash, shash, n, num;
+  int  n, num;
+  unsigned int ihash, shash ;
   int i;
   Indiv *indx;
   SNP *cupt;
@@ -4795,8 +4795,9 @@ inpack2 (char *gname, SNP ** snpm, Indiv ** indiv, int numsnps, int numind)
   // load up packed genotype file for merge.
 
   char **arrx, junk[10];
-  int n, num, ihash, shash, i, g, j, k, t, g1, g2;
-  int xihash, xshash, xnsnp, xnind;
+  int n, num, i, g, j, k, t, g1, g2;
+  int xnsnp, xnind;
+  unsigned int xihash, xshash, ihash, shash ;
   int nind, nsnp, irec;
   Indiv *indx;
   SNP *cupt, *cupt2;
@@ -6198,7 +6199,7 @@ void setpack(int rlen, int numsnps)
 } 
 
 
-int
+unsigned int
 individuals_hash(Indiv ** indiv, int numind){
   char **arrx;
   int n, num, i;
@@ -6217,14 +6218,14 @@ individuals_hash(Indiv ** indiv, int numind){
   }
 
   // compute hash on individuals
-  int ihash = hasharr (arrx, num);
+  unsigned int ihash = hasharr (arrx, num);
   int nind = num;
   freeup (arrx, num);
   free (arrx);
   return ihash;
 }
 
-int
+unsigned int
 snps_hash(SNP ** snpm, int numsnps){
   char **arrx;
   int n, num, i;
@@ -6246,7 +6247,7 @@ snps_hash(SNP ** snpm, int numsnps){
   }
 
   // compute hash on SNPs
-  int shash = hasharr (arrx, num);
+  unsigned int shash = hasharr (arrx, num);
   int nsnp = num;
   freeup (arrx, num);
   free (arrx);
@@ -6259,7 +6260,7 @@ snps_hash(SNP ** snpm, int numsnps){
  * but each row is a sample
  */
 void
-outpack_transpose (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int numsnps,
+outpack_transpose (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int xnumsnps,
 	 int numind)
 {
   int num, g;
@@ -6269,6 +6270,10 @@ outpack_transpose (char *genooutfilename, SNP ** snpm, Indiv ** indiv, int numsn
   unsigned char *buff;
   int fdes, ret;
   char *packit;
+  int numsnps ; 
+
+
+  numsnps = rmsnps(snpm, xnumsnps, NULL) ;
 
   int ihash = individuals_hash(indiv, numind);
   int shash = snps_hash(snpm, numsnps);

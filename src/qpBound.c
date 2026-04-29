@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "120"
+#define WVERSION   "130"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -118,7 +118,6 @@ FILE *ofile;
 char **eglist;
 char **egshort;
 char **enames;
-double zthresh = 3.0;
 double f2diag = 0.0;
 
 void readcommands (int argc, char **argv);
@@ -192,6 +191,7 @@ main (int argc, char **argv)
   printf ("## qpBound version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
   if (xchrom == 23)
     noxdata = NO;
   if (outpop == NULL)
@@ -532,6 +532,7 @@ readcommands (int argc, char **argv)
   getint (ph, "inbreed:", &inbreed);
   getint (ph, "startiter:", &startiter);
   getint (ph, "fancynorm:", &fancynorm);
+  getint (ph, "coredump:", &coredump);
 
   getint (ph, "noxdata:", &noxdata);
   t = -1;

@@ -17,7 +17,7 @@
 #include "exclude.h"
 #include "h2d.h"
 
-#define WVERSION   "8600"
+#define WVERSION   "8621"
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -114,6 +114,9 @@
  randomhetfix
  indivlistname added (overrules poplistname) 
  instem, outstem added
+
+ countvalidall added
+ defaultegroup added (replace ???)
 */
 
 
@@ -135,6 +138,7 @@ int memorymap = NO ;
 int transformhets = NO ; 
 int randomhetfix = NO ; 
 int shuffle = NO ;
+int countvalidall = NO ;
 
 int nums2;
 
@@ -221,6 +225,7 @@ int newignore = YES;		// default ignore snps not in old list
 int polarcheck = NO;
 int copyalleles = NO;
 int rmcompress = YES ; 
+char *defaultegroup = NULL ;
 
 char *usesamples = NULL;
 
@@ -284,6 +289,7 @@ main (int argc, char **argv)
   double ychi, zscore, zthresh = 20.0;
   double y1, y2, ymem;
   int nignore, numrisks = 1;
+  int *valcount ;
 
   char **genolist;
   int numgenolist;
@@ -391,6 +397,17 @@ main (int argc, char **argv)
     if (polarindex < 0)
       fatalx ("polarid %s not found\n", polarid);
   }
+
+  for (i = 0; i < numindivs; ++i) {
+   if (defaultegroup == NULL) break ;
+   indx = indivmarkers[i];
+   t = strcmp(indx -> egroup, "???") ;
+   if (t != 0) continue ;
+   freestring(&indx -> egroup) ;
+   indx -> egroup = strdup(defaultegroup) ;
+  }
+
+
 
   if (poplistname != NULL) {
     ZALLOC (eglist, numindivs, char *);
@@ -628,6 +645,16 @@ main (int argc, char **argv)
       downsamp (cupt);
   }
 
+  if (countvalidall) { 
+   ZALLOC(valcount, numindivs, int) ;
+   numvalidgtallind(valcount, snpmarkers, numsnps, numindivs) ;
+   for (j=0; j<numindivs; ++j) { 
+    indx = indivmarkers[j] ; 
+    if (indx -> ignore) continue ; 
+    printf("valids: %20s %20s %8d\n", indx -> ID, indx-> egroup, valcount[j]) ;
+   }
+  }
+
   if (outputall) {
     numout = outfiles (snpoutfilename, indoutfilename, genooutfilename,
 	      snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
@@ -776,7 +803,7 @@ main (int argc, char **argv)
   }
 
   cputimes(0, 4) ;
-  printf("callng outfiles\n") ;
+  printf("calling outfiles\n") ;
   fflush(stdout) ;
 
   numout = outfiles (snpoutfilename, indoutfilename, genooutfilename,
@@ -905,6 +932,7 @@ output:        eurout
   getstring (ph, "outputmode:", &omode);
   getstring (ph, "polarize:", &polarid);
   getstring (ph, "usesamples:", &usesamples);
+  getstring (ph, "defaultegroup:", &defaultegroup);
   getint (ph, "zerodistance:", &zerodistance);
   getint (ph, "memorymap:", &memorymap);
   getint (ph, "mmap:", &memorymap);
@@ -990,6 +1018,7 @@ output:        eurout
   getint (ph, "transformhets:", &transformhets) ;
   getint (ph, "randomhetfix:", &randomhetfix) ;
   getint (ph, "shuffle:", &shuffle) ;
+  getint (ph, "countvalidall:", &countvalidall) ;
 
   writepars (ph);
   closepars (ph);

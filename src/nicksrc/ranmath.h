@@ -20,6 +20,8 @@ double  gds(double a)  ;  // obsolete
 double  poidev(double mean) ;  // obsolete
 double  ranpoiss(double mean) ;  // poisson Note double
 double  ranpoissx(double mean) ;  // poisson | > 0
+int pickn(int a, int b, int n) ;
+int ranqclip(int *pa, int *pb, int popsizelimit) ;
 void  ranperm(int *a, int n) ;   // randomly permute a; if random permulation wanted : idperm(a,n) ; ranperm(a,n) 
 double ranexp( void) ;  // exponential mean 1
 double rangam(double a) ;  // standard gamma mean a

@@ -17,7 +17,7 @@
 #include "eigsubs.h"
 #include "globals.h"
 
-#define WVERSION   "180"
+#define WVERSION   "200"
 
 // printsd added 
 // clinetest added (as in qpdslow) Makes most sense for 2 f4 stats
@@ -166,7 +166,7 @@ main (int argc, char **argv)
   if (parname == NULL)
     return 0;
 
-
+  setdump(coredump) ;
   cputime(0) ;
   calcmem(0) ;
   
@@ -518,6 +518,7 @@ readcommands (int argc, char **argv)
   getint (ph, "clinetest:", &clinetest) ; 
   getint (ph, "globaltest:", &globaltest) ; 
   getint (ph, "globalforce:", &globalforce) ; 
+  getint (ph, "coredump:", &coredump);
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");

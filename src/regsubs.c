@@ -694,3 +694,86 @@ void xline(double *line, double *coeff, int m, int n)
  free(rhs) ;
 
 }
+
+double regressitc(double *ans, double *eq, double *rhs, int m, int n, double *ccc, double ccr) 
+// least squares regression 
+// return 2 log likelihood score
+{
+ double *co, *rr, *ww, *w2 ;
+ double vres, vbase, ynum, y, trace  ;
+ double *traneq, *a1, *a2, lambda ;
+ int i, j,  k, ret ;
+ double y1, y2 ; 
+
+ ZALLOC(co, n*n, double) ;
+ ZALLOC(a1, n, double) ;
+ ZALLOC(a2, n, double) ;
+ ZALLOC(rr, n, double) ;
+ ZALLOC(ww, m, double) ;
+ ZALLOC(w2, m, double) ;
+
+ for (i=0; i<m ; i++) {  
+  for (j=0; j<n ; j++) {  
+   rr[j] += eq[i*n+j]*rhs[i] ;
+   for (k=j; k<n ; k++) {  
+    co[j*n+k] = co[k*n+j] +=  eq[i*n+j]*eq[i*n+k];
+   }
+  }
+ }
+
+ if (verbose) {
+  printf("coeffs:\n") ;
+  printmat(co, n, n) ; 
+  printf("\n\n") ;
+  printmat(rr, n, 1) ;
+
+  for (i=0; i<n; i++) {  
+   printf("diag: %3d %9.3f\n", i, co[i*n+i]) ;
+  }
+
+  fflush(stdout) ;
+ }
+
+
+ vzero(ans, n) ; 
+ ret = solvit(co, rr, n, a1) ;
+ if (ret < 0) return -1000.0 ;
+ ret = solvit(co, ccc, n, a2) ;
+ if (ret < 0) return -1000.0 ;
+
+
+// ans = a1 + lambda * a2 
+ y1 = vdot(a1, ccc, n) ; 
+ y2 = vdot(a2, ccc, n) ; // y2 > 0 if co is pos. def.  
+// ccr = y1 + lambda * y2  
+   lambda = (ccr-y1)/y2 ; 
+   vst(a2, a2, lambda, n) ; 
+   vvp(ans, a1, a2, n) ;  
+
+
+ for (i=0; i<m; i++) {  
+  ww[i] = rhs[i] - vdot(ans, eq+i*n, n) ;
+ }
+
+ ynum = (double) m ;
+ vres = asum2(ww, m)/ynum ;
+ vbase= asum2(rhs, m)/ynum ;
+
+/**
+ printf("zzreg  %15.9f  %15.9f\n", log(vbase), log(vres)) ;
+ printmat(rr, 1, n) ;
+ printmat(co, n, n) ;
+ printf("\n") ;
+*/
+
+ free(co) ;
+ free(rr) ;
+ free(ww) ;
+ free(w2) ;
+ free(a1) ;
+ free(a2) ;
+
+ return ynum*log(vbase/vres) ;
+}
+
+

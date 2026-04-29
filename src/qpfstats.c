@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "1002"
+#define WVERSION   "1101"
 
 
 // useweight added  
@@ -37,6 +37,8 @@
 // nochrom: addes
 // inbreedlist added
 // bug.  inbreedlist length limited 
+// instem added
+// effblocks added (qpsubs) 
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -75,12 +77,12 @@ double diag = 0.0;
 int fstdmode = NO;		// YES denominators done as in qp3test
 int xchrom = -1;
 int zchrom = -1;
-int *xpopsize;
 
 int isinit = NO;
 int lsqmode = NO;
 double f2weight = 1.0;		// lsqmode only
 
+char *instem = NULL ; 
 char *genotypename = NULL;
 char *snpname = NULL;
 char *snpoutfilename = NULL;
@@ -124,7 +126,6 @@ int *hashets ;
 int *inbarr ; 
 char **egshort;
 char **enames;
-double zthresh = 3.0;
 double f2diag = 0.0;
 int useweights = YES;
 double ymem ; 
@@ -230,6 +231,7 @@ main (int argc, char **argv)
   double *fbmean, *fbcovar ; 
   int kret, bad ;
   double *hrate, *hvalid ; 
+  double effjack ; 
 
 
   readcommands (argc, argv);
@@ -241,16 +243,10 @@ main (int argc, char **argv)
   printf ("## qpfstats version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
   if (xchrom == (numchrom+1))
     noxdata = NO;
 
-/**
-  if (seed == 0)
-    seed = seednum ();
-  SRAND (seed);
-  h:0
-rintf ("seed: %d\n", seed);
-*/
   if (allsnpsmode == -99) { 
     allsnpsmode = NO ; 
     printf("allsnps set NO.  It is recommended that allsnps be set explicitly\n") ;
@@ -272,6 +268,11 @@ rintf ("seed: %d\n", seed);
 
   setinbreed(inbreed) ;  // prints setting 
   setallsnpsmode (allsnpsmode);
+
+  if (instem != NULL) { 
+   setinfiles(&indivname, &snpname, &genotypename, instem) ; 
+  } 
+
 
   numsnps =
     getsnps (snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks);
@@ -500,7 +501,7 @@ rintf ("seed: %d\n", seed);
 
   ZALLOC (blstart, nblocks, int);
   ZALLOC (blsize, nblocks, int);
-  printf ("number of blocks for moving block jackknife: %d\n", nblocks);
+  printf ("number of blocks for block jackknife: %d\n", nblocks);
 
   ZALLOC (xsnplist, numsnps, SNP *);
 
@@ -1000,6 +1001,7 @@ readcommands (int argc, char **argv)
   ph = openpars (parname);
   dostrsub (ph);
 
+  getstring (ph, "instem:", &instem);
   getstring (ph, "genotypename:", &genotypename);
   getstring (ph, "snpname:", &snpname);
   getstring (ph, "indivname:", &indivname);
@@ -1043,6 +1045,7 @@ readcommands (int argc, char **argv)
   getint (ph, "scale:", &doscale);
   getint (ph, "doscale:", &doscale);
   getint (ph, "sizeweight:", &sizeweight);
+  getint (ph, "coredump:", &coredump);
   
 
   printf ("### THE INPUT PARAMETERS\n");

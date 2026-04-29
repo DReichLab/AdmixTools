@@ -1,4 +1,4 @@
-#include <stdio.h>
+
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -17,7 +17,7 @@
 #include "egsubs.h" 
 #include "qpsubs.h" 
 
-#define WVERSION   "550" 
+#define WVERSION   "585" 
 
 /** 
  reads data, basic stats simplified easystats
@@ -34,6 +34,7 @@ double small = .1 ;
 int lopos = -1 ; 
 int hipos = 1000*1000*1000 ;  
 
+char *instem = NULL ;
 char *treename = NULL ;
 int treemode = NO ;
 char *trashdir = "/var/tmp" ;
@@ -53,6 +54,7 @@ char  *genooutfilename = NULL ;
 char  *indoutfilename = NULL ;
 char  *indivname = NULL ;
 char *badsnpname = NULL ;
+char *poplistname = NULL ;
 
 FILE *ofile ;
 
@@ -107,19 +109,38 @@ int main(int argc, char **argv)
   int ncase ; 
   int nmono, npoly ;
   int nhit, nmiss ;
+  double ymem ; 
 
   ofile = stdout; 
   packmode = NO ;
   readcommands(argc, argv) ;
 
+
 //printvers(argv[0], WVERSION) ;
+  cputime(0) ;
+  calcmem(0) ;
+
+  if (instem != NULL) setinfiles(&indivname, &snpname, &genotypename, instem) ;
 
   numsnps = 
     getsnps(snpname, &snpmarkers, 0.0, badsnpname, &nignore, numrisks) ;
 
   numindivs = getindivs(indivname, &indivmarkers) ;
   numeg = 0 ; 
+  if (poplistname != NULL) 
+  {  
+    ZALLOC(eglist, numindivs, char *) ;
+    numeg = loadlist(eglist, poplistname) ;
+    seteglist(indivmarkers, numindivs, poplistname);
+    for (i=0; i<numindivs; ++i)  {     
+     indx = indivmarkers[i] ;
+     if (indx -> affstatus == NO) indx -> ignore = YES ;
+    }
+  }
+
+  else {
    ncase = setstatus(indivmarkers, numindivs, "Case") ;
+  }
 
   setgenotypename(&genotypename, indivname) ;
 
@@ -180,7 +201,10 @@ int main(int argc, char **argv)
    printf("indcount: %20s ", indx -> ID) ;  
    printf(" %c ", indx -> gender) ;
    printimatx(xcc, 1, 3) ;
-   printf(" missing: %6d\n", nmiss) ;
+   printf(" missing: %6d", nmiss) ;
+   printf(" valid: %6d", intsum(xcc, 3) ) ; 
+   printf(" %20s", indx -> egroup) ;
+   printnl() ;
   }
   printf("\n\n") ; 
 
@@ -211,8 +235,9 @@ int main(int argc, char **argv)
   fflush(stdout) ;
 
 
-  printf("##end of easylite\n") ;
-  return 0 ;
+  ymem = calcmem(1)/1.0e6 ;
+  printf("##end of easylite: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
+  return 0;
 }
 
 void doychrom(Indiv **indm, int numind) 
@@ -313,6 +338,8 @@ output:        eurout
    getstring(ph, "snpname:", &snpname) ;
    getstring(ph, "indivname:", &indivname) ;
    getstring(ph, "badsnpname:", &badsnpname) ;
+   getstring(ph, "poplistname:", &poplistname) ;
+   getstring (ph, "instem:", &instem) ;
    getint(ph, "killmono:", &killmono) ;                 
    getint(ph, "lopos:", &lopos) ;                 
    getint(ph, "hipos:", &hipos) ;                 

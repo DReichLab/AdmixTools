@@ -15,7 +15,7 @@
 #include "mcio.h"
 #include "nicksam.h"
 
-#define WVERSION   "3130"
+#define WVERSION   "3170"
 #define MAXFL  50
 
 // phasedmode added
@@ -31,6 +31,7 @@
 // check that physpos matches
 // override with testmismatch: NO
 // hapdipcheck added
+// instem1 instem2 outstem added
 
 char *trashdir = "/var/tmp";
 extern int verbose;
@@ -47,6 +48,10 @@ char *geno1 = NULL;
 char *snp2 = NULL;
 char *ind2 = NULL;
 char *geno2 = NULL;
+
+char *instem1 = NULL ;
+char *instem2 = NULL ;
+char *outstem = NULL ;
 
 char *indoutfilename = NULL;
 char *snpoutfilename = NULL;
@@ -157,6 +162,10 @@ main (int argc, char **argv)
     printf ("polarmode set!\n");
   }
 
+  if (instem1 != NULL) setinfiles(&ind1, &snp1, &geno1, instem1) ;
+  if (instem2 != NULL) setinfiles(&ind2, &snp2, &geno2, instem2) ;
+  if (outstem != NULL) setoutfiles(&indoutfilename, &snpoutfilename, &genooutfilename, outstem) ;
+
   nums1 = getsnps (snp1, &snpm1, 0.0, badsnpname, &nignore, numrisks);
 
   sorder[0] = getsnpordered ();
@@ -188,7 +197,7 @@ main (int argc, char **argv)
     t = checkmatch (cupt1, cupt2);
     if ((cupt1 -> chrom != cupt2 -> chrom) || (tt != 0)) { 
      if (testmismatch) 
-     fatalx("*** mismatch for SNP %s %d:%12.0f %d:%12.0f\n", cupt1 -> ID, 
+     fatalx("testmismatch set YES;  *** mismatch for SNP %s %d:%12.0f %d:%12.0f\n", cupt1 -> ID, 
        cupt1 -> chrom, cupt1 -> physpos, cupt2 -> chrom, cupt2 -> physpos) ;
      else {
       cupt2 -> chrom = cupt1 -> chrom ;
@@ -284,6 +293,7 @@ main (int argc, char **argv)
   printf("numsnps input: %d %d\n", nums1, nums2) ;
 
   cksnpdup(snpmarkers, numsnps) ;
+  numsnps = rmsnps(snpmarkers, numsnps, NULL) ;
 
   num = outfiles (snpoutfilename, indoutfilename, genooutfilename,
             snpmarkers, indivmarkers, numsnps, numindivs, packout, ogmode);
@@ -458,6 +468,9 @@ readcommands (int argc, char **argv)
   getstring (ph, "snp2:", &snp2);
   getstring (ph, "ind2:", &ind2);
   getstring (ph, "badsnpname:", &badsnpname);
+  getstring (ph, "instem1:", &instem1);
+  getstring (ph, "instem2:", &instem2);
+  getstring (ph, "outstem:", &outstem);
 
   getstring (ph, "indoutfilename:", &indoutfilename);
   getstring (ph, "snpoutfilename:", &snpoutfilename);

@@ -4,7 +4,7 @@ See also .examples/pdoc.pdf
 
 qpWave: 
 
-qpWave requires that the input data is available in a Recilab format such as EIGENSTRAT.  
+qpWave requires that the input data is available in a Reichlab format such as EIGENSTRAT.  
 To convert to the appropriate format, one can use CONVERTF. See 
 README.CONVERTF for documentation of programs for converting file formats.
 
@@ -45,7 +45,9 @@ allsnps: YES
 inbreed: YES 
 oldallsnpsmode: NO  
 This is deprecated as the algorithm is inferior.
-*** stongly recommended that inbreed be set.  YES if possible.  
+*** strongly recommended that inbreed be set.  YES if possible.  
+oracle: NO
+## see description below ; oracle: YES is default and recommended
 
 The same feature is now also in qpAdm
 
@@ -99,7 +101,7 @@ diagplus:  0
 Input can now be an fstats file -- see README.qpfstats
 For qpAdm new parameter numboot: see README.qpfstats
 
-*** NEW *** 
+*** (fairly) NEW *** 
 If you run qpWave or qpAdm with allsnps: YES but no fstats filer, then the programs 
 call qpfstats with a system call.  If this call fails it can be tricky to debug. 
 Options to make the process more transparent:  
@@ -117,6 +119,17 @@ For instance in bash code
 
 export  STMP=~/mytrashdir               
 The directory should exist when qpWave or qpAdm are run.  
+
+*** NEW *** 
+qpWave and qpAdm compute large covariance matrices.  In some cases 
+the eigenvalues are poorly determined and some adjustment is needed.
+We now implement an algorithm "Oracle Assisted Shrinkage" 
+[Wei and Zhao :: IEEE Trans. on Sig. Processing (2023) ; Chen Wiesel et al. (2009)] 
+In cases where we have good coverage and are processing the whole genome the effect 
+is small, but it is more noticeable in cases where we have rather little data. 
+For compability with older releases you can code 
+oracle: NO 
+I oracle mode is used the parameter diagplus is ignored.
 
 
 

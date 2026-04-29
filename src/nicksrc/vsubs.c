@@ -3,6 +3,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <math.h>
+#include <time.h>
 #include "strsubs.h"
 #include "vsubs.h"
 
@@ -245,7 +246,7 @@ lvzero (long *a, long n)
 double 
 unclip(double x, double lo, double hi) 
 {
-// if (x in [lo. hi] return nearest boundary point  
+// if (x in [lo, hi] return nearest boundary point  
  double xl, xh ; 
 
  xl = x - lo ; 
@@ -284,6 +285,18 @@ ivclip (int *a, int *b, int loval, int hival, int n)
     a[i] = MIN (t, hival);
   }
 }
+
+int iclip(int x, int lo, int hi) 
+{
+
+ if (x < lo)
+    return lo;
+  if (x > hi)
+    return hi;
+  return x;
+
+}
+    
 
 void
 vclip (double *a, double *b, double loval, double hival, int n)
@@ -1138,7 +1151,7 @@ void
 printmatl (double *a, int m, int n)
 
 /** 
- print a matrix n wide m rows  
+ print a matrix n wide m rows  %15.9f
 */
 {
   printmatwl (a, m, n, 5);
@@ -1294,6 +1307,16 @@ printmat2D (double **a, int m, int n)
   for (k = 0; k < m; ++k) {
     printf ("%3d: ", k);
     printmat (a[k], 1, n);
+  }
+}
+
+void
+printmatl2D (double **a, int m, int n)
+{
+  int k;
+  for (k = 0; k < m; ++k) {
+    printf ("%3d: ", k);
+    printmatl (a[k], 1, n);
   }
 }
 
@@ -1633,6 +1656,18 @@ fixitl (long *a, double *b, int n)
   for (i = 0; i < n; i++) {
     a[i] = lrint (b[i]);
   }
+}
+
+int 
+findbin(double val, double *cuts, int ncuts) 
+{
+  
+ if (ncuts == 0) return -1 ;
+ if (val<cuts[0]) return -1 ; 
+
+ return findflastle(cuts, ncuts, val) ;
+
+
 }
 
 
@@ -2046,6 +2081,22 @@ initarray_2Dlong (int numrows, int numcolumns, long initval)
 }
 
 
+
+long ***
+initarray_3Dlong (int n1, int n2, int n3, long initval)
+{
+  int i;
+  long ***array;
+
+
+  ZALLOC (array, n1, long **);
+  for (i = 0; i < n1; i++) {
+    array[i] = initarray_2Dlong( n2, n3, initval) ;
+  }
+  return array;
+}
+
+
 void
 free2Dint (int ***xx, int numrows)
 {
@@ -2069,6 +2120,23 @@ free2Dlong (long ***xx, int numrows)
 
   for (i = numrows - 1; i >= 0; i--) {
     free (array[i]);
+  }
+  free (array);
+  *xx = NULL;
+}
+
+
+
+void
+free3Dlong (long ****xx, int n1, int n2) 
+{
+  long ***array;
+  int i;
+
+  array = *xx;
+
+  for (i = n1 - 1; i >= 0; i--) {
+    free2Dlong (&array[i], n2);
   }
   free (array);
   *xx = NULL;
@@ -2201,12 +2269,27 @@ addoutmul (double *mat, double *v, double mul, int n)
 {
   int a, b;
   for (a = 0; a < n; ++a) {
-    for (b = 0; b < n; ++b) {
-      mat[a * n + b] += v[a] * v[b] * mul;
+    for (b = a; b < n; ++b) {
+      mat[b * n + a] = mat[a * n + b] += v[a] * v[b] * mul;
     }
   }
 }
 
+
+
+void
+outer (double *out, double *a, int n)
+
+/* 
+ outerprod(a)  to out
+ trivial to recode to make ~ 2 * faster
+*/
+{
+
+  vzero(out, n*n) ;
+  addoutmul (out, a, 1.0, n);
+
+}
 
 
 
@@ -2453,6 +2536,16 @@ topheap ()
 {
 
   return sbrk (0);
+}
+
+void
+sym2 (double *pa, double *pb)
+{
+  double y ; 
+  y = (*pa + *pb)/2.0 ; 
+  
+  *pa = *pb = y ; 
+
 }
 
 void
@@ -2995,6 +3088,27 @@ printlmat (long *a, int m, int n)
 }
 
 void
+printlmatw (long *a, int m, int n, int w) 
+
+/** 
+ print a matrix n wide m rows  w to a row
+*/
+{
+  int i, j, jmod;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      printf ( "%10ld ", a[i * n + j]);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        printf ( "  ...\n");
+      }
+    }
+    printf ("\n");
+  }
+}
+
+
+void
 printlmatwfile (long *a, int m, int n, int w, FILE * fff)
 
 /** 
@@ -3254,6 +3368,23 @@ findflastgt(double *a, int n, double val)
 }
 
   
+
+int 
+findflastle(double *a, int n, double val) 
+// should scan backwards really
+{
+
+ int k, last ; 
+ double y ; 
+
+ last = -1 ; 
+ for (k=0; k<n; ++k) { 
+  y =  val - a[k] ; ; 
+  if (y>=0) last = k ; 
+ }
+ return last ;
+}
+
 int nips2bytes(int nips)   
 {
 /** 
@@ -3426,3 +3557,196 @@ int addscaldiag(double *mat, double scal, int n)
   return 1 ;
 }
  
+double log2weight(double *wt, double *a, int n) 
+// exp logs and balance so weights sum to 1 
+{
+
+ double *ww ; 
+ double ymax ; 
+
+ ZALLOC(ww, n, double) ;
+ copyarr(a, ww, n) ;
+ vmaxmin(ww, n, &ymax, NULL) ; 
+ vsp(ww, ww, -ymax, n) ; 
+ vexp(ww, ww, n) ; 
+ bal1(ww, n) ; 
+ copyarr(ww, wt, n) ;
+
+
+ free(ww) ;
+
+ return ymax ;
+
+}
+ 
+
+
+double timeofday (int mode) 
+{
+// returns in millisecs
+  static double ttt=0 ; 
+  int ret ; 
+  struct timespec tjunk, *timept ; 
+  double y1, y2, y ;
+  
+  timept = &tjunk ;
+  ret = clock_gettime (CLOCK_MONOTONIC, &tjunk) ;
+
+  y1 = (double) timept -> tv_sec ; 
+  y2 = (double) timept -> tv_nsec ; 
+  y1 *= 1000 ; 
+  y2 /= 1.0e6 ;
+  y = y1  + y2 ; 
+  if (mode==0) { 
+   ttt = y ; 
+   return ttt ; 
+  }
+  y -= ttt ; 
+  return y ; 
+}
+
+
+double ***
+initarray_3Ddouble (int n1, int n2, int n3, double initval)
+{
+  int i;
+  double ***array;
+
+
+  ZALLOC (array, n1, double **);
+  for (i = 0; i < n1; i++) {
+    array[i] = initarray_2Ddouble( n2, n3, initval) ;
+  }
+  return array;
+}
+
+
+double ****
+initarray_4Ddouble (int n1, int n2, int n3, int n4, double initval)
+{
+  int i;
+  double ****array;
+
+  ZALLOC (array, n1, double ***);
+  for (i = 0; i < n1; i++) {
+    array[i] = initarray_3Ddouble( n2, n3, n4, initval) ;
+  }
+  return array;
+}
+
+
+double *****
+initarray_5Ddouble (int n1, int n2, int n3, int n4, int n5, double initval)
+{
+  int i;
+  double *****array;
+
+  ZALLOC (array, n1, double ****);
+  for (i = 0; i < n1; i++) {
+    array[i] = initarray_4Ddouble( n2, n3, n4, n5, initval) ;
+  }
+  return array;
+}
+
+void
+copyarr5D (double *****za, double *****zb, int n1, int n2, int n3, int n4, int n5)
+{
+ int a1, a2, a3, a4, a5 ; 
+
+ for (a1=0; a1<n1; ++a1) { 
+  for (a2=0; a2<n2; ++a2) { 
+   for (a3=0; a3<n3; ++a3) { 
+    for (a4=0; a4<n4; ++a4) { 
+     for (a5=0; a5<n5; ++a5) { 
+
+
+       zb[a1][a2][a3][a4][a5] = za[a1][a2][a3][a4][a5]    ;
+
+ }}}}}
+}
+
+
+
+
+
+void
+free3D (double ****xx, int n1, int n2) 
+{
+  double ***array;
+  int i;
+
+  array = *xx;
+
+  for (i = n1 - 1; i >= 0; i--) {
+    free2D (&array[i], n2);
+  }
+  free (array);
+  *xx = NULL;
+}
+
+void
+free4D (double *****xx, int n1, int n2, int n3) 
+{
+  double ****array;
+  int i;
+
+  array = *xx;
+
+  for (i = n1 - 1; i >= 0; i--) {
+    free3D (&array[i], n2, n3);
+  }
+  free (array);
+  *xx = NULL;
+}
+
+
+void
+free5D (double ******xx, int n1, int n2, int n3, int n4) 
+{
+  double *****array;
+  int i;
+
+  array = *xx;
+
+  for (i = n1 - 1; i >= 0; i--) {
+    free4D (&array[i], n2, n3, n4);
+  }
+  free (array);
+  *xx = NULL;
+}
+
+
+int
+printmatstr (char *str, double *a, int m, int n)
+
+/** 
+ print a matrix n wide m rows  
+*/
+{
+  return printmatwstr (str, a, m, n, 5);
+}
+
+int
+printmatwstr (char *str, double *a, int m, int n, int w) 
+
+/** 
+ print a matrix n wide m rows  w to a row
+*/
+{
+  int i, j, jmod;
+  char *sx ; 
+  
+  sx = str ;
+  for (i = 0; i < m; i++) {
+    for (j = 0; j < n; j++) {
+      sx +=  sprintf(sx, "%9.3f ", a[i * n + j]);
+      jmod = (j + 1) % w;
+      if ((jmod == 0) && (j < (n - 1))) {
+        sx +=  sprintf(sx, "  ...\n");
+      }
+    }
+    sx +=  sprintf(sx, "\n");
+  }
+  return (strlen(str)) ;
+}
+

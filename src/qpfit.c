@@ -22,7 +22,7 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "1660" 
+#define WVERSION   "1670" 
 // best analysis added
 // hires added;  including on summ line
 // chrom: 23 added
@@ -237,6 +237,7 @@ main (int argc, char **argv)
   calcmem(0) ;
 
   printf ("## qpAdm version: %s\n", WVERSION);
+  setdump(coredump) ;
   if (seed==0) seed = seednum() ; 
   printf("seed: %d\n", seed) ;
 
@@ -979,6 +980,7 @@ readcommands (int argc, char **argv)
   getint (ph, "hiprec_covar:", &hiprec_covar) ; 
   getint (ph, "numboot:", &numboot) ; 
   getint (ph, "doratio:", &doratio) ; 
+  getint (ph, "coredump:", &coredump);
   getdbl (ph, "diagplus:", &yscale);
 
 

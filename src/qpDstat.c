@@ -26,7 +26,7 @@
 */
 
 
-#define WVERSION   "1152"
+#define WVERSION   "1160"
 // clade hits and misses (migrations?)
 // forcclade added
 // outpop NONE forced 
@@ -250,6 +250,7 @@ main (int argc, char **argv)
   printf ("## qpDstat version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
   if ((poplistname == NULL) && (popfilename == NULL))
     fatalx ("poplistname, popfilename both null\n");
 
@@ -820,6 +821,7 @@ readcommands (int argc, char **argv)
   getint (ph, "printsd:", &printsd);
   getstring (ph, "blockname:", &blockname);
   getint (ph, "fourierjack:", &fourier);
+  getint (ph, "coredump:", &coredump);
 
 
   printf ("### THE INPUT PARAMETERS\n");

@@ -10,6 +10,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/prctl.h>
 #include <xsearch.h>   
 
 
@@ -222,6 +223,14 @@ fatalx (char *fmt, ...)
   fprintf (stderr, "fatalx:\n%s", Estr);
   fflush (stderr);
   abort ();
+}
+
+void setdump(int cdump) 
+{
+
+  prctl(PR_SET_DUMPABLE, cdump) ; 
+
+
 }
 
 
@@ -698,7 +707,7 @@ numcols (char *name)
   int nsplit, num = 0;
 
   if (name == NULL)
-    fatalx ("(numlines)  no name\n");
+    fatalx ("(numcols)  no name\n");
   openit (name, &fff, "r");
   while (fgets (line, MAXSTR, fff) != NULL) {
     nsplit = splitup (line, spt, MAXCOLS);
@@ -807,7 +816,6 @@ openit (char *name, FILE ** fff, char *type)
   if (*fff == NULL) {
     ss = strerror (errno);
     printf ("bad open %s\n", name);
-// system("lsof | fgrep np29") ;
     fatalx ("(openit) can't open file %s of type %s\n error info: %s\n", name, type,
             ss);
   }
@@ -1607,6 +1615,25 @@ printstringsx (char **ss, int n)
   }
 }
 
+
+void
+printstringss (char *sout, char **ss, int n)
+// no newline
+{
+  int k;
+  char *sx ; 
+
+  sx = sout ; 
+
+  for (k = 0; k < n; ++k) {
+    if (ss[k] != NULL)
+      sx += sprintf (sx, " %s", ss[k]);
+    else
+      sx += sprintf (sx, " %s", "NULL") ;
+  }
+}
+
+
 void
 printstringsxfile (char **ss, int n, FILE *fff)
 // no newline
@@ -2100,7 +2127,23 @@ char *mytemp (char *qqq)
   return strdup(ss) ;
 }
 
+void randomname(char **ans) 
+{
+  char name[128] ;  
+  int pid ; 
+  static int ncall ;
+
+  ++ncall ;
+  pid = getpid() ; 
+  sprintf(name, "rrr:%d:%d", pid, ncall) ;
+
+  *ans = strdup(name) ; 
+
+}
+
+
 int getchromlist(char **list, char *bamname) 
+// obsolete 
 { 
  char *tname  ;
  char sss[MAXSTR] ;  
@@ -2141,6 +2184,26 @@ int getchromlist(char **list, char *bamname)
   }
   ridfile(tname) ;
   return n ;
+}
+
+int getreglist (char ***preglist, char *bamname) 
+{
+   char ss[1024] ; 
+   int n ; 
+   char *tempname ; 
+   
+   tempname = mytemp("getreg") ; 
+   sprintf(ss, 
+    "samtools view -H %s | fgrep @SQ | fgrep SN: | cut -f 2 | sed -e \"s/SN://\"  > %s", 
+     bamname, tempname) ; 
+    system(ss) ;
+    n = numlines(tempname) ; 
+    ZALLOC(*preglist, n, char *) ; 
+    n = getlist(tempname, *preglist) ; 
+    unlink(tempname) ; 
+
+   return n ;
+
 }
 
 
@@ -2192,7 +2255,7 @@ numcolsq (char *name)
   int nsplit, num = 0;
 
   if (name == NULL)
-    fatalx ("(numlines)  no name");
+    fatalx ("(numcolsq)  no name");
   openit (name, &fff, "r");
   while (fgets (line, MAXSTR, fff) != NULL) {
     subcolon(line) ;
@@ -2480,7 +2543,18 @@ long numlinesx(char *name)
  freestring(&line) ;
  return num ;
 
-
 }
 
+void mkcmdline(char *ss, char *argv0, char *version) 
+{
+  char *sx  ; 
+  char ss1[MAXSTR] ; 
+
+  getcwd(ss1, MAXSTR) ; 
+  sx = ss ; 
+  sx += sprintf(sx, "executable: %s", argv0) ; 
+  sx += sprintf(sx, " version: %s", version) ; 
+  sx += sprintf(sx, " cwd: %s", ss1) ; 
+
+}
 

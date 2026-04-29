@@ -169,7 +169,7 @@ int   getgtypes(SNP *cupt, int k) ;
 void  putgtypes(SNP *cupt, int k, int val) ;
 int   getep(SNP *cupt, int k) ;
 void  putep(SNP *cupt, int k, int val) ;
-int hasharr(char **xarr, int nxarr)   ;
+unsigned int hasharr(char **xarr, int nxarr)   ;
 void wbuff(unsigned char *buff, int num, int g) ;  
 int rbuff(unsigned char *buff, int num)  ;
 int ridfile(char *fname) ;
@@ -225,6 +225,9 @@ int gkignore(Indiv **indivmarkers, int numindivs) ;
 void checkwrite(char *fname) ;
 void testindlen(Indiv **indm, int n) ;
 void testsnplen(SNP  **snpm, int n) ;
+int getsnpvals(double *vals,  SNP **snpmarkers, int numsnps, char *vname) ; 
+void setref(char **preffasta, char *iubfile, char *tag)  ;
+int getrb(int pos, char *string, int len)  ;
 
 #undef max 
 #define max(A,B)  ((A) > (B) ? (A) : (B))

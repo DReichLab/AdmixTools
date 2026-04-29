@@ -20,7 +20,7 @@
 #include "qpsubs.h"
 
 
-#define WVERSION   "200"
+#define WVERSION   "210"
 // outpop NONE forced 
 // print number of samples / pop
 // popfilename added 
@@ -219,6 +219,7 @@ main (int argc, char **argv)
   if ((poplistname == NULL) && (popfilename == NULL))
     fatalx ("poplistname, popfilename both null\n");
 
+  setdump(coredump) ;
   if (xchrom == (numchrom + 1)) noxdata = NO;
 
   if (instem != NULL) { 
@@ -514,6 +515,8 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "xmode:", &xmode);
   getint (ph, "fmode:", &fmode);
+  getint (ph, "coredump", &coredump);
+  
   getlongstring (ph, "pattern:", &rawpattern);
   getdbl (ph, "fscale:", &fscale);
   getstring (ph, "blockname:", &blockname);

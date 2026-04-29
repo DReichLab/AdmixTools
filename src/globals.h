@@ -6,6 +6,7 @@ extern "C" {
 
 int numchrom = 22;
 int fancynorm=YES, verbose=NO, plotmode=NO, outnum = -1 ;
+int coredump = NO ;
 
 #endif
 

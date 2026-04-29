@@ -285,6 +285,43 @@ pick2 (int n, int *k1, int *k2)
   *k2 = l2;
 }
 
+
+int pickn(int a, int b, int n) 
+// pick n from a+b; how many are a 
+// find slick routine ;
+{
+ int nn,  t, i, aa, bb, x  ; 
+ aa = a ; bb = b ;
+ if (n>nn) return -1 ; // edge case
+ x = 0 ;
+ for (i=0; i < n; ++i) { 
+  if (aa==0) return x ; 
+  if (bb==0) return x+n-i ;
+  nn = aa + bb ;
+  t = ranmod(nn) ; 
+  if (t<aa) {  
+   ++x ; --aa ; 
+  }
+  else --bb ;
+ }
+ return x ;  
+}
+
+
+int ranqclip(int *pa, int *pb, int popsizelimit) 
+{
+  int a, b , x ; 
+  static int ncall = 0 ; 
+  a = *pa ; 
+  b = *pb ; 
+  x = pickn(a, b, popsizelimit) ; 
+  ++ncall ; 
+  if (x<0) return a ; 
+  *pa = x ; 
+  *pb = popsizelimit - x ;  
+  return x ; 
+}
+
 void
 ranperm (int *a, int n)
 
@@ -465,13 +502,16 @@ void
 genmultgauss (double *rvec, int num, int n, double *covar)
 // rvec contains num mvg variates.  Mean 0
 {
-  double *cf;
+  double *cf, *ww;
   ZALLOC (cf, n * n, double);
-  cholesky (cf, covar, n);
+  ZALLOC (ww, n * n, double);
+  copyarr(covar, ww, n*n) ;
+  cholesky (cf, ww, n);
   transpose (cf, cf, n, n);
   gaussa (rvec, num * n);
   mulmat (rvec, rvec, cf, num, n, n);
   free (cf);
+  free (ww);
 }
 
 double
@@ -522,6 +562,9 @@ ranmultinom (int *samp, int n, double *p, int len)
   }
   m -= samp[k] ; 
  }
+
+ free(pp) ;
+
 }
 
 double

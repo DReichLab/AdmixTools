@@ -1,6 +1,7 @@
 #include "qpsubs.h"
   double weight ; 
 #include "mcio.h" 
+#include <nicklib.h> 
 
 extern int fancynorm, verbose, plotmode, outnum;
 extern int numchrom ;
@@ -35,6 +36,8 @@ static char **inbreedlist = NULL ;
 static int *xblock = NULL, *xbsize = NULL ; 
 static int xnblock ; 
 
+double znblocks, zeffsize ; 
+
 void
 printsc (int tpat[3][4], double tscore[3], char **eglist, double ymin)
 {
@@ -46,11 +49,6 @@ printsc (int tpat[3][4], double tscore[3], char **eglist, double ymin)
   a = tp[0];
   printf ("%15s ", eglist[a]);
   a = tp[1];
-  printf ("%15s ", eglist[a]);
-  printf ("  ");
-  a = tp[2];
-  printf ("%15s ", eglist[a]);
-  a = tp[3];
   printf ("%15s ", eglist[a]);
   for (k = 0; k < 3; ++k) {
     tp = tpat[k];
@@ -1696,7 +1694,7 @@ setblocksz (int **pblock, int **pbsize, SNP ** snpm, int numsnps,
 
 
   
-void
+double
 setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
 	   double blocklen)
 // block, bsize are first element and block length 
@@ -1706,7 +1704,12 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
   int chrom, xsize, lchrom, olds;
   double fpos, dis, gpos;
   SNP *cupt;
+  double *ybsize, yess ;
+  int maxb = 1000*1000 ; 
+  
+  
 
+  ZALLOC(ybsize, maxb, double) ;
 
   lchrom = -1;
   xsize = 0;
@@ -1724,6 +1727,7 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
     dis = gpos - fpos;
     if ((chrom != lchrom) || (dis >= blocklen)) {
       if (xsize > 0) {
+        ybsize[n] = xsize ;
 	if (block != NULL)
 	  block[n] = olds;
 	if (bsize != NULL)
@@ -1740,14 +1744,18 @@ setblocks (int *block, int *bsize, int *nblock, SNP ** snpm, int numsnps,
     ++xsize;
   }
   if (xsize > 0) {
+    ybsize[n] = xsize ; 
     if (block != NULL)
       block[n] = olds;
     if (bsize != NULL)
       bsize[n] = xsize;
     ++n;
   }
+  
   *nblock = n;
-  return;
+  yess = ess(ybsize, n) ; 
+  free(ybsize) ;
+  return yess ;
 }
 
 int
@@ -1806,6 +1814,8 @@ corrwjack (double *xrho, double *xsig, double *z1, double *z2, int ncols,
     djack[k] = crho (wdot);
   }
   wjackest (&jest, &jsig, rho, djack, wjack, nblocks);
+  znblocks  = nblocks ; 
+  zeffsize = ess(wjack, nblocks) ;
   *xrho = jest;
   *xsig = jsig;
 
@@ -1998,6 +2008,9 @@ doadmlin (double *jest, double *jsig, double *zlin, double *var,
   wjackvest (vmean, var, d, zlin, vjmean, wjack, nblocks);
   *jest = xest;
   *jsig = xsig;
+
+  znblocks  = nblocks ; 
+  zeffsize = ess(wjack, nblocks) ;
 
   free (w1);
   free (w2);
@@ -4443,6 +4456,38 @@ return h / yt;
 
 
 int
+getabbababa (int **xx, int *indx, double *baba, double *abba)
+// get abbq/baba counts
+{
+
+int a, i;
+double  y, y1, y2, ytot;
+double cc[4][2] ; 
+
+ ytot = 0 ; 
+ *baba = *abba = 0 ;
+ for (i=0; i<4 ; ++i) { 
+  a = indx[i];
+  cc[i][0] = (double) xx[a][0];
+  cc[i][1] = (double) xx[a][1];
+  y = asum(cc[i], 2) ; 
+  if (y<0.1) return 0 ; 
+ }
+  y1 = cc[0][0]*cc[2][0]*cc[1][1]*cc[3][1] ;
+  y1 += cc[0][1]*cc[2][1]*cc[1][0]*cc[3][0] ;
+
+  *baba = y1 ;
+
+  y2 = cc[0][0]*cc[3][0]*cc[1][1]*cc[2][1] ;
+  y2 += cc[0][1]*cc[3][1]*cc[1][0]*cc[2][0] ;
+
+  *abba = y2 ;
+
+  return 1 ;
+
+}
+
+int
 getf4 (int **xx, int *indx, double *ans)
 {
 
@@ -4684,6 +4729,7 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
   int numadj = 0, inb ; 
   double weight ; 
 
+  znblocks = zeffsize = 0 ; 
   fflush(stdout) ; 
 
    if (verbose) { 
@@ -4985,24 +5031,8 @@ dofstats (double *fbmean, double *fbcovar, double **fbcoeffs, int nbasis,
 
   wjackvest (fbmean, fbcovar, nbasis, w3, vjmean, wjack, nblocks);
 
- /**
-  for (k=0; k<nbasis; ++k) { 
-   j = bas2fs[k] ; 
-   y = fbcovar[k*nbasis+k] ; 
-   y = sqrt(y) ; 
-   printf("zzfbasis: %3d ", k) ;  
-   printf("%12.6f ", fbmean[k]) ; 
-   printf("%12.6f ", w3[k]) ; 
-   printf(":: %12.6f", y) ; 
-   printf(" ::: ") ; 
-   printf(" %12.6f %12.6f", fsmean[j], fssig[j]) ; 
-   printnl() ;
-  }
-  */
-
-
-   
-   
+  znblocks  = nblocks ; 
+  zeffsize = ess(wjack, nblocks) ;
 
   free (wmean);
   free2D(&vjmean, nblocks) ; 
@@ -5044,7 +5074,10 @@ void   dumpfstatshr(char *fstatsname, double *ff3, double *ff3var, char **eglist
    if (fstatsname == NULL) return ; 
 
    openit(fstatsname, &fff, "w") ; 
-   fprintf(fff, "##fbasis.  basepop: %s ::  f3*1000 covar*1000000\n", eglist[basenum]) ;  
+   fprintf(fff, "##fbasis.  basepop: %s ::  f3*1000 covar*1000000 ", eglist[basenum]) ; 
+   fprintf(fff, "nblocks: %9.3f ", znblocks) ;
+   fprintf(fff, "effblocks: %9.3f", zeffsize) ;
+   fprintf(fff, "\n") ;
    
    nh2 = numeg * (numeg - 1);
    nh2 /= 2;
@@ -5115,7 +5148,11 @@ void   dumpfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, 
    if (fstatsname == NULL) return ; 
 
    openit(fstatsname, &fff, "w") ; 
-   fprintf(fff, "##fbasis.  basepop: %s ::  f3*1000 covar*1000000\n", eglist[basenum]) ;  
+
+   fprintf(fff, "##fbasis.  basepop: %s ::  f3*1000 covar*1000000 ", eglist[basenum]) ; 
+   fprintf(fff, "nblocks: %9.3f ", znblocks) ;
+   fprintf(fff, "effblocks: %9.3f", zeffsize) ;
+   fprintf(fff, "\n") ;
    
    nh2 = numeg * (numeg - 1);
    nh2 /= 2;
@@ -5370,6 +5407,79 @@ int getegnum(int *egnum, char **spt, char **eglist, int numeg, int num)
   }
   return 0 ;
 }
+double geteffblocks(char *sss) 
+{
+ char *sx ;
+ int t ;
+ double y ; 
+
+ t = strlen(sss) ; 
+ if (t<10) { 
+  printf("*** warning. oracle mode set but oldstyle fstats file\n") ; 
+  return 100.0 ;
+ }
+ sx = strstr(sss, "effblocks:") ; 
+ sx += 12 ; 
+
+ return strtod(sx, NULL) ;
+
+}
+
+void   loadfstatsx(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg, char *fbline)                           
+{
+   FILE *fff ;
+   int a, b, nh2, k, x, u, v, c, d, t ; 
+   int egnum[4] ; 
+   double y1, y2 ; 
+
+  char line[MAXSTR + 1] ;
+  char *spt[MAXFF], *sx;
+  int nsplit, num = 0;
+  int skipit;
+  int len;
+
+  fbline[0] = CNULL ;
+   if (fstatsname == NULL) return ; 
+
+  openit (fstatsname, &fff, "r");
+  line[MAXSTR] = '\0';
+  while (fgets (line, MAXSTR, fff) != NULL) {
+    nsplit = splitup (line, spt, MAXFF);
+    if (nsplit == 0)
+      continue;
+    sx = spt[0];
+    if (sx[0] == '#') { 
+     if (strstr(line, "fbasis") != NULL) strcpy(fbline, line) ;
+     freeup(spt, nsplit) ;
+     continue  ; 
+    }
+    y1 = atof(spt[nsplit-1]) ; 
+    if (nsplit==3)  { 
+     t = getegnum(egnum, spt, eglist, numeg, 2) ;  
+     if (t<0) continue ; 
+     a = egnum[0] ; 
+     b = egnum[1] ; 
+     ff3[a*numeg+b] = ff3[b*numeg+a] = y1/1000.0 ; 
+    }
+    if (nsplit==5)  { 
+     t = getegnum(egnum, spt, eglist, numeg, 4) ;  
+     if (t<0) continue ; 
+     a = egnum[0] ; 
+     b = egnum[1] ; 
+     c = egnum[2] ; 
+     d = egnum[3] ; 
+     y2 = y1/(1000.0*1000.0) ; 
+//   printf("zzc %d %d %d %d %9.3f\n", a, b, c, d, y1) ; 
+     set4x(ff3var, a, b, c, d, numeg, y2) ; 
+    }
+    freeup(spt, nsplit) ;
+    continue  ; 
+   }
+
+   fclose(fff) ; 
+
+}
+
 void   loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, int numeg)                           
 {
    FILE *fff ;
@@ -5421,6 +5531,7 @@ void   loadfstats(char *fstatsname, double *ff3, double *ff3var, char **eglist, 
    fclose(fff) ; 
 
 }
+
 void get4(int *dd, int *a, int *b, int *c, int *d) 
 {
 

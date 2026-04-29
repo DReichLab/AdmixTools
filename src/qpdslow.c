@@ -20,7 +20,7 @@
 #include "qpsubs.h"
 
 
-#define WVERSION   "400"
+#define WVERSION   "410"
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -200,6 +200,7 @@ main (int argc, char **argv)
   printf ("## qpdslow version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
 
   if (bwname != NULL) {
     t = numlines (bwname);
@@ -519,6 +520,7 @@ readcommands (int argc, char **argv)
   getint (ph, "chrom:", &xchrom);
   getint (ph, "xmode:", &xmode);
   getint (ph, "clinetest:", &clinetest) ; 
+  getint (ph, "coredump:", &coredump);
 
   printf ("### THE INPUT PARAMETERS\n");
   printf ("##PARAMETER NAME: VALUE\n");

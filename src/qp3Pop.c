@@ -26,7 +26,7 @@
 //  (YRI, CEU, Papua, .... )               
 
 
-#define WVERSION   "701"
+#define WVERSION   "710"
 // popsizelimit
 // dzeromode.  But this is a bad idea.  Must include monomorphic snps if we are to get unbiasedness
 // snpdetailsname added
@@ -124,7 +124,6 @@ FILE *ofile;
 char **eglist;
 char **egshort;
 char **enames;
-double zthresh = 3.0;
 double f2diag = 0.0;
 
 void readcommands (int argc, char **argv);
@@ -200,6 +199,7 @@ main (int argc, char **argv)
   printf ("## qp3Pop version: %s\n", WVERSION);
   if (parname == NULL)
     return 0;
+  setdump(coredump) ;
   if (xchrom == (numchrom + 1)) noxdata = NO;
   setjquart (pubjack, jackweight, jackquart);
   setinbreed (inbreed);
@@ -522,6 +522,7 @@ readcommands (int argc, char **argv)
   getdbl (ph, "baseval:", &baseval);
   getint (ph, "jackweight:", &jackweight);
   getint (ph, "pubjack:", &pubjack);
+  getint (ph, "coredump:", &coredump);
   getstring (ph, "dumpname:", &dumpname);
   getstring (ph, "loadname:", &loadname);
   getstring (ph, "blockname:", &blockname);

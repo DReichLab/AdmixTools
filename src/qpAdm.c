@@ -1,5 +1,4 @@
-#include <stdio.h> // mean s.deeed
-#include <string.h>
+#include <string.h> 
 #include <unistd.h>
 #include <math.h>
 #include <sys/types.h>
@@ -22,7 +21,7 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "2050" 
+#define WVERSION   "2202" 
 // best analysis added
 // hires added;  including on summ line
 // chrom: 23 added
@@ -43,7 +42,7 @@
 // calcadmfix added;
 // hiprec_covar added
 // fancyf4 added  -- remove bias on f4 calculation
-// code cleeanup (Mac) 10/2/19 
+// code cleanup (Mac) 10/2/19 
 // fixed up boundary case (m=n) in ranktest
 // mkfstats fstatsname added; made more robust
 // keeptmp added (default NO) 
@@ -58,12 +57,19 @@
 // Monte Carlo importance sampling (phiint) etc
 // diagvarplus added inedependent of yscale 
 // oldmode/newmode  added ; defaults for yscale changed.  Old default works though
+// eigenanalysis
+// diagonly added
+// longsummary added 
+// OAS covariance added
 
 #define MAXFL  50
 #define MAXSTR  512
 #define MAXPOPS 100
 
 double yscale = -1, diagvarplus = -1 ; 
+int diagonly = NO  ;; // YES => kill offdiag elems of var
+int longsummary = NO ;
+int oasmode = YES ;
 
 char *parname = NULL;
 char *trashdir = "/var/tmp";
@@ -78,6 +84,7 @@ int oldmode = YES ;
 int newmode = -99 ;
 int positive_coeffs = NO ;
 
+int eigenanalysis = NO ;  
 
 Indiv **indivmarkers = NULL;
 SNP **snpmarkers;
@@ -128,6 +135,7 @@ int numboot = 1000 ;
 int mctrials = -1 ; 
 double *coeffs, *cvar ; 
 
+double effblocks = 0 ;
 
 char *fstatsname = NULL ; 
 char *fstatsoutname = NULL ; 
@@ -171,7 +179,7 @@ double scorel(double *d, double *V, double *lam, int n)  ;
 double gendstat(double *ca, int b1, int b2, int nr, int nl, double *mean, double *var, int *ktable) ;
 int isnested(int a, int b) ; 
 int usage (char *prog, int exval); 
-void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) ;
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright, char *sss) ;
 void  setktable(int *ktable, int nl,  int nr) ; 
 int  mkfstats(char *parname)   ; 
 double f4mean(int a, int b, int nl, int nr, double *mean, double *var, int *ktable)   ;
@@ -183,6 +191,7 @@ double phiint(double **x1mat, double *rhs, double *cmean, double *cvar, int fsiz
 double tttphi(double *zmean, double *var, int aleft, int aright)  ;
 void mcest(double *qcoeffs, double *qvar,  double *coeffs, double *cvar, double *zmean, double *zvar,  int nl, int nr, int mctrials) ;
 void printcv(double *coeffs, double *var, int n) ;  
+void killoffdiag(double *a, int n)   ;
 
 int
 main (int argc, char **argv)
@@ -205,8 +214,9 @@ main (int argc, char **argv)
   double maxgendis;
   int **xtop;
   int npops = 0;
-  int nr, nl, minnm, d, dd;
+  int nr, nl, minnm, d, dd, nlwidth = 5 ;
   double *ymean, *yvar, *yvarinv, *ww, *lambda;
+  double *tdiag ; 
   int nindiv = 0, e, f, lag = 1;
   int nignore, numrisks = 1;
   SNP **xsnplist;
@@ -244,6 +254,8 @@ main (int argc, char **argv)
   double *bworst ;
   double *qcoeffs, *qvar ;
   double bigserr ;
+  double *fvecs, *fvals ;
+  double essjack ;
 
 
   F4INFO **f4info, *f4pt, *f4pt2, **g4info, *ggpt;
@@ -259,6 +271,7 @@ main (int argc, char **argv)
 
   printcmdline(argc, argv) ;
   printf ("## qpAdm version: %s\n", WVERSION);
+  setdump(coredump) ;
   if (seed==0) seed = seednum() ; 
   printf("seed: %d\n", seed) ;
   SRAND(seed) ;
@@ -266,6 +279,9 @@ main (int argc, char **argv)
   if ((yscale < 0) && (diagvarplus < 0)) yscale = 0.0001 ;  // old default
   if (yscale < 0)  yscale = 0.0 ;  // diagvarplus set 
   if (diagvarplus < 0)  diagvarplus = 0.0 ;  
+
+  printf("oracle mode %d\n", oasmode) ;
+  if (oasmode) diagvarplus = yscale = 0.0 ;
 
   if (doratio) { 
    ratcoords[0] = 0 ;
@@ -448,6 +464,9 @@ main (int argc, char **argv)
   ZALLOC (ww, t, double);
   ZALLOC (lambda,  nl, double);
   ZALLOC (yvar, dd, double);
+  ZALLOC (fvals, d, double) ; 
+  ZALLOC (fvecs, dd, double) ; 
+
 
 
  if (fstatsname == NULL) { 
@@ -580,13 +599,28 @@ main (int argc, char **argv)
 // y is jackknife dof 
   printf ("Effective number of blocks: %9.3f\n", y);
   printf ("numsnps used: %d\n", nsnpused);
-
+  effblocks = y ; 
  }
 
  else {
-  loadymv(ymean, yvar,  fstatsname, popllist, poprlist, nleft,  nright) ; 
-//  printf("loadymv exited\n") ;
+  loadymv(ymean, yvar,  fstatsname, popllist, poprlist, nleft,  nright, sss) ; 
+  effblocks = geteffblocks(sss) ;
+  printf("fstats loaded; effblocks: %9.3f\n", effblocks) ;
  }
+ if (oasmode) { 
+  if (verbose) {
+   ZALLOC(tdiag, nl*nr, double) ; 
+   getdiag(tdiag, yvar, nl*nr) ;
+   printmatl(tdiag, 1, nl*nr) ; 
+   printnl() ; 
+   printmatl(ymean, 1, nl*nr) ; 
+   printnl() ; 
+   printmatl(yvar, nl*nr, nl*nr) ; 
+  }
+  oascovar(yvar, yvar, effblocks, nl*nr) ;
+ }
+
+ if (diagonly) killoffdiag(yvar, dd) ;
 
  retkode = checkmv(ymean, yvar, nl, nr) ; 
 
@@ -594,8 +628,34 @@ main (int argc, char **argv)
  if (retkode == -2) printf("f4 variance absurdly small.  Aborting run\n") ;
 
  if (retkode < 0) return -1 ;
- if (diagvarplus < 0) diagvarplus = yscale ;
- addscaldiag(yvar, diagvarplus, nl*nr) ;    
+
+  if (eigenanalysis) { 
+   
+   eigvecs(yvar, fvals, fvecs, nl*nr) ;
+   printf("eigenanalysis of f4 matrix\n") ;
+   y = asum(fvals, nl*nr) ; 
+   y = (double) (nl*nr) / y ;
+   vst(fvals, fvals, y, nl*nr) ; 
+   printf("scaling multiplier: %15.3g\n", y) ;
+   for (k = 0 ; k < nl*nr; ++k) { 
+    printf("eval: %3d value: %15.6f\n", k, fvals[k]) ; 
+    for (a=0; a<nl; ++a) { 
+     for (b=0; b<nr; ++b) { 
+      y = fvecs[k*nl*nr+a*nr+b]; 
+      printf ("%20s %20s ", popllist[a + 1], poprlist[b + 1]);
+      printf (" %9.3f", y) ;
+      printnl() ;
+    }} 
+   }
+  }
+
+ if (diagvarplus<0) { 
+  addscaldiag(yvar, yscale, nl*nr) ;    
+ }
+ else {
+  printf("adding to variance diagonal: %15.9f\n", diagvarplus) ;
+  addsdiag(yvar, diagvarplus, nl*nr) ;    
+ }
 
   ZALLOC (vfix, nl, int);
 
@@ -724,10 +784,11 @@ main (int argc, char **argv)
     fixit (zprint, ww, nl);
     printimatx(zprint, 1, nl);
     printf ("  ");
-    t = mktriang (ww, var, nl);
+    if (longsummary) nlwidth = t ;
+    if (nl == 3) nlwidth = t  ; 
     vst (ww, ww, 1.0e8, t);
     fixitl (wkprint, ww, t);
-    printlmat (wkprint, 1, t);
+    printlmatw (wkprint, 1, t, nlwidth);
     printf ("[mean *1.0e6, var *1.0e8]\n");
   }
 
@@ -751,10 +812,14 @@ main (int argc, char **argv)
   else {
    printmatwx(jmean, 1, nl, nl) ; 
   }
+
   t = mktriang (ww, var, nl);
+  if (longsummary) nlwidth = t ;
+  nlwidth = 5 ;
+  if (nl == 3) nlwidth = t  ; 
   vst (ww, ww, 1.0e6, t);
   fixitl (wkprint, ww, t);
-  printlmat (wkprint, 1, t);
+  printlmatw (wkprint, 1, t, nlwidth);
   printnl ();
   
   if (nl == 1) { 
@@ -1011,9 +1076,12 @@ main (int argc, char **argv)
    printmatwx(qcoeffs, 1, nl, nl) ; 
   }
   t = mktriang (ww, qvar, nl);
+  nlwidth = 5 ;
+  if (longsummary) nlwidth = t ;
+  if (nl == 3) nlwidth = t  ; 
   vst (ww, ww, 1.0e6, t);
   fixitl (wkprint, ww, t);
-  printlmat (wkprint, 1, t);
+  printlmatw (wkprint, 1, t, nlwidth);
   printnl ();
   
   fflush(stdout) ;
@@ -1232,6 +1300,7 @@ readcommands (int argc, char **argv)
   getint (ph, "details:", &details);
   getint (ph, "seed:", &seed) ; 
   getint (ph, "hiprec_covar:", &hiprec_covar) ; 
+  getint (ph, "longsummary:", &longsummary) ; 
   getint (ph, "numboot:", &numboot) ; 
   getint (ph, "doratio:", &doratio) ; 
   getint (ph, "mctrials:", &mctrials) ; 
@@ -1240,6 +1309,11 @@ readcommands (int argc, char **argv)
   getint (ph, "positive_coeffs:", &positive_coeffs) ; 
   getdbl (ph, "diagplus:", &yscale);
   getdbl (ph, "diagvarplus:", &diagvarplus);
+  getint (ph, "eigenanalysis:", &eigenanalysis);
+  getint (ph, "diagonly:", &diagonly) ;
+  getint (ph, "coredump:", &coredump);
+  getint (ph, "oasmode:", &oasmode);
+  getint (ph, "oracle:", &oasmode);
 
 
 
@@ -1985,7 +2059,7 @@ void load4(int *x, int a, int b, int c, int d)
 }
 
 
-void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright) 
+void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, char **poprlist, int nleft, int nright, char *fbline) 
 {
 
   char **eglist ; 
@@ -2000,7 +2074,7 @@ void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, ch
   numeg = np = fstats2popl(fstatsname, eglist) ; 
   ZALLOC(ff3, np*np, double) ; 
   ZALLOC(ff3var, np*np*np*np, double) ; 
-  loadfstats(fstatsname, ff3, ff3var, eglist, numeg) ; 
+  loadfstatsx(fstatsname, ff3, ff3var, eglist, numeg, fbline) ; 
 
   nl = nleft -1 ; 
   nr = nright -1 ; 
@@ -2550,4 +2624,16 @@ void printcv(double *coeffs, double *var, int n)
    free(w2) ;
 
 }
+
+void 
+killoffdiag(double *a, int n) 
+{
+  int i, j ; 
+  for (i=0; i<n; ++i) { 
+   for (j=i+1; j<n; ++j) { 
+    a[i*n+j] = a[j*n+i] = 0 ; 
+  }}
+
+}
+
 

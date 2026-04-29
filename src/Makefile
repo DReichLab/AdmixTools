@@ -12,8 +12,8 @@ override CFLAGS += -c -g -p -pg -Wimplicit -I./ -I./nicksrc -fno-common
 #override LDFLAGS += -L/usr/local/opt/openblas/lib -L/usr/local/opt/gsl/lib
 # Harvard Medical School O2 cluster additions
 ifdef SLURM_CONF
-override CFLAGS += -I/n/app/openblas/0.2.19/include -I/n/app/gsl/2.3/include
-override LDFLAGS += -L/n/app/openblas/0.2.19/lib -L/n/app/gsl/2.3/lib/
+override CFLAGS += -I/n/app/openblas/0.3.28-gcc-14.2.0/include -I/n/app/gsl/2.8-gcc-14.2.0/include
+override LDFLAGS += -L/n/app/openblas/0.3.28-gcc-14.2.0/lib -L/n/app/gsl/2.8-gcc-14.2.0/lib/
 TOP=../bin
 BIN=$(HOMEL)/../bin
 endif
@@ -75,6 +75,7 @@ qpBound: $(NLIB) qpBound.o qpsubs.o mcio.o mapfile.o ldsubs.o admutils.o  egsubs
 
 dowtjack: $(NLIB) dowtjack.o
 
+ascore: $(NLIB) ascore.o mcio.o mapfile.o admutils.o egsubs.o h2d.o exclude.o  geno.o
 convertf: $(NLIB) convertf.o mcio.o mapfile.o admutils.o egsubs.o h2d.o exclude.o  geno.o
 
 snpunion: $(NLIB) snpunion.o mcio.o mapfile.o admutils.o egsubs.o h2d.o exclude.o  geno.o
@@ -154,7 +155,7 @@ rmdirs:
 
 qpGraph: $(NLIB) qpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o mapfile.o ldsubs.o admutils.o egsubs.o regsubs.o geno.o
 
-qqpGraph: $(NLIB) qqpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o
+qqpGraph: $(NLIB) qqpGraph.o gslqp.o qpgsubs.o qpsubs.o mcio.o ldsubs.o admutils.o egsubs.o regsubs.o geno.o
 
 qpreroot: qpreroot.o qpgsubs.o qpsubs.o mcio.o mapfile.o ldsubs.o admutils.o egsubs.o regsubs.o geno.o
 

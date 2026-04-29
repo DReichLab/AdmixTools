@@ -185,7 +185,7 @@ int genoopenit(genofile **gfile, char *geno2name, SNP **snp2m,
   Indiv **indiv2m, int numsnp2, int numindiv2, int nignore)  ;
 int genoreadit(genofile *gfile, SNP **pcupt)   ; 
 void genocloseit(genofile *gfile)  ; 
-int calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind, int *pihash, int *pshash) ;
+int calcishash (SNP ** snpm, Indiv ** indiv, int numsnps, int numind, unsigned int *pihash, unsigned int *pshash) ;
 
 void putped(int num) ;
 void getped(int num) ;
