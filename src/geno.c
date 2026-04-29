@@ -87,7 +87,7 @@ size_t genotype_matrix_byte_size(const genotype_matrix *this){
 	return this->num_rows * this->row_size_bytes * sizeof(unsigned char);
 }
 
-int genotype_matrix_read_file(genotype_matrix *this, const char * const genotype_filename, int flags, const int  *individual_file_hash, const int *snp_file_hash){
+int genotype_matrix_read_file(genotype_matrix *this, const char * const genotype_filename, int flags, const unsigned int *individual_file_hash, const unsigned int *snp_file_hash){
 	genotype_matrix_initialize(this);
 	struct stat sb;
 	size_t num_samples, num_snps;
@@ -153,7 +153,7 @@ int genotype_matrix_read_file(genotype_matrix *this, const char * const genotype
 	return 0;
 }
 
-int genotype_matrix_read_file_full(genotype_matrix *this, const char * const genotype_filename, int flags, const int  *individual_file_hash, const int *snp_file_hash){
+int genotype_matrix_read_file_full(genotype_matrix *this, const char * const genotype_filename, int flags, const unsigned int *individual_file_hash, const unsigned int *snp_file_hash){
 	int result = genotype_matrix_read_file(this, genotype_filename, flags, individual_file_hash, snp_file_hash);
 	if (result < 0){
 		return result;
@@ -255,19 +255,19 @@ unsigned char genotype_matrix_get_genotype_internal(const genotype_matrix *this,
 }
 
 
-int genotype_matrix_get_snp_hash(const genotype_matrix *this){
+unsigned int genotype_matrix_get_snp_hash(const genotype_matrix *this){
 	return this->snp_file_hash;
 }
 
-void genotype_matrix_set_snp_hash(genotype_matrix *this, int hash){
+void genotype_matrix_set_snp_hash(genotype_matrix *this, unsigned int hash){
 	this->snp_file_hash = hash;
 }
 
-int genotype_matrix_get_individual_hash(const genotype_matrix *this){
+unsigned int genotype_matrix_get_individual_hash(const genotype_matrix *this){
 	return this->individual_file_hash;
 }
 
-void genotype_matrix_set_individual_hash(genotype_matrix *this, int hash){
+void genotype_matrix_set_individual_hash(genotype_matrix *this, unsigned int hash){
 	this->individual_file_hash = hash;
 }
 

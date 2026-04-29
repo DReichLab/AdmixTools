@@ -39,8 +39,8 @@ typedef struct genotype_matrix_t{
 
 	void (*get_position)(const genotype_matrix*, size_t sample, size_t snp, bit_array_position *);
 
-	int individual_file_hash;
-	int snp_file_hash;
+	unsigned int individual_file_hash;
+	unsigned int snp_file_hash;
 
 	char *memory_map_start;
 	size_t memory_map_length;
@@ -68,14 +68,14 @@ void transpose_position(const genotype_matrix *this, size_t sample, size_t snp, 
 // Read a genotype matrix from file, either in the packed ancestry map or transpose packed format
 // Optionally, check the individual and snp file hashes against the header
 // the current implementation will not write changes in the matrix back out to the file
-int genotype_matrix_read_file(genotype_matrix *this, const char * const genotype_filename, int flags, const int *individual_file_hash, const int *snp_file_hash);
+int genotype_matrix_read_file(genotype_matrix *this, const char * const genotype_filename, int flags, const unsigned int *individual_file_hash, const unsigned int *snp_file_hash);
 // Read genotpye file as above in genotype_matrix_read_file, and place contents into memory
-int genotype_matrix_read_file_full(genotype_matrix *this, const char * const genotype_filename, int flags, const int *individual_file_hash, const int *snp_file_hash);
+int genotype_matrix_read_file_full(genotype_matrix *this, const char * const genotype_filename, int flags, const unsigned int *individual_file_hash, const unsigned int *snp_file_hash);
 
-int genotype_matrix_get_snp_hash(const genotype_matrix *this);
-void genotype_matrix_set_snp_hash(genotype_matrix *this, int hash);
-int genotype_matrix_get_individual_hash(const genotype_matrix *this);
-void genotype_matrix_set_individual_hash(genotype_matrix *this, int hash);
+unsigned int genotype_matrix_get_snp_hash(const genotype_matrix *this);
+void genotype_matrix_set_snp_hash(genotype_matrix *this, unsigned int hash);
+unsigned int genotype_matrix_get_individual_hash(const genotype_matrix *this);
+void genotype_matrix_set_individual_hash(genotype_matrix *this, unsigned int hash);
 
 // size of the byte-aligned genotype data, not including header
 size_t genotype_matrix_byte_size(const genotype_matrix *this);
