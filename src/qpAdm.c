@@ -2138,7 +2138,7 @@ void loadymv(double *ymean, double *yvar,  char *fstatsname, char **popllist, ch
 
 int mkfstats(char *parname)  
 {
- char sss[512] ; 
+ char sss[530] ; 
  char fsx[256+10] ; 
  char ppp[256] ;  
  char pops[256] ;  

@@ -1346,7 +1346,7 @@ printfit (double *ww)
   double y, worstz, y1, y2, x1, x2, diff, sig, z;
   double *ffaa ; 
   FILE *outff;
-  char ss[MAXSTR*2], ssworst[MAXSTR*2], *ssx ;
+  char ss[MAXSTR*2+4], ssworst[MAXSTR*2], *ssx ;
   int isworst ;
   char **ancnames ;
 

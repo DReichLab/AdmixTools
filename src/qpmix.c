@@ -1308,7 +1308,7 @@ void printcv(double *coeffs, double *var, int n)
 int mkfstats(char *parname)  
 // modified from qpAdm
 {
- char sss[512] ; 
+ char sss[530] ; 
  char fsx[256] ; 
  char ppp[256] ;  
  char pops[256] ;  
