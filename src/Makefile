@@ -120,7 +120,7 @@ install:	all dirs tables
 	cp $(PROGS) $(TOP)
 	cp $(PROGS2) $(TOP)
 	cp $(PROGS3) $(TOP)
-	cp $(PROGS3) $(TOP)
+	cp $(PROGS4) $(TOP)
 	cp ../perlsrc/* $(TOP) 
 	cp fxtract $(BIN)
 	cp -r script $(BIN) 
