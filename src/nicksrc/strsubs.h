@@ -15,7 +15,7 @@ int NPisnumber (char c) ;
 int isnumword (char *str)  ;
 void ffprint (FILE *fff, char *fmt, ...) ; 
 void enuf( char *fmt, ...) ;
-void fatalx( char *fmt, ...) ;
+void fatalx( char *fmt, ...) __attribute__((noreturn)) ;
 void setdump(int cdump) ; 
 int docommand( char *fmt, ...) ;
 long seednum() ;

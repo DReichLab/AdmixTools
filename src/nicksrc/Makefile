@@ -1,4 +1,4 @@
-override CFLAGS += -c -g -p -Wimplicit -fno-common -I./
+override CFLAGS += -c -O3 -Wimplicit -fno-common -I./
 
 all: libnick.a
 

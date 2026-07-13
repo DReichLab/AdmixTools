@@ -328,8 +328,11 @@ main (int argc, char **argv)
   nleft = loadlist (popllist, popleft);
   nright = loadlist (poprlist, popright);
 
-  if (nleft==0) fatalx("no pops in left!\n") ;
-  if (nright==0) fatalx("no pops in right!\n") ;
+  if (nleft<=0) fatalx("no pops in left!\n") ;
+  if (nright<=0) fatalx("no pops in right!\n") ;
+
+  nr = nright - 1;
+  nl = nleft - 1;
 
   if ((allsnps == YES) && (oldallsnpsmode == NO) && (fstatsname == NULL)) {
    if (mkfstats(parname) < 0) { 
@@ -450,9 +453,6 @@ main (int argc, char **argv)
 
 
   ZALLOC (nsamppops, numeg, int);
-
-  nr = nright - 1;
-  nl = nleft - 1;
 
   ZALLOC (ktable, nleft * nright + 100, int);
   setktable(ktable, nl,  nr) ; 
