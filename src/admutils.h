@@ -227,7 +227,8 @@ void testindlen(Indiv **indm, int n) ;
 void testsnplen(SNP  **snpm, int n) ;
 int getsnpvals(double *vals,  SNP **snpmarkers, int numsnps, char *vname) ; 
 void setref(char **preffasta, char *iubfile, char *tag)  ;
-int getrb(int pos, char *string, int len)  ;
+void setplimit (Indiv ** indivmarkers, int numindivs, char **eglist, int numeg, int plimit) ;  
+int getrb(int pos, char *string, int len) ;
 
 #undef max 
 #define max(A,B)  ((A) > (B) ? (A) : (B))

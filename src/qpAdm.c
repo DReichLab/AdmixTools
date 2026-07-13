@@ -21,7 +21,7 @@
 #include "eigsubs.h" 
 
 
-#define WVERSION   "2202" 
+#define WVERSION   "2206" 
 // best analysis added
 // hires added;  including on summ line
 // chrom: 23 added
@@ -607,9 +607,10 @@ main (int argc, char **argv)
   effblocks = geteffblocks(sss) ;
   printf("fstats loaded; effblocks: %9.3f\n", effblocks) ;
  }
+ ZALLOC(tdiag, nl*nr, double) ; 
  if (oasmode) { 
   if (verbose) {
-   ZALLOC(tdiag, nl*nr, double) ; 
+   printf("unadjusted diag\n") ;
    getdiag(tdiag, yvar, nl*nr) ;
    printmatl(tdiag, 1, nl*nr) ; 
    printnl() ; 
@@ -655,6 +656,11 @@ main (int argc, char **argv)
  else {
   printf("adding to variance diagonal: %15.9f\n", diagvarplus) ;
   addsdiag(yvar, diagvarplus, nl*nr) ;    
+ }
+ if (verbose) { 
+   printf("adjusted diag\n") ;
+   getdiag(tdiag, yvar, nl*nr) ;
+   printmatl(tdiag, 1, nl*nr) ; 
  }
 
   ZALLOC (vfix, nl, int);
@@ -719,18 +725,23 @@ main (int argc, char **argv)
    calcevar (jmean, var, yvar, nl, nr, btop, bbot, gtop, gbot, bnblocks, bdim);
   }
   else { 
- //printf("zzrandom %d\n", ranmod(1000*1000*1000)) ;
    calcevarboot(jmean, var, ymean, yvar, nl, nr, nl*nr, numboot) ; 
-   printf("bootstrap saimpling of F-coeffs: %d\n", numboot) ;
-   printf("zzjmean ") ;  printmatw(jmean, 1, nl, nl) ;
+   printf("bootstrap sampling of F-coeffs: %d\n", numboot) ;
+   printf("boot mean: ") ;
   }
+  if (hires)
+    printmatwl (jmean, 1, nl, nl);
+  else
+    printmatw (jmean, 1, nl, nl);
+
+
   copyarr(jmean, coeffs, nl) ;
   copyarr(var, cvar, nl*nl) ;
   getdiag (ww, var, nl);
   vsp (ww, ww, 1.0e-20, nl);
   vsqrt (ww, ww, nl);
   vmaxmin(ww, nl, &bigserr, NULL) ;
-  printf ("      std. errors: ");
+  printf ("boot std. errors: ");
   
   if (hires)
     printmatwl (ww, 1, nl, nl);
@@ -749,14 +760,6 @@ main (int argc, char **argv)
   if (hiprec_covar == NO) {
 
    vst (ww, var, 1.0e6, nl * nl);
-
-/**
-   printf("zzz\n") ; 
-   printmatl(ww, nl, nl) ;
-   printnl() ;
-   printmatl(var, nl, nl) ;
-   printnl() ;
-*/
 
    fixitl (jvar, ww, nl * nl);
    printf ("error covariance (* 1,000,000)\n");
@@ -987,7 +990,7 @@ main (int argc, char **argv)
      }
     }
     printnl() ;
-    
+
    ZALLOC(bworst, nr, double) ;
    y = worstb(bworst, wbest,  nl,  nr, ymean, yvar, ktable)   ;
    printf("worst Z-score with right hand mix\n") ;
@@ -1000,19 +1003,6 @@ main (int argc, char **argv)
    printnl() ;
   }
 
-
-/**
-  for (a=0; a<nl; ++a) { 
-   for (b=0; b<nr; ++b) { 
-   y1 = f4mean(a, b, nl, nr, ymean, yvar, ktable) ;
-   y2 = f4var(a, a, b, b, nl, nr, ymean, yvar, ktable) ;
-   printf("zzcheck %s %s ", popllist[a+1], poprlist[b+1]) ;
-   ysig = y1 / sqrt (y2+1.0e-20);
-   printf ("f4: %12.6f Z: %12.6f", y1, ysig);
-   printnl ();
- }}
-*/
-
   if (deletefstats) { 
 // fstatsname has been created  
    printf("removing %s\n", fstatsname) ;
@@ -1024,6 +1014,7 @@ main (int argc, char **argv)
    ymem = calcmem(1)/1.0e6 ;
    printf("##end of qpAdm: %12.3f seconds cpu %12.3f Mbytes in use\n", cputime(1), ymem) ;
    return 0;
+   fatalx("weird bug\n") ;
   }
   
  
@@ -1410,14 +1401,6 @@ isok = YES;
 for (a = 0; a < dim; ++a) {
 ret = getf4 (counts[col], xtop[a], &y);
 
-/**
-ret2 = getf4old (counts[col], xtop[a], &y2);
-if ((ret != ret2) || (fabs(y-y2) > .001)) { 
- ++nbad ; 
- if (nbad < 100) printf("zzbad %d %d  :: $%d %d :: %9.3f %9.3f\n", col, a, ret, ret2, y, y2) ; 
-}
-*/
-
 if (ret==2) {
  printf("bad quad: "); printimat(xtop[a], 1, 4) ;
  fatalx("bad quad\n") ;
@@ -1632,7 +1615,7 @@ calcevarboot(double *bootmean, double *bootvar, double *ymean, double *yvar, int
   doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
   calcadm (tmean[2*k], f4wk->A, nl);
   if (k==0) { 
-   printf("zzevarboot\n") ; 
+   printf("varboot\n") ; 
    printmatl(tmean[2*k], 1, nl) ;
    printmatl(f4wk->A, nl, nl-1) ;
   }
@@ -1640,7 +1623,7 @@ calcevarboot(double *bootmean, double *bootvar, double *ymean, double *yvar, int
   doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
   calcadm (tmean[2*k+1], f4wk->A, nl);
   if (k==0) { 
-   printf("zzevarboot2\n") ; 
+   printf("evarboot2\n") ; 
    printmatl(tmean[2*k+1], 1, nl) ;
    printmatl(f4wk->A, nl, nl-1) ;
   }
@@ -1667,10 +1650,6 @@ calcevarboot(double *bootmean, double *bootvar, double *ymean, double *yvar, int
 
  yn = (double) (2*numboot) ; 
  mv2D(ww, wwcovar, tmean, 2*numboot, nl) ; 
- printf("boot mean: ") ; 
-
- if (hires == NO) printmat(ww, 1, nl) ; 
- else printmatl(ww, 1, nl) ; 
 
  copyarr(ww, bootmean, nl) ;
  copyarr(wwcovar, bootvar, nl*nl) ; 
@@ -1775,7 +1754,6 @@ vvm (wbot, gbot, bbot[k], dim);
 vvd (mean, wtop, wbot, dim);
 doranktest (mean, yvar, nl, nr, nl - 1, f4wk);
 calcadm (tmean[k], f4wk->A, nl);
-// printf("zzm: %d %9.3f\n", k, asum(tmean[k], nl)) ;
 }
 
 ZALLOC (wjack, nblocks, double);

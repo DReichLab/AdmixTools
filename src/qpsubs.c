@@ -1497,43 +1497,6 @@ fstcoly (double *estn, double *estd, SNP * cupt,
   return z + zz;
 
 }
-
-void
-setplimit (Indiv ** indivmarkers, int numindivs,
-	   char **eglist, int numeg, int plimit)
-{
-  int *indnums;
-  int *psize;
-  int i, k, kk;
-  Indiv *indx;
-
-  ZALLOC (indnums, numindivs, int);
-  ZALLOC (psize, numeg, int);
-
-
-  idperm (indnums, numindivs);
-  ranperm (indnums, numindivs);
-
-  for (i = 0; i < numindivs; i++) {
-    k = indnums[i];
-    indx = indivmarkers[k];
-    if (indx->ignore)
-      continue;
-    kk = indxindex (eglist, numeg, indx->egroup);
-    if (kk < 0)
-      continue;
-    ++psize[kk];
-    if (psize[kk] > plimit)
-      indx->ignore = YES;
-  }
-
-
-
-  free (psize);
-  free (indnums);
-
-}
-
 void
 dohzg (double *top, double *bot, SNP ** xsnplist, int *xindex, int *xtypes,
        int nrows, int ncols, int numeg)

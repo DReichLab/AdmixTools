@@ -3905,7 +3905,7 @@ double oasrho(double *covar, double yn, int p)
 }
 
 double oascovar(double *out, double *covar, double yn, int p) 
-// Oracle assisted shrinkage ; Wei and Zhao :: IEEE Trans. on Sig. Processing (2023) ; Chen Wiesel et al. 2009
+// Oracle assisted shrinkage; Wei and Zhao :: IEEE Trans. on Sig. Processing (2023) 
 {
   double rho, *w1, *w2, mu ; 
 

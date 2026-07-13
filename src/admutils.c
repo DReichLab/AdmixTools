@@ -1692,6 +1692,45 @@ void setref(char **preffasta, char *iubfile, char *tag)
  freeup(rrr, 1) ; 
 }
 
+
+
+
+
+void setplimit (Indiv ** indivmarkers, int numindivs,
+           char **eglist, int numeg, int plimit)
+{
+  int *indnums;
+  int *psize;
+  int i, k, kk;
+  Indiv *indx;
+
+  ZALLOC (indnums, numindivs, int);
+  ZALLOC (psize, numeg, int);
+
+
+  idperm (indnums, numindivs);
+  ranperm (indnums, numindivs);
+
+  for (i = 0; i < numindivs; i++) {
+    k = indnums[i];
+    indx = indivmarkers[k];
+    if (indx->ignore)
+      continue;
+    kk = indxindex (eglist, numeg, indx->egroup);
+    if (kk < 0)
+      continue;
+    ++psize[kk];
+    if (psize[kk] > plimit)
+      indx->ignore = YES;
+  }
+
+
+
+  free (psize);
+  free (indnums);
+
+}
+
 int getrb(int pos, char *string, int len) 
 // dangerous bend string is 1-based
 {

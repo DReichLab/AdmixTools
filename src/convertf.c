@@ -17,7 +17,7 @@
 #include "exclude.h"
 #include "h2d.h"
 
-#define WVERSION   "8621"
+#define WVERSION   "8640"
 /** 
  reformats files.             
  pedfile junk (6, 7 cols, ACGT added)
@@ -117,6 +117,7 @@
 
  countvalidall added
  defaultegroup added (replace ???)
+ popsizelimit = -1 ; 
 */
 
 
@@ -139,6 +140,7 @@ int transformhets = NO ;
 int randomhetfix = NO ; 
 int shuffle = NO ;
 int countvalidall = NO ;
+int popsizelimit = -1 ;
 
 int nums2;
 
@@ -401,6 +403,8 @@ main (int argc, char **argv)
   for (i = 0; i < numindivs; ++i) {
    if (defaultegroup == NULL) break ;
    indx = indivmarkers[i];
+   t = strcmp(indx -> egroup, "Ignore") ;
+   if (t==0) indx -> ignore = YES ;     
    t = strcmp(indx -> egroup, "???") ;
    if (t != 0) continue ;
    freestring(&indx -> egroup) ;
@@ -409,9 +413,15 @@ main (int argc, char **argv)
 
 
 
+  ZALLOC (eglist, numindivs, char *);
   if (poplistname != NULL) {
-    ZALLOC (eglist, numindivs, char *);
     numeg = loadlist (eglist, poplistname);
+  }
+  else { 
+   numeg = makeeglist(eglist, numindivs, indivmarkers, numindivs) ; 
+  }
+
+  if (poplistname != NULL) {
     seteglist (indivmarkers, numindivs, poplistname);
     for (i = 0; i < numindivs; ++i) {
       indx = indivmarkers[i];
@@ -421,6 +431,10 @@ main (int argc, char **argv)
   }
   else {
     setstatus (indivmarkers, numindivs, NULL) ; 
+  }
+
+  if (popsizelimit>=0) { 
+   setplimit (indivmarkers,  numindivs, eglist, numeg, popsizelimit) ;  
   }
 
   
@@ -1019,6 +1033,7 @@ output:        eurout
   getint (ph, "randomhetfix:", &randomhetfix) ;
   getint (ph, "shuffle:", &shuffle) ;
   getint (ph, "countvalidall:", &countvalidall) ;
+  getint (ph, "popsizelimit:", &popsizelimit) ;
 
   writepars (ph);
   closepars (ph);

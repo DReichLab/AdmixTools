@@ -1,4 +1,4 @@
-//nclude <string.h>
+#include <string.h>
 #include <unistd.h>
 #include <math.h>
 #include <sys/types.h>
@@ -17,11 +17,12 @@
 #include "eigsubs.h"
 #include "globals.h"
 
-#define WVERSION   "200"
+#define WVERSION   "210"
 
 // printsd added 
 // clinetest added (as in qpdslow) Makes most sense for 2 f4 stats
 // globaltest added  
+// showmv added
 
 #define MAXFL  50
 #define MAXSTR  512
@@ -43,6 +44,8 @@ char *fstatsname = NULL;
 
 int seed = 0;
 int popsizelimit = -1;
+
+int showmv = NO ;
 
 double diag = 0.0;
 
@@ -294,6 +297,9 @@ main (int argc, char **argv)
    fprintf(fff,"%12.6f ", y1) ;
    if (printsd) fprintf(fff, "%12.6f ", sqrt(y2)) ;
    fprintf(fff, "%9.3f ", y) ;
+   if (showmv) {
+    fprintf (fff, ": F%d", k) ;
+   }
    fprintf(fff, "\n") ; 
    zmax = MAX(zmax, fabs(y)) ; 
    t = k % 100 ; if (t==0) fflush(fff) ;  
@@ -317,6 +323,25 @@ main (int argc, char **argv)
     printmat(lambda, 1, numfs) ; 
   }
 
+  if (showmv) { 
+   printf("Mean * 1000\n") ;
+   for (a=0; a< numfs; ++a) { 
+    y = fsm[a]*1000 ; 
+    printf("F%d :", a) ;
+    printf("%9.3f", y) ;
+    printnl() ;
+   }
+   printf("Covar * 1000 * 1000\n") ;
+   for (a=0; a< numfs; ++a) { 
+    for (b=0; b< numfs; ++b) { 
+     y = fsv[a*numfs+b]*1000*1000 ; 
+     printf("F%d F%d :", a, b) ;
+     printf("%9.3f", y) ;
+     printnl() ;
+   }}
+   printnl() ;
+   printnl() ;
+  }
   ychi = 0.0 ; 
   for (a=0; a<dof; ++a) { 
    y  = vdot(evecs+a*numfs, fsm, numfs) ; 
@@ -518,6 +543,7 @@ readcommands (int argc, char **argv)
   getint (ph, "clinetest:", &clinetest) ; 
   getint (ph, "globaltest:", &globaltest) ; 
   getint (ph, "globalforce:", &globalforce) ; 
+  getint (ph, "showmv:", &showmv) ; 
   getint (ph, "coredump:", &coredump);
 
   printf ("### THE INPUT PARAMETERS\n");

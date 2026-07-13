@@ -1,4 +1,4 @@
-ADMIXTOOLS version 8.0.2  9/06/24 (for Linux and Mac)
+ADMIXTOOLS version 8.1.0  5/06/26 (for Linux and Mac)
 
 See README.INSTALL for installation info. 
 
@@ -111,6 +111,7 @@ Version 8.0.1 is a minor bugfix release.
 Version 8.0.2 is a minor bugfix release, affecting transpose packed files > 2GB.
 
 *** NEW *** 
+Version 8.1.0
 1) Coredumps are disabled by default.  If you want a coredump
 code coredump: YES in your parameter file.  Behavior may be system dependent. 
 
